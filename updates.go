@@ -6,7 +6,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func handle_update(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
+func handleUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	if update.Message == nil { // ignore any non-Message updates
 		return nil
 	}
@@ -23,28 +23,28 @@ func handle_update(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 		))
 		return nil
 	}
-	if err := handle_command_update(update, bot); err != nil {
+	if err := handleCommandUpdate(update, bot); err != nil {
 		return err
 	}
 	return nil
 }
 
-func handle_command_update(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
+func handleCommandUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	var msg tgbotapi.MessageConfig
 	switch update.Message.Command() {
 	case "status":
 		if update.FromChat().IsPrivate() {
-			msg = handle_status_command(update)
+			msg = handleStatusCommand(update)
 		}
 	case "show_users":
 		if update.FromChat().IsPrivate() {
-			msg = handle_show_users_command(update)
+			msg = handleShowUsersCommand(update)
 		}
 	case "workout":
 		if update.FromChat().IsPrivate() {
 			return nil
 		}
-		msg = handle_workout_command(update)
+		msg = handleWorkoutCommand(update, bot)
 	// case "admin_delete_last":
 	// 	msg = handle_admin_delete_last_command(update, bot)
 	default:

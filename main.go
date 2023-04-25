@@ -27,7 +27,7 @@ func main() {
 	}
 
 	for update := range updates {
-		if err := handle_update(update, bot); err != nil {
+		if err := handleUpdates(update, bot); err != nil {
 			log.Error(err)
 		}
 	}
