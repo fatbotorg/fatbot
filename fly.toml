@@ -1,0 +1,14 @@
+# fly.toml app configuration file generated for fatbot on 2023-04-24T10:55:14+01:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = "fatbot"
+primary_region = "lhr"
+
+[env]
+DBPATH = "/data/fat.db"
+
+[mounts]
+source="fat_data"
+destination="/data"
