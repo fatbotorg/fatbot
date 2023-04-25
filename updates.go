@@ -33,9 +33,13 @@ func handle_command_update(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	var msg tgbotapi.MessageConfig
 	switch update.Message.Command() {
 	case "status":
-		msg = handle_status_command(update)
+		if update.FromChat().IsPrivate() {
+			msg = handle_status_command(update)
+		}
 	case "show_users":
-		msg = handle_show_users_command(update)
+		if update.FromChat().IsPrivate() {
+			msg = handle_show_users_command(update)
+		}
 	case "workout":
 		msg = handle_workout_command(update)
 	case "admin_delete_last":
