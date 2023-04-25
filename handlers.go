@@ -82,6 +82,11 @@ func handle_workout_command(update tgbotapi.Update) tgbotapi.MessageConfig {
 	return msg
 }
 
+func handleMissingPhoto(bot *tgbotapi.BotAPI, user User) {
+	msg := tgbotapi.NewMessage(user.TelegramUserID, "Please upload a photo to the group in the next 10 minutes")
+	bot.Send(msg)
+}
+
 // TODO:
 // Find a way to do this with userIds instead of a username which not everyone have
 
