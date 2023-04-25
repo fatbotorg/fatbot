@@ -45,8 +45,8 @@ func handle_command_update(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 			return nil
 		}
 		msg = handle_workout_command(update)
-	case "admin_delete_last":
-		msg = handle_admin_delete_last_command(update, bot)
+	// case "admin_delete_last":
+	// 	msg = handle_admin_delete_last_command(update, bot)
 	default:
 		msg.Text = "Unknown command"
 	}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -94,19 +93,30 @@ func handle_admin_delete_last_command(update tgbotapi.Update, bot *tgbotapi.BotA
 	}
 	member, err := bot.GetChatMember(*config)
 
-	if err != nil {
-		log.Error(err)
-	} else {
-		super := member.IsAdministrator() || member.IsCreator()
-		if super {
-			// change last workout for user
-			username := strings.Trim(update.Message.CommandArguments(), "@")
-			err := rollbackLastWorkout(username)
-			if err != nil {
-				log.Error(err)
-			}
-			msg.Text = fmt.Sprintf("%s last workout cancelled", username)
-		}
-	}
-	return msg
-}
+// func handle_admin_delete_last_command(update tgbotapi.Update, bot *tgbotapi.BotAPI) tgbotapi.MessageConfig {
+// 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+// 	config := &tgbotapi.GetChatMemberConfig{
+// 		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
+// 			ChatID:             update.FromChat().ID,
+// 			SuperGroupUsername: "",
+// 			UserID:             update.SentFrom().ID,
+// 		},
+// 	}
+// 	member, err := bot.GetChatMember(*config)
+//
+// 	if err != nil {
+// 		log.Error(err)
+// 	} else {
+// 		super := member.IsAdministrator() || member.IsCreator()
+// 		if super {
+// 			// change last workout for user
+// 			username := strings.Trim(update.Message.CommandArguments(), "@")
+// 			err := rollbackLastWorkout(username)
+// 			if err != nil {
+// 				log.Error(err)
+// 			}
+// 			msg.Text = fmt.Sprintf("%s last workout cancelled", username)
+// 		}
+// 	}
+// 	return msg
+// }
