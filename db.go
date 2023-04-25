@@ -81,21 +81,21 @@ func getUser(message *tgbotapi.Message) User {
 		TelegramUserID: message.From.ID,
 	}).FirstOrCreate(&user)
 	if user.ChatID == user.TelegramUserID || user.ChatID == 0 {
-		db.Model(&user).Where("username = ?", user.Username).Update("chat_id", message.Chat.ID)
+		db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("chat_id", message.Chat.ID)
 	}
 	return user
 }
 
-func updateWorkout(username string, daysago int64) error {
+func updateWorkout(user_id int64, daysago int64) error {
 	db := getDB()
 	var user User
-	db.Where("username = ?", username).Find(&user)
-	db.Model(&user).Where("username = ?", username).Update("last_last_workout", user.LastWorkout)
+	db.Where("telegram_user_id = ?", user_id).Find(&user)
+	db.Model(&user).Where("telegram_user_id = ?", user_id).Update("last_last_workout", user.LastWorkout)
 	when := time.Now()
 	if daysago != 0 {
 		when = time.Now().Add(time.Duration(-24*daysago) * time.Hour)
 	}
-	db.Model(&user).Where("username = ?", username).Update("last_workout", when)
+	db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("last_workout", when)
 	workout := &Workout{
 		UserID: user.ID,
 	}
@@ -103,29 +103,28 @@ func updateWorkout(username string, daysago int64) error {
 	return nil
 }
 
-func updateUserInactive(username string) {
+func updateUserInactive(user_id int64) {
 	db := getDB()
 	var user User
-	db.Model(&user).Where("username = ?", username).Update("is_active", false)
-	db.Model(&user).Where("username = ?", username).Update("was_notified", false)
+	db.Model(&user).Where("telegram_user_id = ?", user_id).Update("is_active", false)
+	db.Model(&user).Where("telegram_user_id = ?", user_id).Update("was_notified", false)
 }
 
-func rollbackLastWorkout(username string) error {
+func rollbackLastWorkout(user_id int64) error {
 	db := getDB()
 	var user User
-	log.Info(username)
-	if err := db.Where(User{Username: username}).First(&user).Error; err != nil {
+	if err := db.Where(User{TelegramUserID: user_id}).First(&user).Error; err != nil {
 		log.Error(err)
 		return err
 	} else {
-		db.Model(&user).Where("username = ?", username).Update("last_workout", user.LastLastWorkout)
+		db.Model(&user).Where("telegram_user_id = ?", user_id).Update("last_workout", user.LastLastWorkout)
 	}
 	return nil
 }
 
-func updateUserImage(username string) error {
+func updateUserImage(user_id int64) error {
 	db := getDB()
 	var user User
-	db.Model(&user).Where("username = ?", username).Update("photo_update", time.Now())
+	db.Model(&user).Where("telegram_user_id = ?", user_id).Update("photo_update", time.Now())
 	return nil
 }
