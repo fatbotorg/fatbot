@@ -24,7 +24,13 @@ type User struct {
 	IsActive        bool
 }
 
-func getDB() string {
+type Account struct {
+	gorm.Model
+	ChatID   int64
+	Approved bool
+}
+
+func getDB() *gorm.DB {
 	path := os.Getenv("DBPATH")
 	if path == "" {
 		return "fat.db"
@@ -32,11 +38,24 @@ func getDB() string {
 	return path
 }
 
-func getUsers() []User {
-	db, err := gorm.Open(sqlite.Open(getDB()), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
+func initDB() error {
+	db := getDB()
+	db.AutoMigrate(&User{}, &Account{})
+	return nil
+}
+
+func isApprovedChatID(chatID int64) bool {
+	db := getDB()
+	var account Account
+	result := db.Where("chat_id = ?", chatID).Find(&account)
+	if result.RowsAffected == 0 {
+		return false
 	}
+	return account.Approved
+}
+
+func getUsers() []User {
+	db := getDB()
 	var users []User
 	db.Find(&users)
 	return users

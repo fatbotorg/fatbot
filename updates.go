@@ -14,6 +14,13 @@ func handle_update(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 		}
 		return nil
 	}
+
+	if !isApprovedChatID(update.FromChat().ID) {
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID,
+			fmt.Sprintf("Chat %s not approved, send your ID to the admin: %d", update.Message.Chat.Title, update.FromChat().ID),
+		))
+		return nil
+	}
 	if err := handle_command_update(update, bot); err != nil {
 		return err
 	}

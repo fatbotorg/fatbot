@@ -27,6 +27,10 @@ func main() {
 	}
 
 	for update := range updates {
+		log.Info(update.FromChat().ID)
+		if update.FromChat().IsPrivate() {
+			continue
+		}
 		if err := handle_update(update, bot); err != nil {
 			log.Error(err)
 		}
