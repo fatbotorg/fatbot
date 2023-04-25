@@ -8,7 +8,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func handle_status_command(update tgbotapi.Update) tgbotapi.MessageConfig {
+func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	user := getUser(update.Message)
 
@@ -30,7 +30,7 @@ func handle_status_command(update tgbotapi.Update) tgbotapi.MessageConfig {
 	return msg
 }
 
-func handle_show_users_command(update tgbotapi.Update) tgbotapi.MessageConfig {
+func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	users := getUsers()
 	message := ""
@@ -47,7 +47,7 @@ func handle_show_users_command(update tgbotapi.Update) tgbotapi.MessageConfig {
 	return msg
 }
 
-func handle_workout_command(update tgbotapi.Update) tgbotapi.MessageConfig {
+func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 
 	recordUser := getUser(update.Message)
