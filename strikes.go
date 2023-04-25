@@ -4,11 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"gorm.io/driver/sqlite"
-
 	"github.com/charmbracelet/log"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"gorm.io/gorm"
 )
 
 func tick(bot *tgbotapi.BotAPI, ticker *time.Ticker, done chan bool) {
@@ -24,10 +21,7 @@ func tick(bot *tgbotapi.BotAPI, ticker *time.Ticker, done chan bool) {
 }
 
 func scanUsersForStrikes(bot *tgbotapi.BotAPI) {
-	db, err := gorm.Open(sqlite.Open(getDB()), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
-	}
+	db := getDB()
 	var users []User
 	db.Find(&users)
 	for _, user := range users {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"os"
 	"time"
 
@@ -33,9 +32,13 @@ type Account struct {
 func getDB() *gorm.DB {
 	path := os.Getenv("DBPATH")
 	if path == "" {
-		return "fat.db"
+		path = "fat.db"
 	}
-	return path
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	return db
 }
 
 func initDB() error {
@@ -62,10 +65,7 @@ func getUsers() []User {
 }
 
 func getUser(message *tgbotapi.Message) User {
-	db, err := gorm.Open(sqlite.Open(getDB()), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
-	}
+	db := getDB()
 	var user User
 	db.Where(User{
 		Username: message.From.UserName,
@@ -80,10 +80,7 @@ func getUser(message *tgbotapi.Message) User {
 }
 
 func updateWorkout(username string, daysago int64) error {
-	db, err := gorm.Open(sqlite.Open(getDB()), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
-	}
+	db := getDB()
 	var user User
 	db.Where("username = ?", username).Find(&user)
 	db.Model(&user).Where("username = ?", username).Update("last_last_workout", user.LastWorkout)
@@ -97,20 +94,14 @@ func updateWorkout(username string, daysago int64) error {
 }
 
 func updateUserInactive(username string) {
-	db, err := gorm.Open(sqlite.Open(getDB()), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
-	}
+	db := getDB()
 	var user User
 	db.Model(&user).Where("username = ?", username).Update("is_active", false)
 	db.Model(&user).Where("username = ?", username).Update("was_notified", false)
 }
 
 func rollbackLastWorkout(username string) error {
-	db, err := gorm.Open(sqlite.Open(getDB()), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
-	}
+	db := getDB()
 	var user User
 	log.Info(username)
 	if err := db.Where(User{Username: username}).First(&user).Error; err != nil {
@@ -123,21 +114,8 @@ func rollbackLastWorkout(username string) error {
 }
 
 func updateUserImage(username string) error {
-	db, err := gorm.Open(sqlite.Open(getDB()), &gorm.Config{})
-	if err != nil {
-		return errors.New("failed to connect database")
-	}
+	db := getDB()
 	var user User
 	db.Model(&user).Where("username = ?", username).Update("photo_update", time.Now())
 	return nil
-}
-
-func db() {
-	db, err := gorm.Open(sqlite.Open(getDB()), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
-	}
-
-	// Migrate the schema
-	db.AutoMigrate(&User{})
 }
