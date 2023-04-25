@@ -8,3 +8,7 @@ This is the open sourced code for the Telegram bot that manages groups of users 
 * Use `/workout` to report a workout (FatBot will ask that you have a photo uploaded in the last 24 hours as proof)
 * Use `/status` to see where you stand, when did you last workout and how long you have till getting banned
 
+### Features
+* Last day notification
+* Ban user on day 0
+
