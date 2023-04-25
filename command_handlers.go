@@ -53,31 +53,31 @@ func handle_workout_command(update tgbotapi.Update) tgbotapi.MessageConfig {
 
 	recordUser := getUser(update.Message)
 	var message string
+	messageAddition := ""
 	if recordUser.PhotoUpdate.IsZero() || time.Now().Sub(recordUser.PhotoUpdate).Hours() > 24 {
-		message = fmt.Sprintf("%s, upload a photo (or video) and report again", recordUser.Username)
+		messageAddition = "\nDon't forget to send a photo!"
+	}
+	updateWorkout(update.Message.From.ID, 0)
+	if recordUser.LastWorkout.IsZero() {
+		message = fmt.Sprintf("%s nice work!\nThis is your first workout%s",
+			update.Message.From.FirstName,
+			messageAddition,
+		)
 	} else {
-		updateWorkout(update.Message.From.UserName, 0)
-		if recordUser.LastWorkout.IsZero() {
-			message = fmt.Sprintf("%s (%s) nice work!\nThis is your first workout",
-				update.Message.From.FirstName,
-				update.Message.From.UserName,
-			)
+		hours := time.Now().Sub(recordUser.LastWorkout).Hours()
+		timeAgo := ""
+		if int(hours/24) == 0 {
+			timeAgo = fmt.Sprintf("%d hours ago", int(hours))
 		} else {
-			hours := time.Now().Sub(recordUser.LastWorkout).Hours()
-			timeAgo := ""
-			if int(hours/24) == 0 {
-				timeAgo = fmt.Sprintf("%d hours ago", int(hours))
-			} else {
-				days := int(hours / 24)
-				timeAgo = fmt.Sprintf("%d days and %d hours ago", days, int(hours)-days*24)
-			}
-			message = fmt.Sprintf("%s (%s) nice work!\nYour last workout was on %s (%s)",
-				update.Message.From.FirstName,
-				update.Message.From.UserName,
-				recordUser.LastWorkout.Weekday(),
-				timeAgo,
-			)
+			days := int(hours / 24)
+			timeAgo = fmt.Sprintf("%d days and %d hours ago", days, int(hours)-days*24)
 		}
+		message = fmt.Sprintf("%s nice work!\nYour last workout was on %s (%s)%s",
+			update.Message.From.FirstName,
+			recordUser.LastWorkout.Weekday(),
+			timeAgo,
+			messageAddition,
+		)
 	}
 	msg.Text = message
 	return msg
