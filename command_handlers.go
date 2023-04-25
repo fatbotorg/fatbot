@@ -20,10 +20,13 @@ func handle_status_command(update tgbotapi.Update) tgbotapi.MessageConfig {
 		lastworkout := user.LastWorkout
 		currentTime := time.Now()
 		diff := currentTime.Sub(lastworkout)
-		msg.Text = fmt.Sprintf("%s, your last workout was on %s\nYou have %d days left.",
+		days := int(5 - diff.Hours()/24)
+		msg.Text = fmt.Sprintf("%s, your last workout was on %s\nYou have %d days and %d hours left.",
 			user.Name,
 			user.LastWorkout.Weekday(),
-			int(5-diff.Hours()/24))
+			days,
+			120-int(diff.Hours())-24*days-1,
+		)
 	}
 	return msg
 }
