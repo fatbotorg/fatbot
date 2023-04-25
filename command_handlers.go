@@ -82,16 +82,8 @@ func handle_workout_command(update tgbotapi.Update) tgbotapi.MessageConfig {
 	return msg
 }
 
-func handle_admin_delete_last_command(update tgbotapi.Update, bot *tgbotapi.BotAPI) tgbotapi.MessageConfig {
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	config := &tgbotapi.GetChatMemberConfig{
-		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
-			ChatID:             update.FromChat().ID,
-			SuperGroupUsername: "",
-			UserID:             update.SentFrom().ID,
-		},
-	}
-	member, err := bot.GetChatMember(*config)
+// TODO:
+// Find a way to do this with userIds instead of a username which not everyone have
 
 // func handle_admin_delete_last_command(update tgbotapi.Update, bot *tgbotapi.BotAPI) tgbotapi.MessageConfig {
 // 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")

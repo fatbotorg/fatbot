@@ -28,9 +28,9 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) {
 		diff := int(5 - time.Now().Sub(user.LastWorkout).Hours()/24)
 		if diff == 1 && !user.WasNotified {
 			log.Info("yep")
-			msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("@%s you have one day left", user.Username))
+			msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("@%s you have one day left", user.Name))
 			bot.Send(msg)
-			db.Model(&user).Where("username = ?", user.Username).Update("was_notified", true)
+			db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("was_notified", true)
 		} else if diff == 0 {
 			banChatMemberConfig := tgbotapi.BanChatMemberConfig{
 				ChatMemberConfig: tgbotapi.ChatMemberConfig{
@@ -46,7 +46,7 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) {
 			if err != nil {
 				log.Error(err)
 			} else if user.IsActive {
-				updateUserInactive(user.Username)
+				updateUserInactive(user.TelegramUserID)
 				msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("%s Wasn't active, so I kicked them", user.Name))
 				bot.Send(msg)
 			}
