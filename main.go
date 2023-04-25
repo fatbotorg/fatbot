@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -10,27 +9,18 @@ import (
 )
 
 func main() {
-	db()
+	err := initDB()
+	if err != nil {
+		log.Fatal(err)
+	}
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_APITOKEN"))
 	if err != nil {
-		log.Error(err.Error())
+		log.Fatal(err.Error())
 	}
-	ticker := time.NewTicker(24 * time.Hour)
-	done := make(chan bool)
-	go func() {
-		for {
-			scanUsers(bot)
-			select {
-			case <-done:
-				return
-			case t := <-ticker.C:
-				fmt.Println("Tick at", t)
-			}
-		}
-	}()
+	go tick(bot, time.NewTicker(24*time.Hour), make(chan bool))
 
 	bot.Debug = false
-	log.Info("Authorized on account %s", bot.Self.UserName)
+	log.Infof("Authorized on account %s", bot.Self.UserName)
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 

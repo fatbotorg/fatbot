@@ -11,7 +11,19 @@ import (
 	"gorm.io/gorm"
 )
 
-func scanUsers(bot *tgbotapi.BotAPI) {
+func tick(bot *tgbotapi.BotAPI, ticker *time.Ticker, done chan bool) {
+	for {
+		scanUsersForStrikes(bot)
+		select {
+		case <-done:
+			return
+		case t := <-ticker.C:
+			log.Info("Tick at", t)
+		}
+	}
+}
+
+func scanUsersForStrikes(bot *tgbotapi.BotAPI) {
 	db, err := gorm.Open(sqlite.Open(getDB()), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
