@@ -42,7 +42,7 @@ func handle_show_users_command(update tgbotapi.Update) tgbotapi.MessageConfig {
 		} else {
 			lastWorkout = user.LastWorkout.Weekday().String()
 		}
-		message = message + fmt.Sprintf("%s [%s]", user.Username, lastWorkout) + "\n"
+		message = message + fmt.Sprintf("%s [%s]", user.Name, lastWorkout) + "\n"
 	}
 	msg.Text = message
 	return msg
