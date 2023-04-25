@@ -11,7 +11,7 @@ func handle_update(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 		return nil
 	}
 	if !update.Message.IsCommand() { // ignore any non-command Messages
-		if len(update.Message.Photo) > 0 {
+		if len(update.Message.Photo) > 0 || update.Message.Video != nil {
 			updateUserImage(update.Message.From.UserName)
 		}
 		return nil

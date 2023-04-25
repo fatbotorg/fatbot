@@ -54,7 +54,7 @@ func handle_workout_command(update tgbotapi.Update) tgbotapi.MessageConfig {
 	recordUser := getUser(update.Message)
 	var message string
 	if recordUser.PhotoUpdate.IsZero() || time.Now().Sub(recordUser.PhotoUpdate).Hours() > 24 {
-		message = fmt.Sprintf("%s, upload a photo and report again", recordUser.Username)
+		message = fmt.Sprintf("%s, upload a photo (or video) and report again", recordUser.Username)
 	} else {
 		updateWorkout(update.Message.From.UserName, 0)
 		if recordUser.LastWorkout.IsZero() {
