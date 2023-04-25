@@ -55,6 +55,7 @@ func handle_workout_command(update tgbotapi.Update) tgbotapi.MessageConfig {
 	messageAddition := ""
 	if recordUser.PhotoUpdate.IsZero() || time.Now().Sub(recordUser.PhotoUpdate).Hours() > 24 {
 		messageAddition = "\nDon't forget to send a photo!"
+		handleMissingPhoto(bot, recordUser)
 	}
 	updateWorkout(update.Message.From.ID, 0)
 	if recordUser.LastWorkout.IsZero() {
