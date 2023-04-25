@@ -16,7 +16,7 @@ func main() {
 		log.Fatal(err)
 	}
 	if bot, err = tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_APITOKEN")); err != nil {
-		log.Fatal(err)
+		log.Fatalf("Issue with token: %s", err)
 	} else {
 		go tick(bot, time.NewTicker(24*time.Hour), make(chan bool))
 		bot.Debug = false

@@ -12,14 +12,14 @@ func handle_update(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	}
 	if !update.Message.IsCommand() { // ignore any non-command Messages
 		if len(update.Message.Photo) > 0 || update.Message.Video != nil {
-			updateUserImage(update.Message.From.UserName)
+			updateUserImage(update.Message.From.ID)
 		}
 		return nil
 	}
 
-	if !isApprovedChatID(update.FromChat().ID) {
+	if !isApprovedChatID(update.FromChat().ID) && !update.FromChat().IsPrivate() {
 		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID,
-			fmt.Sprintf("Chat %s not approved, send your ID to the admin: %d", update.Message.Chat.Title, update.FromChat().ID),
+			fmt.Sprintf("Group %s not activated, send this to the admin: `%d`", update.Message.Chat.Title, update.FromChat().ID),
 		))
 		return nil
 	}
