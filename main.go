@@ -27,30 +27,7 @@ func main() {
 	}
 
 	for update := range updates {
-		if update.Message == nil { // ignore any non-Message updates
-			continue
-		}
-		if !update.Message.IsCommand() { // ignore any non-command Messages
-			if len(update.Message.Photo) > 0 {
-				updateUserImage(update.Message.From.UserName)
-			}
-			continue
-		}
-
-		var msg tgbotapi.MessageConfig
-		switch update.Message.Command() {
-		case "status":
-			msg = handle_status_command(update)
-		case "show_users":
-			msg = handle_show_users_command(update)
-		case "workout":
-			msg = handle_workout_command(update)
-		case "admin_delete_last":
-			msg = handle_admin_delete_last_command(update, bot)
-		default:
-			msg.Text = "Unknown command"
-		}
-		if _, err := bot.Send(msg); err != nil {
+		if err := handle_update(update, bot); err != nil {
 			log.Error(err)
 		}
 	}
