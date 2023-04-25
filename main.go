@@ -27,7 +27,6 @@ func main() {
 	}
 
 	for update := range updates {
-		log.Info(update.FromChat().ID)
 		if update.FromChat().IsPrivate() {
 			continue
 		}

@@ -21,6 +21,13 @@ type User struct {
 	TelegramUserID  int64
 	WasNotified     bool
 	IsActive        bool
+	Workouts        []Workout
+}
+
+type Workout struct {
+	gorm.Model
+	Cancelled bool
+	UserID    uint
 }
 
 type Account struct {
@@ -43,7 +50,7 @@ func getDB() *gorm.DB {
 
 func initDB() error {
 	db := getDB()
-	db.AutoMigrate(&User{}, &Account{})
+	db.AutoMigrate(&User{}, &Account{}, &Workout{})
 	return nil
 }
 
@@ -89,7 +96,10 @@ func updateWorkout(username string, daysago int64) error {
 		when = time.Now().Add(time.Duration(-24*daysago) * time.Hour)
 	}
 	db.Model(&user).Where("username = ?", username).Update("last_workout", when)
-
+	workout := &Workout{
+		UserID: user.ID,
+	}
+	db.Model(&user).Association("Workouts").Append(workout)
 	return nil
 }
 
