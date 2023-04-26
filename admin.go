@@ -25,7 +25,7 @@ func handleAdminDeleteLastCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) 
 			row = append(row, tgbotapi.NewInlineKeyboardButtonData(userLabel, fmt.Sprint(user.TelegramUserID)))
 			if len(row) == 3 {
 				rows = append(rows, row)
-				row = row[:0]
+				row = []tgbotapi.InlineKeyboardButton{}
 			}
 		}
 		if len(row) > 0 && len(row) > 3 {
