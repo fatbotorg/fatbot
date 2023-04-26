@@ -10,7 +10,9 @@ import (
 
 func tick(bot *tgbotapi.BotAPI, ticker *time.Ticker, done chan bool) {
 	for {
-		scanUsersForStrikes(bot)
+		if err := scanUsersForStrikes(bot); err != nil {
+			log.Errorf("Scan users err: %s", err)
+		}
 		select {
 		case <-done:
 			return
@@ -20,14 +22,13 @@ func tick(bot *tgbotapi.BotAPI, ticker *time.Ticker, done chan bool) {
 	}
 }
 
-func scanUsersForStrikes(bot *tgbotapi.BotAPI) {
+func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 	db := getDB()
 	var users []User
 	db.Find(&users)
 	for _, user := range users {
 		diff := int(5 - time.Now().Sub(user.LastWorkout).Hours()/24)
 		if diff == 1 && !user.WasNotified {
-			log.Info("yep")
 			msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("@%s you have one day left", user.Name))
 			bot.Send(msg)
 			db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("was_notified", true)
@@ -44,12 +45,13 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) {
 			}
 			_, err := bot.Request(banChatMemberConfig)
 			if err != nil {
-				log.Error(err)
+				return err
 			} else if user.IsActive {
 				updateUserInactive(user.TelegramUserID)
-				msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("%s Wasn't active, so I kicked them", user.Name))
+				msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("It's been 5 full days since %s worked out.\nI kicked them", user.Name))
 				bot.Send(msg)
 			}
 		}
 	}
+	return nil
 }
