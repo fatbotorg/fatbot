@@ -2,32 +2,29 @@ package main
 
 import (
 	"os"
-	"time"
 
 	"github.com/charmbracelet/log"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 type User struct {
 	gorm.Model
-	Username        string
-	Name            string
-	LastWorkout     time.Time
-	LastLastWorkout time.Time
-	PhotoUpdate     time.Time
-	ChatID          int64
-	TelegramUserID  int64
-	WasNotified     bool
-	IsActive        bool
-	Workouts        []Workout
+	Username       string
+	Name           string
+	ChatID         int64
+	TelegramUserID int64
+	WasNotified    bool
+	IsActive       bool
+	IsAdmin        bool
+	Workouts       []Workout
 }
 
 type Workout struct {
 	gorm.Model
-	Cancelled bool
-	UserID    uint
+	Cancelled      bool
+	UserID         uint
+	PhotoMessageID int
 }
 
 type Account struct {
