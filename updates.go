@@ -12,7 +12,8 @@ func handleUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	}
 	if !update.Message.IsCommand() { // ignore any non-command Messages
 		if len(update.Message.Photo) > 0 || update.Message.Video != nil {
-			updateUserImage(update.Message.From.ID)
+			user := getUser(update.Message)
+			updateUserImage(user.TelegramUserID)
 		}
 		return nil
 	}
