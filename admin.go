@@ -28,7 +28,9 @@ func handleAdminDeleteLastCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) 
 				row = row[:0]
 			}
 		}
-		rows = append(rows, row)
+		if len(row) > 0 && len(row) > 3 {
+			rows = append(rows, row)
+		}
 		var keyboard = tgbotapi.NewInlineKeyboardMarkup(rows...)
 		msg.ReplyMarkup = keyboard
 		msg.Text = "Pick a user"
