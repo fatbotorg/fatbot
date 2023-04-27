@@ -27,7 +27,12 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 	var users []User
 	db.Find(&users)
 	for _, user := range users {
-		diff := int(5 - time.Now().Sub(user.LastWorkout).Hours()/24)
+		lastWorkout, err := getLastWorkout(user.TelegramUserID)
+		if err != nil {
+			log.Errorf("Err getting last workout for user %s: %s", user.Name, err)
+			continue
+		}
+		diff := int(5 - time.Now().Sub(lastWorkout.CreatedAt).Hours()/24)
 		if diff == 1 && !user.WasNotified {
 			msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("@%s you have one day left", user.Name))
 			bot.Send(msg)

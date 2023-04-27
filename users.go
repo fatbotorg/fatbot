@@ -1,8 +1,6 @@
 package main
 
 import (
-	"time"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -30,16 +28,9 @@ func getUser(message *tgbotapi.Message) User {
 	return user
 }
 
-func updateUserInactive(user_id int64) {
+func updateUserInactive(userId int64) {
 	db := getDB()
 	var user User
-	db.Model(&user).Where("telegram_user_id = ?", user_id).Update("is_active", false)
-	db.Model(&user).Where("telegram_user_id = ?", user_id).Update("was_notified", false)
-}
-
-func updateUserImage(user_id int64) error {
-	db := getDB()
-	var user User
-	db.Model(&user).Where("telegram_user_id = ?", user_id).Update("photo_update", time.Now())
-	return nil
+	db.Model(&user).Where("telegram_user_id = ?", userId).Update("is_active", false)
+	db.Model(&user).Where("telegram_user_id = ?", userId).Update("was_notified", false)
 }
