@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -54,6 +55,10 @@ func handleUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 		return err
 	}
 	return nil
+}
+
+func isToday(when time.Time) bool {
+	return time.Now().Sub(when).Hours() < 24
 }
 
 func isAdminCommand(cmd string) bool {
