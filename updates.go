@@ -33,9 +33,13 @@ func handleUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	}
 	if !update.Message.IsCommand() { // ignore any non-command Messages
 		if len(update.Message.Photo) > 0 || update.Message.Video != nil {
-			msg := handleWorkoutCommand(update, bot)
-			if _, err := bot.Send(msg); err != nil {
+			if lastWorkout, err := getLastWorkout(update.Message.From.ID); err != nil {
 				return err
+			} else if !isToday(lastWorkout.CreatedAt) {
+				msg := handleWorkoutCommand(update, bot)
+				if _, err := bot.Send(msg); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
