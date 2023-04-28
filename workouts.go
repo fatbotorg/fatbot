@@ -50,6 +50,7 @@ func updateWorkout(userId int64, messageId int) error {
 	// 	when = time.Now().Add(time.Duration(-24*daysago) * time.Hour)
 	// }
 	db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("last_workout", when)
+	db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("was_notified", 0)
 	workout := &Workout{
 		UserID:         user.ID,
 		PhotoMessageID: messageId,
