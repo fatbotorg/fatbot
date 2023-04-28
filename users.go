@@ -13,6 +13,15 @@ func getUsers() []User {
 	return users
 }
 
+func (user *User) appName() (name string) {
+	if user.NickName != "" {
+		name = user.NickName
+	} else {
+		name = user.Name
+	}
+	return
+}
+
 func getUser(message *tgbotapi.Message) User {
 	db := getDB()
 	var user User
@@ -37,7 +46,7 @@ func updateUserInactive(userId int64) {
 func renameUser(userId int64, name string) error {
 	db := getDB()
 	var user User
-	if err := db.Model(&user).Where("telegram_user_id = ?", userId).Update("name", name).Error; err != nil {
+	if err := db.Model(&user).Where("telegram_user_id = ?", userId).Update("nick_name", name).Error; err != nil {
 		return err
 	}
 	return nil

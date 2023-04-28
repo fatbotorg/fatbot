@@ -12,6 +12,7 @@ type User struct {
 	gorm.Model
 	Username       string
 	Name           string
+	NickName       string
 	ChatID         int64
 	TelegramUserID int64
 	WasNotified    bool

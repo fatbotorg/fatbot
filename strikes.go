@@ -30,12 +30,14 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 	for _, user := range users {
 		lastWorkout, err := getLastWorkout(user.TelegramUserID)
 		if err != nil {
-			log.Errorf("Err getting last workout for user %s: %s", user.Name, err)
+			log.Errorf("Err getting last workout for user %s: %s", user.appName(), err)
 			continue
 		}
 		diff := int(math.Ceil(5 - time.Now().Sub(lastWorkout.CreatedAt).Hours()/24))
 		if diff == 1 && !user.WasNotified {
-			msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("%s you have one day left", user.Name))
+			// TODO:
+			// Learn how to mention properly
+			msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("%s you have one day left", user.appName()))
 			bot.Send(msg)
 			db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("was_notified", true)
 		} else if diff == 0 {
@@ -54,7 +56,7 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 				return err
 			} else if user.IsActive {
 				updateUserInactive(user.TelegramUserID)
-				msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("It's been 5 full days since %s worked out.\nI kicked them", user.Name))
+				msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("It's been 5 full days since %s worked out.\nI kicked them", user.appName()))
 				bot.Send(msg)
 			}
 		}
