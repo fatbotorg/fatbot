@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -11,25 +10,7 @@ import (
 
 func handleUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	if update.Message == nil && update.CallbackQuery != nil {
-		switch update.CallbackQuery.Message.Text {
-		case "Pick a user":
-			callback := tgbotapi.NewCallback(update.CallbackQuery.ID, update.CallbackQuery.Data)
-			if _, err := bot.Request(callback); err != nil {
-				panic(err)
-			}
-			userId, _ := strconv.ParseInt(update.CallbackQuery.Data, 10, 64)
-			if newLastWorkout, err := rollbackLastWorkout(userId); err != nil {
-				return err
-			} else {
-				message := fmt.Sprintf("Deleted last workout for user %d\nRolledback to: %s",
-					userId, newLastWorkout.CreatedAt.Format("2006-01-02 15:04:05"))
-				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, message)
-				if _, err := bot.Send(msg); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
+		return handleCallbacks(update, bot)
 	}
 	if !update.Message.IsCommand() { // ignore any non-command Messages
 		if len(update.Message.Photo) > 0 || update.Message.Video != nil {
@@ -42,7 +23,6 @@ func handleUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 				}
 			}
 		}
-		return nil
 	}
 
 	if !isApprovedChatID(update.FromChat().ID) && !update.FromChat().IsPrivate() {
