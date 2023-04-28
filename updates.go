@@ -66,10 +66,14 @@ func isAdminCommand(cmd string) bool {
 }
 
 func handleCommandUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
+	if !update.FromChat().IsPrivate() {
+		return nil
+	}
 	if isAdminCommand(update.Message.Command()) {
 		return handleAdminCommandUpdate(update, bot)
 	}
 	var msg tgbotapi.MessageConfig
+	msg.Text = "Unknown command"
 	switch update.Message.Command() {
 	case "status":
 		if update.FromChat().IsPrivate() {
@@ -81,8 +85,11 @@ func handleCommandUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 		if update.FromChat().IsPrivate() {
 			msg = handleShowUsersCommand(update)
 		}
+	case "help":
+		msg.ChatID = update.FromChat().ID
+		msg.Text = "/status"
 	default:
-		msg.Text = "Unknown command"
+		msg.ChatID = update.FromChat().ID
 	}
 	if _, err := bot.Send(msg); err != nil {
 		return err
