@@ -12,16 +12,9 @@ func handleUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	if update.Message == nil && update.CallbackQuery != nil {
 		return handleCallbacks(update, bot)
 	}
-	if !update.Message.IsCommand() { // ignore any non-command Messages
-		if len(update.Message.Photo) > 0 || update.Message.Video != nil {
-			if lastWorkout, err := getLastWorkout(update.Message.From.ID); err != nil {
-				return err
-			} else if !isToday(lastWorkout.CreatedAt) {
-				msg := handleWorkoutCommand(update, bot)
-				if _, err := bot.Send(msg); err != nil {
-					return err
-				}
-			}
+	if !update.Message.IsCommand() {
+		if err := handleNonCommandUpdates(update, bot); err != nil {
+			return err
 		}
 	}
 
@@ -39,14 +32,20 @@ func handleUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 
 func handleNonCommandUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	if len(update.Message.Photo) > 0 || update.Message.Video != nil {
-		if lastWorkout, err := getLastWorkout(update.Message.From.ID); err != nil {
+		msg := handleWorkoutCommand(update, bot)
+		if _, err := bot.Send(msg); err != nil {
 			return err
-		} else if !isToday(lastWorkout.CreatedAt) {
-			msg := handleWorkoutCommand(update, bot)
-			if _, err := bot.Send(msg); err != nil {
-				return err
-			}
 		}
+		// NOTE:
+		// Restore when you decide whether only one workout per day / one photo a day is the right setup
+		// if lastWorkout, err := getLastWorkout(update.Message.From.ID); err != nil {
+		// 	return err
+		// } else if !isToday(lastWorkout.CreatedAt) {
+		// 	msg := handleWorkoutCommand(update, bot)
+		// 	if _, err := bot.Send(msg); err != nil {
+		// 		return err
+		// 	}
+		// }
 	}
 	return nil
 }
