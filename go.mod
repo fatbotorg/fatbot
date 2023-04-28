@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/charmbracelet/log v0.2.1
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
+	github.com/henomis/quickchart-go v1.0.0
 	gorm.io/driver/sqlite v1.5.0
 	gorm.io/gorm v1.25.0
 )
