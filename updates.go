@@ -57,20 +57,6 @@ func handleUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	return nil
 }
 
-func handleNonCommandUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
-	if len(update.Message.Photo) > 0 || update.Message.Video != nil {
-		if lastWorkout, err := getLastWorkout(update.Message.From.ID); err != nil {
-			return err
-		} else if !isToday(lastWorkout.CreatedAt) {
-			msg := handleWorkoutCommand(update, bot)
-			if _, err := bot.Send(msg); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 func isToday(when time.Time) bool {
 	return time.Now().Sub(when).Hours() < 24
 }

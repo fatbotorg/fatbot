@@ -21,14 +21,14 @@ func createUsersKeyboard() tgbotapi.InlineKeyboardMarkup {
 	row := []tgbotapi.InlineKeyboardButton{}
 	rows := [][]tgbotapi.InlineKeyboardButton{}
 	for _, user := range users {
-		userLabel := fmt.Sprintf("%s %s (%s)", user.Name, user.Username, user.group.Name)
+		userLabel := fmt.Sprintf("%s %s", user.Name, user.Username)
 		row = append(row, tgbotapi.NewInlineKeyboardButtonData(userLabel, fmt.Sprint(user.TelegramUserID)))
 		if len(row) == 3 {
 			rows = append(rows, row)
 			row = []tgbotapi.InlineKeyboardButton{}
 		}
 	}
-	if len(row) > 0 && len(row) > 3 {
+	if len(row) > 0 && len(row) < 3 {
 		rows = append(rows, row)
 	}
 	var keyboard = tgbotapi.NewInlineKeyboardMarkup(rows...)
