@@ -13,6 +13,14 @@ func getUsers() []User {
 	return users
 }
 
+func (user *User) sendPrivateMessage(bot *tgbotapi.BotAPI, text string) error {
+	msg := tgbotapi.NewMessage(user.ChatID, text)
+	if _, err := bot.Send(msg); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (user *User) appName() (name string) {
 	if user.NickName != "" {
 		name = user.NickName
