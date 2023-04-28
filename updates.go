@@ -32,6 +32,9 @@ func handleUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 
 func handleNonCommandUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	if len(update.Message.Photo) > 0 || update.Message.Video != nil {
+		if update.FromChat().IsPrivate() {
+			return nil
+		}
 		msg := handleWorkoutCommand(update, bot)
 		if _, err := bot.Send(msg); err != nil {
 			return err
