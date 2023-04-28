@@ -102,6 +102,8 @@ func handleAdminCommandUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) erro
 	switch update.Message.Command() {
 	case "admin_delete_last":
 		msg = handleAdminDeleteLastCommand(update, bot)
+	case "admin_rename":
+		msg = handleAdminRenameCommand(update, bot)
 	default:
 		msg.Text = "Unknown command"
 	}
