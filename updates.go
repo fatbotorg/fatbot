@@ -100,7 +100,11 @@ func handleAdminCommandUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) erro
 		msg = handleAdminDeleteLastCommand(update, bot)
 	case "admin_rename":
 		msg = handleAdminRenameCommand(update, bot)
+	case "admin_help":
+		msg.ChatID = update.FromChat().ID
+		msg.Text = "/admin_delete_last\n/admin_rename\n/admin_help"
 	default:
+		msg.ChatID = update.FromChat().ID
 		msg.Text = "Unknown command"
 	}
 	if _, err := bot.Send(msg); err != nil {
