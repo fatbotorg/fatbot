@@ -21,7 +21,7 @@ func (user *User) sendPrivateMessage(bot *tgbotapi.BotAPI, text string) error {
 	return nil
 }
 
-func (user *User) appName() (name string) {
+func (user *User) getName() (name string) {
 	if user.NickName != "" {
 		name = user.NickName
 	} else {

@@ -10,7 +10,7 @@ import (
 
 func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	user := getUser(update.Message)
+	user := getUserFromMessage(update.Message)
 
 	lastWorkout, err := getLastWorkout(user.TelegramUserID)
 	if err != nil {
@@ -25,7 +25,7 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		diff := currentTime.Sub(lastWorkout.CreatedAt)
 		days := int(5 - diff.Hours()/24)
 		msg.Text = fmt.Sprintf("%s, your last workout was on %s\nYou have %d days and %d hours left.",
-			user.appName(),
+			user.getName(),
 			lastWorkout.CreatedAt.Weekday(),
 			days,
 			120-int(diff.Hours())-24*days-1,
@@ -51,7 +51,7 @@ func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 			hour, min, _ := lastWorkout.CreatedAt.Clock()
 			lastWorkoutStr = fmt.Sprintf("%s, %d:%d", lastWorkout.CreatedAt.Weekday().String(), hour, min)
 		}
-		message = message + fmt.Sprintf("%s [%s]", user.appName(), lastWorkoutStr) + "\n"
+		message = message + fmt.Sprintf("%s [%s]", user.getName(), lastWorkoutStr) + "\n"
 	}
 	msg.Text = message
 	return msg
@@ -59,7 +59,7 @@ func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 
 func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	user := getUser(update.Message)
+	user := getUserFromMessage(update.Message)
 	lastWorkout, err := getLastWorkout(user.TelegramUserID)
 	if err != nil {
 		log.Errorf("Err getting last workout: %s", err)
@@ -69,7 +69,7 @@ func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) tgbotapi
 	updateWorkout(update.Message.From.ID, update.Message.MessageID)
 	if lastWorkout.CreatedAt.IsZero() {
 		message = fmt.Sprintf("%s nice work!\nThis is your first workout",
-			user.appName(),
+			user.getName(),
 		)
 	} else {
 		hours := time.Now().Sub(lastWorkout.CreatedAt).Hours()
@@ -81,7 +81,7 @@ func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) tgbotapi
 			timeAgo = fmt.Sprintf("%d days and %d hours ago", days, int(hours)-days*24)
 		}
 		message = fmt.Sprintf("%s nice work!\nYour last workout was on %s (%s)",
-			user.appName(),
+			user.getName(),
 			lastWorkout.CreatedAt.Weekday(),
 			timeAgo,
 		)
