@@ -35,11 +35,11 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 		}
 		diff := int(math.Ceil(5 - time.Now().Sub(lastWorkout.CreatedAt).Hours()/24))
 		if diff == 1 && !user.WasNotified {
-			// TODO:
-			// Learn how to mention properly
-			msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("%s you have one day left", user.getName()))
+			msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("[%s](tg://user?id=%d) you have 24 hours left",
+				user.getName(),
+				user.TelegramUserID))
+			msg.ParseMode = "MarkdownV2"
 			bot.Send(msg)
-			db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("was_notified", true)
 		} else if diff == 0 {
 			banChatMemberConfig := tgbotapi.BanChatMemberConfig{
 				ChatMemberConfig: tgbotapi.ChatMemberConfig{
