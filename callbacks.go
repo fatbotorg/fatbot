@@ -15,12 +15,15 @@ func handleCallbacks(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 			panic(err)
 		}
 		userId, _ := strconv.ParseInt(update.CallbackQuery.Data, 10, 64)
-		user := getUser(update.CallbackQuery.Message)
+		user, err := getUserById(userId)
+		if err != nil {
+			return err
+		}
 		if newLastWorkout, err := rollbackLastWorkout(userId); err != nil {
 			return err
 		} else {
 			message := fmt.Sprintf("Deleted last workout for user %s\nRolledback to: %s",
-				user.appName(), newLastWorkout.CreatedAt.Format("2006-01-02 15:04:05"))
+				user.getName(), newLastWorkout.CreatedAt.Format("2006-01-02 15:04:05"))
 			msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, message)
 			if _, err := bot.Send(msg); err != nil {
 				return err

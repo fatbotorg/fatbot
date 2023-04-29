@@ -14,7 +14,7 @@ func getUsers() []User {
 }
 
 func (user *User) sendPrivateMessage(bot *tgbotapi.BotAPI, text string) error {
-	msg := tgbotapi.NewMessage(user.ChatID, text)
+	msg := tgbotapi.NewMessage(user.TelegramUserID, text)
 	if _, err := bot.Send(msg); err != nil {
 		return err
 	}
@@ -30,7 +30,15 @@ func (user *User) appName() (name string) {
 	return
 }
 
-func getUser(message *tgbotapi.Message) User {
+func getUserById(userId int64) (user User, err error) {
+	db := getDB()
+	if err := db.Model(&user).Where("telegram_user_id = ?", userId).Find(&user).Error; err != nil {
+		return user, err
+	}
+	return user, nil
+}
+
+func getUserFromMessage(message *tgbotapi.Message) User {
 	db := getDB()
 	var user User
 	db.Where(User{
