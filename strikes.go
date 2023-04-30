@@ -20,7 +20,7 @@ func tickUsersScan(bot *tgbotapi.BotAPI, ticker *time.Ticker, done chan bool) {
 		if err := scanUsersForStrikes(bot); err != nil {
 			log.Errorf("Scan users err: %s", err)
 		}
-		if time.Now().Weekday() == time.Saturday && time.Now().Hour() == 21 {
+		if time.Now().Weekday() == time.Saturday && time.Now().Hour() == 18 {
 			reports.CreateChart(bot)
 		}
 		select {
