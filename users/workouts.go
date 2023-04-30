@@ -12,8 +12,6 @@ func (user *User) GetWorkouts() []Workout {
 	return user.Workouts
 }
 
-// TODO:
-// Remove last_last field and use workouts table
 func (user *User) RollbackLastWorkout() (Workout, error) {
 	db := getDB()
 	if err := db.Where(User{TelegramUserID: user.TelegramUserID}).First(&user).Error; err != nil {
