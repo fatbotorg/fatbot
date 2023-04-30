@@ -1,34 +1,48 @@
 package reports
 
 import (
+	"fatbot/users"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/charmbracelet/log"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	quickchartgo "github.com/henomis/quickchart-go"
 )
 
-func createChart() {
-	chartConfig := `{
+func CreateChart(bot *tgbotapi.BotAPI) {
+	//TODO:
+	// get leader
+	var usersNames []string
+	var usersWorkouts []string
+	var chatId int64
+	users := users.GetUsers()
+	for _, user := range users {
+		usersNames = append(usersNames, user.GetName())
+		usersWorkouts = append(usersWorkouts, fmt.Sprint(len(user.GetWorkouts())))
+		if chatId == 0 {
+			chatId = user.ChatID
+		}
+	}
+	usersStringSlice := "'" + strings.Join(usersNames, "', '") + "'"
+	workoutsStringSlice := strings.Join(usersWorkouts, ", ")
+	chartConfig := fmt.Sprintf(`{
 		type: 'bar',
 		data: {
-			labels: ["user1", "user2", "user3"],
+			labels: [%s],
 			datasets: [{
 			label: 'Users',
-			data: [2, 3, 5, 1]
+			data: [%s]
 			}]
 		}
-	}`
+	}`, usersStringSlice, workoutsStringSlice)
 	qc := quickchartgo.New()
 	qc.Config = chartConfig
 	qc.Width = 500
 	qc.Height = 300
 	qc.Version = "2.9.4"
-	qc.BackgroundColor = "black"
-
-	// Print the chart URL
-	fmt.Println(qc.GetUrl())
-
-	// Or write it to a file
+	qc.BackgroundColor = "white"
 	file, err := os.Create("output.png")
 	if err != nil {
 		panic(err)
@@ -36,4 +50,10 @@ func createChart() {
 
 	defer file.Close()
 	qc.Write(file)
+
+	msg := tgbotapi.NewPhoto(chatId, tgbotapi.FilePath("output.png"))
+	msg.Caption = "Weekly summary"
+	if _, err = bot.Send(msg); err != nil {
+		log.Error(err)
+	}
 }
