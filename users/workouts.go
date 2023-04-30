@@ -33,14 +33,14 @@ func (user *User) RollbackLastWorkout() (Workout, error) {
 func (user *User) UpdateWorkout(messageId int) error {
 	db := getDB()
 	db.Where("telegram_user_id = ?", user.TelegramUserID).Find(&user)
-	when := time.Now()
+	// when := time.Now()
 	// TODO:
 	// Allow old updates
 	//
 	// if daysago != 0 {
 	// 	when = time.Now().Add(time.Duration(-24*daysago) * time.Hour)
 	// }
-	db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("last_workout", when)
+	// db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("last_workout", when)
 	db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("was_notified", 0)
 	workout := &Workout{
 		UserID:         user.ID,
