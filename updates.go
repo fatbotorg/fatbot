@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fatbot/reports"
 	"fmt"
 	"strings"
 
@@ -73,12 +74,6 @@ func handleCommandUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 		if update.FromChat().IsPrivate() {
 			msg = handleStatusCommand(update)
 		}
-	case "show_users":
-		//TODO:
-		// handlr pergroup
-		if update.FromChat().IsPrivate() {
-			msg = handleShowUsersCommand(update)
-		}
 	case "help":
 		msg.ChatID = update.FromChat().ID
 		msg.Text = "/status"
@@ -95,14 +90,25 @@ func handleAdminCommandUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) erro
 	var msg tgbotapi.MessageConfig
 	msg.ChatID = update.FromChat().ID
 	switch update.Message.Command() {
+	case "admin_show_users":
+		//TODO:
+		// handlr pergroup
+		if update.FromChat().IsPrivate() {
+			msg = handleShowUsersCommand(update)
+		}
 	case "admin_delete_last":
 		msg = handleAdminDeleteLastCommand(update, bot)
 	case "admin_rename":
 		msg = handleAdminRenameCommand(update, bot)
 	case "admin_help":
-		msg.Text = "/admin_delete_last\n/admin_rename\n/admin_help"
+		msg.Text = "/admin_delete_last\n/admin_rename\n/admin_help\n/admin_show_users"
+	case "send_report":
+		reports.CreateChart(bot)
 	default:
 		msg.Text = "Unknown command"
+	}
+	if msg.Text == "" {
+		return nil
 	}
 	if _, err := bot.Send(msg); err != nil {
 		return err
