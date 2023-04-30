@@ -9,8 +9,11 @@ import (
 )
 
 func handleUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
-	if update.Message == nil && update.CallbackQuery != nil {
-		return handleCallbacks(update, bot)
+	if update.Message == nil {
+		if update.CallbackQuery != nil {
+			return handleCallbacks(update, bot)
+		}
+		return fmt.Errorf("Cant read message")
 	}
 	if !update.Message.IsCommand() {
 		if err := handleNonCommandUpdates(update, bot); err != nil {
