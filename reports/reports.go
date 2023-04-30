@@ -22,7 +22,7 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 	accounts := accounts.GetAccounts()
 	for _, account := range accounts {
 
-		// TODO: TEMP
+		// TODO: TEMP this is still in beta
 		if account.ChatID != -1001899294753 {
 			continue
 		}

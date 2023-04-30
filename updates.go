@@ -102,7 +102,7 @@ func handleAdminCommandUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) erro
 		msg = handleAdminRenameCommand(update, bot)
 	case "admin_help":
 		msg.Text = "/admin_delete_last\n/admin_rename\n/admin_help\n/admin_show_users"
-	case "send_report":
+	case "admin_send_report":
 		reports.CreateChart(bot)
 	default:
 		msg.Text = "Unknown command"
