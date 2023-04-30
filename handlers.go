@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fatbot/users"
 	"fmt"
 	"time"
 
@@ -10,9 +11,9 @@ import (
 
 func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	user := getUserFromMessage(update.Message)
+	user := users.GetUserFromMessage(update.Message)
 
-	lastWorkout, err := getLastWorkout(user.TelegramUserID)
+	lastWorkout, err := user.GetLastWorkout()
 	if err != nil {
 		log.Errorf("Err getting last workout: %s", err)
 		return msg
@@ -25,7 +26,7 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		diff := currentTime.Sub(lastWorkout.CreatedAt)
 		days := int(5 - diff.Hours()/24)
 		msg.Text = fmt.Sprintf("%s, your last workout was on %s\nYou have %d days and %d hours left.",
-			user.getName(),
+			user.GetName(),
 			lastWorkout.CreatedAt.Weekday(),
 			days,
 			120-int(diff.Hours())-24*days-1,
