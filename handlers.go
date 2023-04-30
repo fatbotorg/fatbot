@@ -66,12 +66,12 @@ func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotap
 	if err != nil {
 		return msg, err
 	}
-	if err := user.UpdateWorkout(update.Message.MessageID); err != nil {
-		return msg, err
-	}
 	if !lastWorkout.IsOlderThan(30) {
 		log.Warn("Workout not older than 30 minutes: %s", user.GetName())
 		return msg, nil
+	}
+	if err := user.UpdateWorkout(update.Message.MessageID); err != nil {
+		return msg, err
 	}
 	if lastWorkout.CreatedAt.IsZero() {
 		message = fmt.Sprintf("%s nice work!\nThis is your first workout",
