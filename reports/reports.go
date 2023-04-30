@@ -12,36 +12,89 @@ import (
 	quickchartgo "github.com/henomis/quickchart-go"
 )
 
+type Leader struct {
+	Name     string
+	Workouts int
+}
+
 func CreateChart(bot *tgbotapi.BotAPI) {
-	//TODO:
-	// get leader
-	var usersNames []string
-	var usersWorkouts []string
-	var chatId int64
-	// var leader map[string]int
 	accounts := accounts.GetAccounts()
 	for _, account := range accounts {
-
 		// TODO: TEMP this is still in beta
-		if account.ChatID != -1001899294753 {
-			continue
-		}
+		// if account.ChatID != -1001899294753 {
+		// 	continue
+		// }
 		// TODO: TEMP
 
-		users := users.GetUsers()
-		for _, user := range users {
-			if user.ChatID != account.ChatID {
-				continue
-			}
-			usersNames = append(usersNames, user.GetName())
-			usersWorkouts = append(usersWorkouts, fmt.Sprint(len(user.GetWorkouts())))
-			if chatId == 0 {
-				chatId = user.ChatID
-			}
+		usersNames, usersWorkouts, leaders := collectUsersData(account.ChatID)
+		if len(usersNames) == 0 {
+			continue
 		}
 		usersStringSlice := "'" + strings.Join(usersNames, "', '") + "'"
 		workoutsStringSlice := strings.Join(usersWorkouts, ", ")
-		chartConfig := fmt.Sprintf(`{
+		chartConfig := createChartConfig(usersStringSlice, workoutsStringSlice)
+		qc := createQuickChart(chartConfig)
+		file, err := os.Create("output.png")
+		if err != nil {
+			panic(err)
+		}
+		defer file.Close()
+		qc.Write(file)
+
+		// TODO: chagne number back to account.chatId
+		msg := tgbotapi.NewPhoto(9658139, tgbotapi.FilePath("output.png"))
+		if len(leaders) == 1 {
+			leader := leaders[0]
+			msg.Caption = fmt.Sprintf(
+				"Weekly summary:\n%s is the ⭐ with %d workouts!",
+				leader.Name,
+				leader.Workouts,
+			)
+		} else if len(leaders) > 1 {
+			caption := fmt.Sprintf("Weekly summary:\n⭐ Leaders of the week with %d workouts:\n",
+				leaders[0].Workouts)
+			for _, leader := range leaders {
+				caption = caption + leader.Name + " "
+			}
+			msg.Caption = caption
+		}
+		if _, err = bot.Send(msg); err != nil {
+			log.Error(err)
+		}
+	}
+}
+
+func collectUsersData(accountChatId int64) (usersNames, usersWorkouts []string, leaders []Leader) {
+	users := users.GetUsers()
+	for _, user := range users {
+		if user.ChatID != accountChatId {
+			continue
+		}
+		usersNames = append(usersNames, user.GetName())
+		userPastWeekWorkouts := user.GetPastWeekWorkouts()
+		usersWorkouts = append(usersWorkouts, fmt.Sprint(len(userPastWeekWorkouts)))
+
+		if len(leaders) == 0 {
+			leaders = append(leaders, Leader{
+				Name:     user.GetName(),
+				Workouts: len(userPastWeekWorkouts),
+			})
+		}
+		if leaders[0].Workouts > len(userPastWeekWorkouts) {
+			continue
+		} else if leaders[0].Workouts < len(userPastWeekWorkouts) {
+			leaders = []Leader{}
+		}
+		leaders = append(leaders, Leader{
+			Name:     user.GetName(),
+			Workouts: len(userPastWeekWorkouts),
+		})
+	}
+	return
+}
+
+func createChartConfig(usersStringSlice, workoutsStringSlice string) string {
+	chartConfig := fmt.Sprintf(`{
 		type: 'bar',
 		data: {
 			labels: [%s],
@@ -51,24 +104,15 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 			}]
 		}
 	}`, usersStringSlice, workoutsStringSlice)
-		qc := quickchartgo.New()
-		qc.Config = chartConfig
-		qc.Width = 500
-		qc.Height = 300
-		qc.Version = "2.9.4"
-		qc.BackgroundColor = "white"
-		file, err := os.Create("output.png")
-		if err != nil {
-			panic(err)
-		}
+	return chartConfig
+}
 
-		defer file.Close()
-		qc.Write(file)
-
-		msg := tgbotapi.NewPhoto(chatId, tgbotapi.FilePath("output.png"))
-		msg.Caption = "Weekly summary"
-		if _, err = bot.Send(msg); err != nil {
-			log.Error(err)
-		}
-	}
+func createQuickChart(chartConfig string) *quickchartgo.Chart {
+	qc := quickchartgo.New()
+	qc.Config = chartConfig
+	qc.Width = 500
+	qc.Height = 300
+	qc.Version = "2.9.4"
+	qc.BackgroundColor = "white"
+	return qc
 }
