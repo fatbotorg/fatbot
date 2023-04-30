@@ -2,10 +2,11 @@ package users
 
 import "time"
 
-func (user *User) GetWorkouts() []Workout {
+func (user *User) GetPastWeekWorkouts() []Workout {
 	db := getDB()
+	lastWeek := time.Now().Add(time.Duration(-7) * time.Hour * 24)
 	if err := db.Model(&User{}).Where("telegram_user_id = ?", user.TelegramUserID).
-		Preload("Workouts").Find(&user).Error; err != nil {
+		Preload("Workouts", "created_at > ?", lastWeek).Find(&user).Error; err != nil {
 	}
 	return user.Workouts
 }
