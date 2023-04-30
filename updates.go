@@ -1,9 +1,9 @@
 package main
 
 import (
+	"fatbot/reports"
 	"fmt"
 	"strings"
-	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -38,26 +38,18 @@ func handleNonCommandUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error
 		if update.FromChat().IsPrivate() {
 			return nil
 		}
-		msg := handleWorkoutCommand(update, bot)
+		msg, err := handleWorkoutCommand(update, bot)
+		if err != nil {
+			return fmt.Errorf("Error handling last workout: %s", err)
+		}
+		if msg.Text == "" {
+			return nil
+		}
 		if _, err := bot.Send(msg); err != nil {
 			return err
 		}
-		// NOTE:
-		// Restore when you decide whether only one workout per day / one photo a day is the right setup
-		// if lastWorkout, err := getLastWorkout(update.Message.From.ID); err != nil {
-		// 	return err
-		// } else if !isToday(lastWorkout.CreatedAt) {
-		// 	msg := handleWorkoutCommand(update, bot)
-		// 	if _, err := bot.Send(msg); err != nil {
-		// 		return err
-		// 	}
-		// }
 	}
 	return nil
-}
-
-func isToday(when time.Time) bool {
-	return time.Now().Sub(when).Hours() < 24
 }
 
 func isAdminCommand(cmd string) bool {
@@ -82,12 +74,6 @@ func handleCommandUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 		if update.FromChat().IsPrivate() {
 			msg = handleStatusCommand(update)
 		}
-	case "show_users":
-		//TODO:
-		// handlr pergroup
-		if update.FromChat().IsPrivate() {
-			msg = handleShowUsersCommand(update)
-		}
 	case "help":
 		msg.ChatID = update.FromChat().ID
 		msg.Text = "/status"
@@ -104,14 +90,25 @@ func handleAdminCommandUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) erro
 	var msg tgbotapi.MessageConfig
 	msg.ChatID = update.FromChat().ID
 	switch update.Message.Command() {
+	case "admin_show_users":
+		//TODO:
+		// handlr pergroup
+		if update.FromChat().IsPrivate() {
+			msg = handleShowUsersCommand(update)
+		}
 	case "admin_delete_last":
 		msg = handleAdminDeleteLastCommand(update, bot)
 	case "admin_rename":
 		msg = handleAdminRenameCommand(update, bot)
 	case "admin_help":
-		msg.Text = "/admin_delete_last\n/admin_rename\n/admin_help"
+		msg.Text = "/admin_delete_last\n/admin_rename\n/admin_help\n/admin_show_users"
+	case "admin_send_report":
+		reports.CreateChart(bot)
 	default:
 		msg.Text = "Unknown command"
+	}
+	if msg.Text == "" {
+		return nil
 	}
 	if _, err := bot.Send(msg); err != nil {
 		return err

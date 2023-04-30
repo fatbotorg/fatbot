@@ -18,7 +18,7 @@ func main() {
 	if bot, err = tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_APITOKEN")); err != nil {
 		log.Fatalf("Issue with token: %s", err)
 	} else {
-		go tick(bot, time.NewTicker(1*time.Hour), make(chan bool))
+		go tickUsersScan(bot, time.NewTicker(1*time.Hour), make(chan bool))
 		bot.Debug = false
 		log.Infof("Authorized on account %s", bot.Self.UserName)
 		u := tgbotapi.NewUpdate(0)

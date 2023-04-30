@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fatbot/users"
 	"fmt"
 	"strconv"
 
@@ -15,20 +16,20 @@ func handleCallbacks(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 			panic(err)
 		}
 		userId, _ := strconv.ParseInt(update.CallbackQuery.Data, 10, 64)
-		user, err := getUserById(userId)
+		user, err := users.GetUserById(userId)
 		if err != nil {
 			return err
 		}
-		if newLastWorkout, err := rollbackLastWorkout(userId); err != nil {
+		if newLastWorkout, err := user.RollbackLastWorkout(); err != nil {
 			return err
 		} else {
 			message := fmt.Sprintf("Deleted last workout for user %s\nRolledback to: %s",
-				user.getName(), newLastWorkout.CreatedAt.Format("2006-01-02 15:04:05"))
+				user.GetName(), newLastWorkout.CreatedAt.Format("2006-01-02 15:04:05"))
 			msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, message)
 			if _, err := bot.Send(msg); err != nil {
 				return err
 			}
-			user.sendPrivateMessage(bot, fmt.Sprintf("Your last workout was cancelled by the admin.\nUpdated workout: %s", newLastWorkout.CreatedAt))
+			user.SendPrivateMessage(bot, fmt.Sprintf("Your last workout was cancelled by the admin.\nUpdated workout: %s", newLastWorkout.CreatedAt))
 		}
 	case "Pick a user to rename":
 		callback := tgbotapi.NewCallback(update.CallbackQuery.ID, update.CallbackQuery.Data)
