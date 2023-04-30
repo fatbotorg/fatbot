@@ -36,11 +36,11 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 
 func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	users := getUsers()
+	users := users.GetUsers()
 	message := ""
 	var lastWorkoutStr string
 	for _, user := range users {
-		lastWorkout, err := getLastWorkout(user.TelegramUserID)
+		lastWorkout, err := user.GetLastWorkout()
 		if err != nil {
 			log.Errorf("Err getting last workout: %s", err)
 			return msg
@@ -51,25 +51,30 @@ func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 			hour, min, _ := lastWorkout.CreatedAt.Clock()
 			lastWorkoutStr = fmt.Sprintf("%s, %d:%d", lastWorkout.CreatedAt.Weekday().String(), hour, min)
 		}
-		message = message + fmt.Sprintf("%s [%s]", user.getName(), lastWorkoutStr) + "\n"
+		message = message + fmt.Sprintf("%s [%s]", user.GetName(), lastWorkoutStr) + "\n"
 	}
 	msg.Text = message
 	return msg
 }
 
-func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) tgbotapi.MessageConfig {
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	user := getUserFromMessage(update.Message)
-	lastWorkout, err := getLastWorkout(user.TelegramUserID)
-	if err != nil {
-		log.Errorf("Err getting last workout: %s", err)
-		return msg
-	}
+func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotapi.MessageConfig, error) {
 	var message string
-	updateWorkout(update.Message.From.ID, update.Message.MessageID)
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+	user := users.GetUserFromMessage(update.Message)
+	lastWorkout, err := user.GetLastWorkout()
+	if err != nil {
+		return msg, err
+	}
+	if err := user.UpdateWorkout(update.Message.MessageID); err != nil {
+		return msg, err
+	}
+	if !lastWorkout.IsOlderThan(30) {
+		log.Warn("Workout not older than 30 minutes: %s", user.GetName())
+		return msg, nil
+	}
 	if lastWorkout.CreatedAt.IsZero() {
 		message = fmt.Sprintf("%s nice work!\nThis is your first workout",
-			user.getName(),
+			user.GetName(),
 		)
 	} else {
 		hours := time.Now().Sub(lastWorkout.CreatedAt).Hours()
@@ -81,7 +86,7 @@ func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) tgbotapi
 			timeAgo = fmt.Sprintf("%d days and %d hours ago", days, int(hours)-days*24)
 		}
 		message = fmt.Sprintf("%s nice work!\nYour last workout was on %s (%s)",
-			user.getName(),
+			user.GetName(),
 			lastWorkout.CreatedAt.Weekday(),
 			timeAgo,
 		)
@@ -89,5 +94,5 @@ func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) tgbotapi
 
 	msg.Text = message
 	msg.ReplyToMessageID = update.Message.MessageID
-	return msg
+	return msg, nil
 }

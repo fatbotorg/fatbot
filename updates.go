@@ -38,26 +38,18 @@ func handleNonCommandUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error
 		if update.FromChat().IsPrivate() {
 			return nil
 		}
-		msg := handleWorkoutCommand(update, bot)
+		msg, err := handleWorkoutCommand(update, bot)
+		if err != nil {
+			return fmt.Errorf("Error handling last workout: %s", err)
+		}
+		if msg.Text == "" {
+			return nil
+		}
 		if _, err := bot.Send(msg); err != nil {
 			return err
 		}
-		// NOTE:
-		// Restore when you decide whether only one workout per day / one photo a day is the right setup
-		// if lastWorkout, err := getLastWorkout(update.Message.From.ID); err != nil {
-		// 	return err
-		// } else if !isToday(lastWorkout.CreatedAt) {
-		// 	msg := handleWorkoutCommand(update, bot)
-		// 	if _, err := bot.Send(msg); err != nil {
-		// 		return err
-		// 	}
-		// }
 	}
 	return nil
-}
-
-func isToday(when time.Time) bool {
-	return time.Now().Sub(when).Hours() < 24
 }
 
 func isAdminCommand(cmd string) bool {

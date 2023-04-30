@@ -1,8 +1,6 @@
 package users
 
-import (
-	"time"
-)
+import "time"
 
 func (user *User) GetWorkouts() []Workout {
 	db := getDB()
@@ -48,4 +46,9 @@ func (user *User) UpdateWorkout(messageId int) error {
 	}
 	db.Model(&user).Association("Workouts").Append(workout)
 	return nil
+}
+
+func (workout *Workout) IsOlderThan(minutes int) bool {
+	diffInMinutes := int(time.Now().Sub(workout.CreatedAt).Minutes())
+	return diffInMinutes > minutes
 }
