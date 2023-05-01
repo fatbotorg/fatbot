@@ -122,15 +122,3 @@ func (user *User) UpdateWasNotified(wasNotified bool) error {
 	// ))
 	return nil
 }
-
-func (user *User) GetLastWorkout() (Workout, error) {
-	db := getDB()
-	if err := db.Model(&User{}).Where("telegram_user_id = ?", user.TelegramUserID).Preload("Workouts").Limit(2).Find(&user).Error; err != nil {
-		return Workout{}, err
-	}
-
-	if len(user.Workouts) == 0 {
-		return Workout{}, nil
-	}
-	return user.Workouts[len(user.Workouts)-1], nil
-}
