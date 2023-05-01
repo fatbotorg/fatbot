@@ -52,6 +52,12 @@ func handleNonCommandUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error
 		if _, err := bot.Send(msg); err != nil {
 			return err
 		}
+	} else if update.FromChat().IsPrivate() {
+		msg := tgbotapi.NewMessage(update.FromChat().ID, "")
+		msg.Text = "Try /help"
+		if _, err := bot.Send(msg); err != nil {
+			return err
+		}
 	}
 	return nil
 }
