@@ -11,6 +11,10 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+// NOTE:
+// This needs to be its own module and it needs rafactoring
+// Mainly the strikes scan
+
 func tickUsersScan(bot *tgbotapi.BotAPI, ticker *time.Ticker, done chan bool) {
 	for {
 		// TODO: REMOVE
