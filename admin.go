@@ -10,13 +10,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func isAdmin(userId int) bool {
-	db := getDB()
-	var user users.User
-	db.Where("telegram_user_id = ?", userId).Find(&user)
-	return user.IsAdmin
-}
-
 func createUsersKeyboard() tgbotapi.InlineKeyboardMarkup {
 	users := users.GetUsers()
 	row := []tgbotapi.InlineKeyboardButton{}
@@ -38,36 +31,30 @@ func createUsersKeyboard() tgbotapi.InlineKeyboardMarkup {
 
 func handleAdminDeleteLastCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	super := isAdmin(int(update.Message.From.ID))
-	if super {
-		msg.Text = "Pick a user to delete last workout for"
-		msg.ReplyMarkup = createUsersKeyboard()
-	}
+	msg.Text = "Pick a user to delete last workout for"
+	msg.ReplyMarkup = createUsersKeyboard()
 	return msg
 }
 
 func handleAdminRenameCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	super := isAdmin(int(update.Message.From.ID))
-	if super {
-		if update.Message.CommandArguments() == "" {
-			msg.Text = "Pick a user to rename"
-			msg.ReplyMarkup = createUsersKeyboard()
+	if update.Message.CommandArguments() == "" {
+		msg.Text = "Pick a user to rename"
+		msg.ReplyMarkup = createUsersKeyboard()
+	} else {
+		args := update.Message.CommandArguments()
+		argsSlice := strings.Split(args, " ")
+		userId, _ := strconv.ParseInt(argsSlice[0], 10, 64)
+		newName := argsSlice[1]
+		user, err := users.GetUserById(userId)
+		if err != nil {
+			log.Error(err)
+		}
+		if err := user.Rename(newName); err != nil {
+			log.Error(err)
+			msg.Text = "There was an error with renaming"
 		} else {
-			args := update.Message.CommandArguments()
-			argsSlice := strings.Split(args, " ")
-			userId, _ := strconv.ParseInt(argsSlice[0], 10, 64)
-			newName := argsSlice[1]
-			user, err := users.GetUserById(userId)
-			if err != nil {
-				log.Error(err)
-			}
-			if err := user.Rename(newName); err != nil {
-				log.Error(err)
-				msg.Text = "There was an error with renaming"
-			} else {
-				msg.Text = fmt.Sprintf("Ok, renamed %d to %s", userId, newName)
-			}
+			msg.Text = fmt.Sprintf("Ok, renamed %d to %s", userId, newName)
 		}
 	}
 	return msg
