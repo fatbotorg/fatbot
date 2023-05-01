@@ -11,8 +11,11 @@ import (
 
 func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	user := users.GetUserFromMessage(update.Message)
-
+	user, err := users.GetUserFromMessage(update.Message)
+	if err != nil {
+		log.Error(err)
+		return msg
+	}
 	lastWorkout, err := user.GetLastWorkout()
 	if err != nil {
 		log.Errorf("Err getting last workout: %s", err)
@@ -61,7 +64,10 @@ func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotapi.MessageConfig, error) {
 	var message string
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	user := users.GetUserFromMessage(update.Message)
+	user, err := users.GetUserFromMessage(update.Message)
+	if err != nil {
+		return msg, err
+	}
 	lastWorkout, err := user.GetLastWorkout()
 	if err != nil {
 		return msg, err
