@@ -4,7 +4,6 @@ import (
 	"fatbot/reports"
 	"fatbot/users"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -60,7 +59,8 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 			}
 		} else if diffHours <= 0 {
 			if err := user.Ban(bot); err != nil {
-				return err
+				log.Errorf("Issue banning %s from %s: %s", user.GetName(), user.ChatID, err)
+				continue
 			}
 		}
 	}
