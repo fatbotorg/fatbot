@@ -58,28 +58,9 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 				return fmt.Errorf("Error with bumping user %s notifications: %s",
 					user.GetName(), err)
 			}
-		} else if diffHours == 0 {
-			banChatMemberConfig := tgbotapi.BanChatMemberConfig{
-				ChatMemberConfig: tgbotapi.ChatMemberConfig{
-					ChatID:             user.ChatID,
-					SuperGroupUsername: "shotershmenimbot",
-					ChannelUsername:    "",
-					UserID:             user.TelegramUserID,
-				},
-				UntilDate:      0,
-				RevokeMessages: false,
-			}
-			_, err := bot.Request(banChatMemberConfig)
-			if err != nil {
+		} else if diffHours <= 0 {
+			if err := user.Ban(bot); err != nil {
 				return err
-			} else if user.IsActive {
-				user.UpdateInactive()
-				if err != user.IncrementBanCount() {
-					return fmt.Errorf("Error with bumping user %s ban count: %s",
-						user.GetName(), err)
-				}
-				msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("It's been 5 full days since %s worked out.\nI kicked them", user.GetName()))
-				bot.Send(msg)
 			}
 		}
 	}

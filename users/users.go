@@ -154,7 +154,7 @@ func (user *User) IncrementBanCount() error {
 //		return nil
 //	}
 
-func (user *User) Kick(bot *tgbotapi.BotAPI) error {
+func (user *User) Ban(bot *tgbotapi.BotAPI) error {
 	banChatMemberConfig := tgbotapi.BanChatMemberConfig{
 		ChatMemberConfig: tgbotapi.ChatMemberConfig{
 			ChatID:             user.ChatID,
