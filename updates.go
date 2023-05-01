@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fatbot/reports"
 	"fmt"
 	"strings"
 
@@ -13,12 +12,17 @@ func handleUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 		if update.CallbackQuery != nil {
 			return handleCallbacks(update, bot)
 		}
-		return fmt.Errorf("Cant read message")
+		if update.InlineQuery != nil {
+			//NOTE: "Ignoring inline"
+			return nil
+		}
+		return fmt.Errorf("Cant read message, maybe I don't have access?")
 	}
 	if !update.Message.IsCommand() {
 		if err := handleNonCommandUpdates(update, bot); err != nil {
 			return err
 		}
+		return nil
 	}
 
 	if !isApprovedChatID(update.FromChat().ID) && !update.FromChat().IsPrivate() {
