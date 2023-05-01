@@ -1,6 +1,7 @@
 package users
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/charmbracelet/log"
@@ -17,11 +18,12 @@ type User struct {
 	NickName          string
 	ChatID            int64
 	TelegramUserID    int64
-	IsActive          bool
+	Active            bool
 	IsAdmin           bool
 	Workouts          []Workout
 	NotificationCount int
 	BanCount          int
+	LeaderCount       int
 }
 
 type Workout struct {
@@ -48,7 +50,7 @@ func getDB() *gorm.DB {
 func GetUsers() []User {
 	db := getDB()
 	var users []User
-	db.Find(&users)
+	db.Where("deactivated = ?", 0).Find(&users)
 	return users
 }
 
@@ -77,7 +79,7 @@ func GetUserById(userId int64) (user User, err error) {
 	return user, nil
 }
 
-func GetUserFromMessage(message *tgbotapi.Message) User {
+func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
 	db := getDB()
 	var user User
 	db.Where(User{
@@ -86,15 +88,23 @@ func GetUserFromMessage(message *tgbotapi.Message) User {
 		TelegramUserID: message.From.ID,
 	}).FirstOrCreate(&user)
 	if user.ChatID == user.TelegramUserID || user.ChatID == 0 {
-		db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("chat_id", message.Chat.ID)
+		if err := db.Model(&user).
+			Where("telegram_user_id = ?", user.TelegramUserID).
+			Update("chat_id", message.Chat.ID).Error; err != nil {
+			return user, err
+		}
 	}
-	return user
+	return user, nil
 }
 
-func (user *User) UpdateInactive() {
+func (user *User) UpdateInactive() error {
 	db := getDB()
-	db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("is_active", false)
-	db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("was_notified", false)
+	if err := db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Updates(User{
+		Active: false,
+	}).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func (user *User) Rename(name string) error {
@@ -124,6 +134,51 @@ func (user *User) IncrementBanCount() error {
 		Updates(User{
 			BanCount: user.BanCount + 1,
 		}).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// TODO:
+// Think about how to createa group-based leader so that it in the context of one group
+//
+//	func (user *User) IncrementLeaderCount() error {
+//		db := getDB()
+//		if err := db.Model(&user).
+//			Where("telegram_user_id = ?", user.TelegramUserID).
+//			Updates(User{
+//				LeaderCount: user.LeaderCount + 1,
+//			}).Error; err != nil {
+//			return err
+//		}
+//		return nil
+//	}
+
+func (user *User) Kick(bot *tgbotapi.BotAPI) error {
+	banChatMemberConfig := tgbotapi.BanChatMemberConfig{
+		ChatMemberConfig: tgbotapi.ChatMemberConfig{
+			ChatID:             user.ChatID,
+			SuperGroupUsername: "shotershmenimbot",
+			ChannelUsername:    "",
+			UserID:             user.TelegramUserID,
+		},
+		UntilDate:      0,
+		RevokeMessages: false,
+	}
+	_, err := bot.Request(banChatMemberConfig)
+	if err != nil {
+		return err
+	}
+	if err := user.UpdateInactive(); err != nil {
+		return fmt.Errorf("Error with updating inactivity: %s ban count: %s",
+			user.GetName(), err)
+	}
+	if err != user.IncrementBanCount() {
+		return fmt.Errorf("Error with bumping user %s ban count: %s",
+			user.GetName(), err)
+	}
+	msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("It's been 5 full days since %s worked out.\nI kicked them", user.GetName()))
+	if _, err := bot.Send(msg); err != nil {
 		return err
 	}
 	return nil
