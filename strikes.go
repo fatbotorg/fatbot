@@ -47,7 +47,7 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 			continue
 		}
 		totalDays := 5.0
-		diffHours := int(math.Ceil(totalDays*24 - time.Now().Sub(lastWorkout.CreatedAt).Hours()))
+		diffHours := int(totalDays*24 - time.Now().Sub(lastWorkout.CreatedAt).Hours())
 		if diffHours == 23 {
 			msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("[%s](tg://user?id=%d) you have 24 hours left",
 				user.GetName(),
