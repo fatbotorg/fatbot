@@ -17,7 +17,6 @@ type User struct {
 	NickName          string
 	ChatID            int64
 	TelegramUserID    int64
-	WasNotified       bool
 	IsActive          bool
 	IsAdmin           bool
 	Workouts          []Workout
@@ -106,19 +105,26 @@ func (user *User) Rename(name string) error {
 	return nil
 }
 
-func (user *User) UpdateWasNotified(wasNotified bool) error {
+func (user *User) IncrementNotificationCount() error {
 	db := getDB()
 	if err := db.Model(&user).
 		Where("telegram_user_id = ?", user.TelegramUserID).
 		Updates(User{
-			WasNotified:       wasNotified,
 			NotificationCount: user.NotificationCount + 1,
 		}).Error; err != nil {
 		return err
 	}
-	// db.Exec(fmt.Sprintf(
-	// 	"UPDATE users SET notification_count = notification_count + 1 WHERE id = %d",
-	// 	user.ID,
-	// ))
+	return nil
+}
+
+func (user *User) IncrementBanCount() error {
+	db := getDB()
+	if err := db.Model(&user).
+		Where("telegram_user_id = ?", user.TelegramUserID).
+		Updates(User{
+			BanCount: user.BanCount + 1,
+		}).Error; err != nil {
+		return err
+	}
 	return nil
 }
