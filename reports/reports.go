@@ -18,6 +18,7 @@ type Leader struct {
 }
 
 func CreateChart(bot *tgbotapi.BotAPI) {
+	fileName := "output.png"
 	accounts := accounts.GetAccounts()
 	for _, account := range accounts {
 		usersNames, usersWorkouts, leaders := collectUsersData(account.ChatID)
@@ -28,7 +29,7 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 		workoutsStringSlice := strings.Join(usersWorkouts, ", ")
 		chartConfig := createChartConfig(usersStringSlice, workoutsStringSlice)
 		qc := createQuickChart(chartConfig)
-		file, err := os.Create("output.png")
+		file, err := os.Create(fileName)
 		if err != nil {
 			panic(err)
 		}
@@ -36,7 +37,7 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 		qc.Write(file)
 
 		// TODO: chagne number back to account.chatId
-		msg := tgbotapi.NewPhoto(9658139, tgbotapi.FilePath("output.png"))
+		msg := tgbotapi.NewPhoto(9658139, tgbotapi.FilePath(fileName))
 		// TODO:
 		// Count the leaders!
 		if len(leaders) == 1 {
