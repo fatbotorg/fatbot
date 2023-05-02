@@ -24,7 +24,7 @@ func getDB() *gorm.DB {
 
 func initDB() error {
 	db := getDB()
-	db.AutoMigrate(&users.User{}, &accounts.Account{}, &users.Workout{})
+	db.AutoMigrate(&users.User{}, &accounts.Account{}, &users.Workout{}, &users.Event{})
 	return nil
 }
 
