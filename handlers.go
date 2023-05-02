@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fatbot/accounts"
 	"fatbot/users"
 	"fmt"
 	"time"
@@ -106,21 +107,43 @@ func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotap
 	return msg, nil
 }
 
+func createAccountsKeyboard(userId int64) tgbotapi.InlineKeyboardMarkup {
+	accounts := accounts.GetAccounts()
+	row := []tgbotapi.InlineKeyboardButton{}
+	rows := [][]tgbotapi.InlineKeyboardButton{}
+	for _, account := range accounts {
+		accountLabel := fmt.Sprintf("%s", account.Title)
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData(
+			accountLabel,
+			fmt.Sprintf("%d %d", account.ChatID, userId),
+		))
+		if len(row) == 3 {
+			rows = append(rows, row)
+			row = []tgbotapi.InlineKeyboardButton{}
+		}
+	}
+	if len(row) > 0 && len(row) < 3 {
+		rows = append(rows, row)
+	}
+	var keyboard = tgbotapi.NewInlineKeyboardMarkup(rows...)
+	return keyboard
+}
+
 func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, err error) {
 	msg.ChatID = fatBotUpdate.Update.FromChat().ID
 	if user, err := users.GetUserById(fatBotUpdate.Update.SentFrom().ID); err != nil {
 		return msg, err
 	} else if user.ID == 0 {
-
 		from := fatBotUpdate.Update.Message.From
 		adminMessage := tgbotapi.NewMessage(0,
 			fmt.Sprintf(
-				"User: %s %s %s is new and wants to join a group.",
+				"User: %s %s %s is new and wants to join a group, where to?",
 				from.FirstName, from.LastName, from.UserName,
 			),
 		)
+		adminMessage.ReplyMarkup = createAccountsKeyboard(from.ID)
 		sendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
-		msg.Text = "Hi! I have sent your request to the admin"
+		msg.Text = "Welcome! I've sent your request to the admins"
 		return msg, nil
 	} else {
 		msg.Text = fmt.Sprintf("Hi %s, I'm sending this for admin approval", user.GetName())

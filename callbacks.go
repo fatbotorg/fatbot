@@ -68,7 +68,18 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 		if _, err := bot.Send(msg); err != nil {
 			return err
 		}
+	} else if strings.Contains(update.CallbackQuery.Message.Text, "new and wants to join a group") {
+		name := fmt.Sprintf("%s-%s-%s",
+			update.CallbackQuery.Message.From.FirstName,
+			update.CallbackQuery.Message.From.LastName,
+			update.CallbackQuery.Message.From.UserName,
+		)
+		dataSlice := strings.Split(update.CallbackData(), " ")
+		chatId, _ := strconv.ParseInt(dataSlice[0], 10, 64)
+		userId, _ := strconv.ParseInt(dataSlice[1], 10, 64)
+		if err := users.InviteNewUser(fatBotUpdate.Bot, chatId, userId, name); err != nil {
+			return fmt.Errorf("Issue with inviting: %s", err)
+		}
 	}
-
 	return nil
 }

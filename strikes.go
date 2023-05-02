@@ -62,7 +62,7 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 			// }
 		} else if diffHours <= 0 {
 			if err := user.Ban(bot); err != nil {
-				log.Errorf("Issue banning %s from %s: %s", user.GetName(), user.ChatID, err)
+				log.Errorf("Issue banning %s from %d: %s", user.GetName(), user.ChatID, err)
 				continue
 			}
 		}

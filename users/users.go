@@ -229,15 +229,53 @@ func (user *User) Invite(bot *tgbotapi.BotAPI) error {
 	if err != nil {
 		return err
 	}
-	var dat map[string]interface{}
-	json.Unmarshal(response.Result, &dat)
-	for k, v := range dat {
-		if k == "invite_link" {
-			msg.Text = msg.Text + fmt.Sprint(v)
-		}
+	link, err := extractInviteLinkFromResponse(response)
+	if err != nil {
+		return err
 	}
+	msg.Text = link
 	if _, err := bot.Send(msg); err != nil {
 		return err
 	}
 	return nil
+}
+
+func InviteNewUser(bot *tgbotapi.BotAPI, chatId, userId int64, name string) error {
+	msg := tgbotapi.NewMessage(userId, "")
+	unixTime24HoursFromNow := int(time.Now().Add(time.Duration(24 * time.Hour)).Unix())
+	chatConfig := tgbotapi.ChatConfig{
+		ChatID:             chatId,
+		SuperGroupUsername: bot.Self.UserName,
+	}
+	createInviteLinkConfig := tgbotapi.CreateChatInviteLinkConfig{
+		ChatConfig:         chatConfig,
+		Name:               name,
+		ExpireDate:         unixTime24HoursFromNow,
+		MemberLimit:        1,
+		CreatesJoinRequest: false,
+	}
+	response, err := bot.Request(createInviteLinkConfig)
+	if err != nil {
+		return err
+	}
+	link, err := extractInviteLinkFromResponse(response)
+	if err != nil {
+		return err
+	}
+	msg.Text = "You are invited to join: " + link
+	if _, err := bot.Send(msg); err != nil {
+		return err
+	}
+	return nil
+}
+
+func extractInviteLinkFromResponse(response *tgbotapi.APIResponse) (string, error) {
+	var dat map[string]interface{}
+	json.Unmarshal(response.Result, &dat)
+	for k, v := range dat {
+		if k == "invite_link" {
+			return fmt.Sprint(v), nil
+		}
+	}
+	return "", fmt.Errorf("Could not find invite link")
 }
