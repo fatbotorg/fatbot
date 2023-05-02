@@ -50,7 +50,11 @@ func getDB() *gorm.DB {
 func GetUsers() []User {
 	db := getDB()
 	var users []User
-	db.Where("deactivated = ?", 0).Find(&users)
+	if chatId == 0 {
+		db.Find(&users)
+	} else {
+		db.Where("chat_id = ? AND active = ?", chatId, true).Find(&users)
+	}
 	return users
 }
 
