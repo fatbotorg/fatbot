@@ -47,7 +47,7 @@ func getDB() *gorm.DB {
 
 // BUG:
 // returns the entire DB, needs filtering by chat_id
-func GetUsers() []User {
+func GetUsers(chatId int64) []User {
 	db := getDB()
 	var users []User
 	if chatId == 0 {
