@@ -54,9 +54,16 @@ func GetUsers() []User {
 	return users
 }
 
-func (user *User) SendPrivateMessage(bot *tgbotapi.BotAPI, text string) error {
-	msg := tgbotapi.NewMessage(user.TelegramUserID, text)
-	if _, err := bot.Send(msg); err != nil {
+func GetAdminUsers() []User {
+	db := getDB()
+	var users []User
+	db.Where("is_admin = ?", true).Find(&users)
+	return users
+}
+
+func (user *User) SendPrivateMessage(bot *tgbotapi.BotAPI, messageConfig tgbotapi.MessageConfig) error {
+	messageConfig.ChatID = user.TelegramUserID
+	if _, err := bot.Send(messageConfig); err != nil {
 		return err
 	}
 	return nil
