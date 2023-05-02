@@ -183,3 +183,44 @@ func (user *User) Ban(bot *tgbotapi.BotAPI) error {
 	}
 	return nil
 }
+
+func (user *User) UnBan(bot *tgbotapi.BotAPI) error {
+	unbanConfig := tgbotapi.UnbanChatMemberConfig{
+		ChatMemberConfig: user.CreateChatMemberConfig(bot.Self.UserName),
+	}
+	if _, err := bot.Request(unbanConfig); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (user *User) Invite(bot *tgbotapi.BotAPI) error {
+	msg := tgbotapi.NewMessage(user.TelegramUserID, "")
+	unixTime24HoursFromNow := int(time.Now().Add(time.Duration(24 * time.Hour)).Unix())
+	chatConfig := tgbotapi.ChatConfig{
+		ChatID:             user.ChatID,
+		SuperGroupUsername: bot.Self.UserName,
+	}
+	createInviteLinkConfig := tgbotapi.CreateChatInviteLinkConfig{
+		ChatConfig:         chatConfig,
+		Name:               user.GetName(),
+		ExpireDate:         unixTime24HoursFromNow,
+		MemberLimit:        1,
+		CreatesJoinRequest: false,
+	}
+	response, err := bot.Request(createInviteLinkConfig)
+	if err != nil {
+		return err
+	}
+	var dat map[string]interface{}
+	json.Unmarshal(response.Result, &dat)
+	for k, v := range dat {
+		if k == "invite_link" {
+			msg.Text = msg.Text + fmt.Sprint(v)
+		}
+	}
+	if _, err := bot.Send(msg); err != nil {
+		return err
+	}
+	return nil
+}
