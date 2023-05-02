@@ -1,8 +1,10 @@
 package users
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/charmbracelet/log"
 
@@ -153,61 +155,39 @@ func (user *User) Rename(name string) error {
 	return nil
 }
 
-func (user *User) IncrementNotificationCount() error {
-	db := getDB()
-	if err := db.Model(&user).
-		Where("telegram_user_id = ?", user.TelegramUserID).
-		Updates(User{
-			NotificationCount: user.NotificationCount + 1,
-		}).Error; err != nil {
-		return err
+func (user *User) CreateChatMemberConfig(botName string) tgbotapi.ChatMemberConfig {
+	return tgbotapi.ChatMemberConfig{
+		ChatID:             user.ChatID,
+		SuperGroupUsername: botName,
+		ChannelUsername:    "",
+		UserID:             user.TelegramUserID,
 	}
-	return nil
 }
-
-func (user *User) IncrementBanCount() error {
-	db := getDB()
-	if err := db.Model(&user).
-		Where("telegram_user_id = ?", user.TelegramUserID).
-		Updates(User{
-			BanCount: user.BanCount + 1,
-		}).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
-// TODO:
-// Think about how to createa group-based leader so that it in the context of one group
-//
-//	func (user *User) IncrementLeaderCount() error {
-//		db := getDB()
-//		if err := db.Model(&user).
-//			Where("telegram_user_id = ?", user.TelegramUserID).
-//			Updates(User{
-//				LeaderCount: user.LeaderCount + 1,
-//			}).Error; err != nil {
-//			return err
-//		}
-//		return nil
-//	}
 
 func (user *User) Ban(bot *tgbotapi.BotAPI) error {
-	banChatMemberConfig := tgbotapi.BanChatMemberConfig{
-		ChatMemberConfig: tgbotapi.ChatMemberConfig{
+	chatMemberConfig := user.CreateChatMemberConfig(bot.Self.UserName)
+	getChatMemberConfig := tgbotapi.GetChatMemberConfig{
+		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
 			ChatID:             user.ChatID,
-			SuperGroupUsername: "shotershmenimbot",
-			ChannelUsername:    "",
+			SuperGroupUsername: bot.Self.UserName,
 			UserID:             user.TelegramUserID,
 		},
-		UntilDate:      0,
-		RevokeMessages: false,
+	}
+	banChatMemberConfig := tgbotapi.BanChatMemberConfig{
+		ChatMemberConfig: chatMemberConfig,
+		UntilDate:        0,
+		RevokeMessages:   false,
+	}
+	if chatMemeber, err := bot.GetChatMember(getChatMemberConfig); err != nil {
+		return err
+	} else if chatMemeber.WasKicked() {
+		return nil
 	}
 	_, err := bot.Request(banChatMemberConfig)
 	if err != nil {
 		return err
 	}
-	if err := user.UpdateInactive(); err != nil {
+	if err := user.UpdateActive(false); err != nil {
 		return fmt.Errorf("Error with updating inactivity: %s ban count: %s",
 			user.GetName(), err)
 	}
