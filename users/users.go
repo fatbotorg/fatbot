@@ -13,17 +13,32 @@ import (
 
 type User struct {
 	gorm.Model
-	Username          string
-	Name              string
-	NickName          string
-	ChatID            int64
-	TelegramUserID    int64
-	Active            bool
-	IsAdmin           bool
-	Workouts          []Workout
-	NotificationCount int
-	BanCount          int
-	LeaderCount       int
+	Username       string
+	Name           string
+	NickName       string
+	ChatID         int64
+	TelegramUserID int64
+	Active         bool
+	IsAdmin        bool
+	Workouts       []Workout
+	Events         []Event
+	// NotificationCount int
+	// BanCount          int
+	// LeaderCoun       int
+}
+
+type eventType string
+
+const (
+	Ban                 eventType = "ban"
+	LastDayNotification eventType = "lastDayNotification"
+	WeeklyLeader        eventType = "weeklyLeader"
+)
+
+type Event struct {
+	gorm.Model
+	UserID uint
+	Event  eventType
 }
 
 type Workout struct {
@@ -106,6 +121,9 @@ func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
 		Name:           message.From.FirstName,
 		TelegramUserID: message.From.ID,
 	}).FirstOrCreate(&user)
+	if err := user.UpdateActive(true); err != nil {
+		return user, err
+	}
 	if user.ChatID == user.TelegramUserID || user.ChatID == 0 {
 		if err := db.Model(&user).
 			Where("telegram_user_id = ?", user.TelegramUserID).
@@ -116,10 +134,10 @@ func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
 	return user, nil
 }
 
-func (user *User) UpdateInactive() error {
+func (user *User) UpdateActive(should bool) error {
 	db := getDB()
 	if err := db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Updates(User{
-		Active: false,
+		Active: should,
 	}).Error; err != nil {
 		return err
 	}
