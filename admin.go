@@ -10,8 +10,20 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+func sendMessageToAdmins(bot *tgbotapi.BotAPI, message tgbotapi.MessageConfig) {
+	admins := users.GetAdminUsers()
+	for _, admin := range admins {
+		// TODO: remove omer
+		if admin.GetName() == "Omer" {
+			admin.SendPrivateMessage(bot, message)
+		}
+	}
+}
+
 func createUsersKeyboard() tgbotapi.InlineKeyboardMarkup {
-	users := users.GetUsers()
+	// BUG: THIS GETS ALL USERS #7
+	// use chat_id in the argument to get specific group
+	users := users.GetUsers(0)
 	row := []tgbotapi.InlineKeyboardButton{}
 	rows := [][]tgbotapi.InlineKeyboardButton{}
 	for _, user := range users {
