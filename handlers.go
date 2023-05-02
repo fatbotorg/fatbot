@@ -111,8 +111,15 @@ func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, e
 	if user, err := users.GetUserById(fatBotUpdate.Update.SentFrom().ID); err != nil {
 		// TODO:
 		// NOTE:
-		// If new - admin will be notified to pick the group
-		msg.Text = "Unknown user - send to admin"
+		from := fatBotUpdate.Update.Message.From
+		adminMessage := tgbotapi.NewMessage(0,
+			fmt.Sprintf(
+				"User: %s %s %s is new and wants to join a group.",
+				from.FirstName, from.LastName, from.UserName,
+			),
+		)
+		sendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
+		msg.Text = "Hi! I have sent your request to the admin"
 		return msg, err
 	} else {
 		msg.Text = fmt.Sprintf("Hi %s, I'm sending this for admin approval", user.GetName())
