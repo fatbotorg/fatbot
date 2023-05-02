@@ -39,8 +39,10 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 }
 
 func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
+	// BUG: THIS GETS ALL USERS
+	// use chat_id in the argument to get specific group
+	users := users.GetUsers(0)
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	users := users.GetUsers()
 	message := ""
 	var lastWorkoutStr string
 	for _, user := range users {
@@ -102,4 +104,27 @@ func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotap
 	msg.Text = message
 	msg.ReplyToMessageID = update.Message.MessageID
 	return msg, nil
+}
+
+func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, err error) {
+	msg.ChatID = fatBotUpdate.Update.FromChat().ID
+	if user, err := users.GetUserById(fatBotUpdate.Update.SentFrom().ID); err != nil {
+		// TODO:
+		// NOTE:
+		// If new - admin will be notified to pick the group
+		msg.Text = "Unknown user - send to admin"
+		return msg, err
+	} else {
+		msg.Text = fmt.Sprintf("Hi %s, I'm sending this for admin approval", user.GetName())
+		adminMessage := tgbotapi.NewMessage(0, fmt.Sprintf("User %s wants to rejoin his group do you approve?", user.GetName()))
+		var approvalKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("Approve", fmt.Sprint(user.ID)),
+				tgbotapi.NewInlineKeyboardButtonData("Decline", "false"),
+			),
+		)
+		adminMessage.ReplyMarkup = approvalKeyboard
+		sendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
+	}
+	return
 }
