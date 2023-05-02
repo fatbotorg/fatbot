@@ -62,7 +62,9 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 }
 
 func collectUsersData(accountChatId int64) (usersNames, usersWorkouts []string, leaders []Leader) {
-	users := users.GetUsers()
+	// BUG: THIS GETS ALL USERS
+	// use chat_id in the argument to get specific group
+	users := users.GetUsers(0)
 	leaders = append(leaders, Leader{
 		Name:     "",
 		Workouts: 0,

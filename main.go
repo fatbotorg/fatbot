@@ -8,6 +8,11 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+type FatBotUpdate struct {
+	Bot    *tgbotapi.BotAPI
+	Update tgbotapi.Update
+}
+
 func main() {
 	var bot *tgbotapi.BotAPI
 	var err error
@@ -25,9 +30,10 @@ func main() {
 		u.Timeout = 60
 		updates = bot.GetUpdatesChan(u)
 	}
-
+	fatBotUpdate := FatBotUpdate{Bot: bot}
 	for update := range updates {
-		if err := handleUpdates(update, bot); err != nil {
+		fatBotUpdate.Update = update
+		if err := handleUpdates(fatBotUpdate); err != nil {
 			log.Error(err)
 		}
 	}

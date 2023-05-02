@@ -53,10 +53,13 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 				user.TelegramUserID))
 			msg.ParseMode = "MarkdownV2"
 			bot.Send(msg)
-			if err != user.IncrementNotificationCount() {
-				return fmt.Errorf("Error with bumping user %s notifications: %s",
-					user.GetName(), err)
-			}
+			// TODO:
+			// Add an event for the user
+			//
+			// if err != user.IncrementNotificationCount() {
+			// 	return fmt.Errorf("Error with bumping user %s notifications: %s",
+			// 		user.GetName(), err)
+			// }
 		} else if diffHours <= 0 {
 			if err := user.Ban(bot); err != nil {
 				log.Errorf("Issue banning %s from %s: %s", user.GetName(), user.ChatID, err)

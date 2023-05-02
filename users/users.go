@@ -191,10 +191,9 @@ func (user *User) Ban(bot *tgbotapi.BotAPI) error {
 		return fmt.Errorf("Error with updating inactivity: %s ban count: %s",
 			user.GetName(), err)
 	}
-	if err != user.IncrementBanCount() {
-		return fmt.Errorf("Error with bumping user %s ban count: %s",
-			user.GetName(), err)
-	}
+	// TODO:
+	// Add a ban event to the user
+	//
 	msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("It's been 5 full days since %s worked out.\nI kicked them", user.GetName()))
 	if _, err := bot.Send(msg); err != nil {
 		return err

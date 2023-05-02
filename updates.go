@@ -7,19 +7,21 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func handleUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
-	if update.Message == nil {
-		if update.CallbackQuery != nil {
-			return handleCallbacks(update, bot)
+func handleUpdates(fatBotUpdate FatBotUpdate) error {
+	update := fatBotUpdate.Update
+	bot := fatBotUpdate.Bot
+	if fatBotUpdate.Update.Message == nil {
+		if fatBotUpdate.Update.CallbackQuery != nil {
+			return handleCallbacks(fatBotUpdate)
 		}
-		if update.InlineQuery != nil {
+		if fatBotUpdate.Update.InlineQuery != nil {
 			//NOTE: "Ignoring inline"
 			return nil
 		}
 		return fmt.Errorf("Cant read message, maybe I don't have access?")
 	}
-	if !update.Message.IsCommand() {
-		if err := handleNonCommandUpdates(update, bot); err != nil {
+	if !fatBotUpdate.Update.Message.IsCommand() {
+		if err := handleNonCommandUpdates(fatBotUpdate); err != nil {
 			return err
 		}
 		return nil
@@ -31,13 +33,15 @@ func handleUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 		))
 		return nil
 	}
-	if err := handleCommandUpdate(update, bot); err != nil {
+	if err := handleCommandUpdate(fatBotUpdate); err != nil {
 		return err
 	}
 	return nil
 }
 
-func handleNonCommandUpdates(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
+func handleNonCommandUpdates(fatBotUpdate FatBotUpdate) error {
+	update := fatBotUpdate.Update
+	bot := fatBotUpdate.Bot
 	if len(update.Message.Photo) > 0 || update.Message.Video != nil {
 		if update.FromChat().IsPrivate() {
 			return nil
