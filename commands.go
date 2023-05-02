@@ -7,28 +7,33 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func handleCommandUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
+func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
+	update := fatBotUpdate.Update
+	bot := fatBotUpdate.Bot
 	if !update.FromChat().IsPrivate() {
 		return nil
 	}
 	if isAdminCommand(update.Message.Command()) {
 		return handleAdminCommandUpdate(update, bot)
 	}
+	if !update.FromChat().IsPrivate() {
+		// NOTE: not allowing non-private commands ATM
+		return nil
+	}
+	var err error
 	var msg tgbotapi.MessageConfig
 	msg.Text = "Unknown command"
 	switch update.Message.Command() {
 	case "join":
-	// TODO: join!
-	// Add join command, if the bot knows you - send to admin for approval. If new - admin will be notified to pick the group
-	// When rejoining - mark as active again and give a strike grace period of 24 hours (use 'updated_at' to compare), require 2 photos!
-	// Make sure strikes handle rejoiners with over 5 days no workout
-	case "status":
-		if update.FromChat().IsPrivate() {
-			msg = handleStatusCommand(update)
+		msg, err = handleJoinCommand(fatBotUpdate)
+		if err != nil {
+			return err
 		}
+	case "status":
+		msg = handleStatusCommand(update)
 	case "help":
 		msg.ChatID = update.FromChat().ID
-		msg.Text = "/status"
+		msg.Text = "/status\n/rejoin"
 	default:
 		msg.ChatID = update.FromChat().ID
 	}
