@@ -43,7 +43,6 @@ type Event struct {
 
 type Workout struct {
 	gorm.Model
-	Cancelled      bool
 	UserID         uint
 	PhotoMessageID int
 }
@@ -127,7 +126,9 @@ func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
 	if user.ChatID == user.TelegramUserID || user.ChatID == 0 {
 		if err := db.Model(&user).
 			Where("telegram_user_id = ?", user.TelegramUserID).
-			Update("chat_id", message.Chat.ID).Error; err != nil {
+			Updates(User{
+				ChatID: message.Chat.ID,
+			}).Error; err != nil {
 			return user, err
 		}
 	}
