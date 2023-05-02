@@ -45,7 +45,15 @@ func getDB() *gorm.DB {
 	return db
 }
 
-// BUG:
+func GetUser(id uint) (user User, err error) {
+	db := getDB()
+	if err := db.Find(&user, id).Error; err != nil {
+		return user, err
+	}
+	return user, nil
+}
+
+// BUG: #7
 // returns the entire DB, needs filtering by chat_id
 func GetUsers(chatId int64) []User {
 	db := getDB()
