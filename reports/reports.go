@@ -18,9 +18,9 @@ type Leader struct {
 }
 
 func CreateChart(bot *tgbotapi.BotAPI) {
-	fileName := "output.png"
 	accounts := accounts.GetAccounts()
 	for _, account := range accounts {
+		fileName := fmt.Sprintf("%d.png", account.ChatID)
 		usersNames, usersWorkouts, leaders := collectUsersData(account.ChatID)
 		if len(usersNames) == 0 {
 			continue

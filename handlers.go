@@ -147,16 +147,21 @@ func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, e
 		msg.Text = "Welcome! I've sent your request to the admins"
 		return msg, nil
 	} else {
-		msg.Text = fmt.Sprintf("Hi %s, I'm sending this for admin approval", user.GetName())
-		adminMessage := tgbotapi.NewMessage(0, fmt.Sprintf("User %s wants to rejoin his group do you approve?", user.GetName()))
-		var approvalKeyboard = tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("Approve", fmt.Sprint(user.ID)),
-				tgbotapi.NewInlineKeyboardButtonData("Decline", "false"),
-			),
-		)
-		adminMessage.ReplyMarkup = approvalKeyboard
-		sendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
+		timeSinceBan := int(time.Now().Sub(user.UpdatedAt).Hours())
+		if timeSinceBan < 48 {
+			msg.Text = fmt.Sprintf("%s, it's only been %d hours, you have to wait 48", user.GetName(), timeSinceBan)
+		} else {
+			msg.Text = fmt.Sprintf("Hi %s, welcome back I'm sending this for admin approval", user.GetName())
+			adminMessage := tgbotapi.NewMessage(0, fmt.Sprintf("User %s wants to rejoin his group do you approve?", user.GetName()))
+			var approvalKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("Approve", fmt.Sprint(user.ID)),
+					tgbotapi.NewInlineKeyboardButtonData("Decline", "false"),
+				),
+			)
+			adminMessage.ReplyMarkup = approvalKeyboard
+			sendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
+		}
 	}
 	return
 }
