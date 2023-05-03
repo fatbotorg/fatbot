@@ -50,7 +50,7 @@ func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		lastWorkout, err := user.GetLastXWorkout(1)
 		if err != nil {
 			log.Errorf("Err getting last workout: %s", err)
-			return msg
+			continue
 		}
 		if lastWorkout.CreatedAt.IsZero() {
 			lastWorkoutStr = "no record"
