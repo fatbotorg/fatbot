@@ -74,7 +74,7 @@ func (user *User) GetLastXWorkout(lastx int) (Workout, error) {
 		return Workout{}, err
 	}
 	if len(user.Workouts) == 0 || lastx > len(user.Workouts) {
-		return Workout{}, fmt.Errorf("No workouts, or not enough", "workouts", len(user.Workouts), "wanted", lastx)
+		return Workout{}, fmt.Errorf("No workouts, or not enough", "user", user.GetName(), "workouts", len(user.Workouts), "wanted", lastx)
 	}
 	return user.Workouts[len(user.Workouts)-lastx], nil
 }
