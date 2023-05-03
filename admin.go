@@ -13,10 +13,7 @@ import (
 func sendMessageToAdmins(bot *tgbotapi.BotAPI, message tgbotapi.MessageConfig) {
 	admins := users.GetAdminUsers()
 	for _, admin := range admins {
-		// TODO: remove omer
-		if admin.GetName() == "Omer" {
-			admin.SendPrivateMessage(bot, message)
-		}
+		admin.SendPrivateMessage(bot, message)
 	}
 }
 
