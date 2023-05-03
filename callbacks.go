@@ -47,6 +47,15 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 		if _, err := bot.Send(msg); err != nil {
 			return err
 		}
+	case "Pick a user to change workout for":
+		callback := tgbotapi.NewCallback(update.CallbackQuery.ID, update.CallbackQuery.Data)
+		if _, err := bot.Request(callback); err != nil {
+			panic(err)
+		}
+		msg.Text = fmt.Sprintf("/admin_push_workout %s days", update.CallbackData())
+		if _, err := bot.Send(msg); err != nil {
+			return err
+		}
 	}
 	if strings.Contains(update.CallbackQuery.Message.Text, "rejoin his group do you approve") {
 		if update.CallbackQuery.Data == "false" {

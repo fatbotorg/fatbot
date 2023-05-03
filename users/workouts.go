@@ -32,6 +32,17 @@ func (user *User) RollbackLastWorkout() (Workout, error) {
 	return newLastWorkout, nil
 }
 
+func (user *User) PushWorkout(days int64) error {
+	db := getDB()
+	workout, err := user.GetLastXWorkout(1)
+	if err != nil {
+		return err
+	}
+	db.Model(&workout).
+		Update("created_at", workout.CreatedAt.Add(time.Duration(-days*24*int64(time.Hour))))
+	return nil
+}
+
 func (user *User) UpdateWorkout(messageId int) error {
 	db := getDB()
 	db.Where("telegram_user_id = ?", user.TelegramUserID).Find(&user)
@@ -43,7 +54,7 @@ func (user *User) UpdateWorkout(messageId int) error {
 	// 	when = time.Now().Add(time.Duration(-24*daysago) * time.Hour)
 	// }
 	// db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("last_workout", when)
-	db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("was_notified", 0)
+	db.Model(&user).Update("was_notified", 0)
 	workout := &Workout{
 		UserID:         user.ID,
 		PhotoMessageID: messageId,

@@ -14,7 +14,7 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 		return nil
 	}
 	if isAdminCommand(update.Message.Command()) {
-		return handleAdminCommandUpdate(update, bot)
+		return handleAdminCommandUpdate(fatBotUpdate)
 	}
 	if !update.FromChat().IsPrivate() {
 		// NOTE: not allowing non-private commands ATM
@@ -43,8 +43,10 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 	return nil
 }
 
-func handleAdminCommandUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
+func handleAdminCommandUpdate(fatBotUpdate FatBotUpdate) error {
 	var msg tgbotapi.MessageConfig
+	update := fatBotUpdate.Update
+	bot := fatBotUpdate.Bot
 	msg.ChatID = update.FromChat().ID
 
 	user, err := users.GetUserById(update.Message.From.ID)
@@ -62,11 +64,13 @@ func handleAdminCommandUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) erro
 			msg = handleShowUsersCommand(update)
 		}
 	case "admin_delete_last":
-		msg = handleAdminDeleteLastCommand(update, bot)
+		msg = handleAdminDeleteLastCommand(update)
 	case "admin_rename":
-		msg = handleAdminRenameCommand(update, bot)
+		msg = handleAdminRenameCommand(update)
+	case "admin_push_workout":
+		msg = handleAdminPushWorkoutCommand(update)
 	case "admin_help":
-		msg.Text = "/admin_delete_last\n/admin_rename\n/admin_help\n/admin_show_users"
+		msg.Text = "/admin_delete_last\n/admin_rename\n/admin_help\n/admin_show_users\n/admin_push_workout"
 	case "admin_send_report":
 		reports.CreateChart(bot)
 	default:

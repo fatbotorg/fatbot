@@ -38,14 +38,14 @@ func createUsersKeyboard() tgbotapi.InlineKeyboardMarkup {
 	return keyboard
 }
 
-func handleAdminDeleteLastCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) tgbotapi.MessageConfig {
+func handleAdminDeleteLastCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	msg.Text = "Pick a user to delete last workout for"
 	msg.ReplyMarkup = createUsersKeyboard()
 	return msg
 }
 
-func handleAdminRenameCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) tgbotapi.MessageConfig {
+func handleAdminRenameCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	if update.Message.CommandArguments() == "" {
 		msg.Text = "Pick a user to rename"
@@ -64,6 +64,30 @@ func handleAdminRenameCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) tgbo
 			msg.Text = "There was an error with renaming"
 		} else {
 			msg.Text = fmt.Sprintf("Ok, renamed %d to %s", userId, newName)
+		}
+	}
+	return msg
+}
+
+func handleAdminPushWorkoutCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+	if update.Message.CommandArguments() == "" {
+		msg.Text = "Pick a user to change workout for"
+		msg.ReplyMarkup = createUsersKeyboard()
+	} else {
+		args := update.Message.CommandArguments()
+		argsSlice := strings.Split(args, " ")
+		userId, _ := strconv.ParseInt(argsSlice[0], 10, 64)
+		days, _ := strconv.ParseInt(argsSlice[1], 10, 64)
+		user, err := users.GetUserById(userId)
+		if err != nil {
+			log.Error(err)
+		}
+		if err := user.PushWorkout(days); err != nil {
+			log.Error(err)
+			msg.Text = "There was an error with pushing workout"
+		} else {
+			msg.Text = fmt.Sprintf("Ok, pushed %d days for %s", days, user.GetName())
 		}
 	}
 	return msg
