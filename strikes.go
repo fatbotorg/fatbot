@@ -16,10 +16,6 @@ import (
 
 func tickUsersScan(bot *tgbotapi.BotAPI, ticker *time.Ticker, done chan bool) {
 	for {
-		// TODO: REMOVE
-		// reports.CreateChart(bot)
-		// TODO: REMOVE
-
 		if err := scanUsersForStrikes(bot); err != nil {
 			log.Errorf("Scan users err: %s", err)
 		}
