@@ -1,6 +1,9 @@
 package users
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 func (user *User) GetPastWeekWorkouts() []Workout {
 	db := getDB()
