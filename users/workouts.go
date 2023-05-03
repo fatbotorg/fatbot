@@ -59,8 +59,8 @@ func (user *User) GetLastXWorkout(lastx int) (Workout, error) {
 	if err := db.Model(&User{}).Where("telegram_user_id = ?", user.TelegramUserID).Preload("Workouts").Limit(2).Find(&user).Error; err != nil {
 		return Workout{}, err
 	}
-	if len(user.Workouts) == 0 {
-		return Workout{}, nil
+	if len(user.Workouts) == 0 || lastx > len(user.Workouts) {
+		return Workout{}, fmt.Errorf("No workouts, or not enough", "workouts", len(user.Workouts), "wanted", lastx)
 	}
 	return user.Workouts[len(user.Workouts)-lastx], nil
 }
