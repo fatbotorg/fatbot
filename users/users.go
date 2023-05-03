@@ -140,9 +140,16 @@ func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
 
 func (user *User) UpdateActive(should bool) error {
 	db := getDB()
-	if err := db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Updates(User{
-		Active: should,
-	}).Error; err != nil {
+	if err := db.Model(&user).Update("active", should).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (user *User) UpdateOnProbation(probation bool) error {
+	db := getDB()
+	if err := db.Model(&user).
+		Update("on_probation", probation).Error; err != nil {
 		return err
 	}
 	return nil
@@ -150,7 +157,8 @@ func (user *User) UpdateActive(should bool) error {
 
 func (user *User) Rename(name string) error {
 	db := getDB()
-	if err := db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("nick_name", name).Error; err != nil {
+	if err := db.Model(&user).
+		Update("nick_name", name).Error; err != nil {
 		return err
 	}
 	return nil
@@ -182,6 +190,7 @@ func (user *User) Ban(bot *tgbotapi.BotAPI) error {
 	if chatMemeber, err := bot.GetChatMember(getChatMemberConfig); err != nil {
 		return err
 	} else if chatMemeber.WasKicked() {
+		log.Debug("Func Ban", "wasKicked", chatMemeber.WasKicked())
 		return nil
 	}
 	_, err := bot.Request(banChatMemberConfig)
@@ -189,6 +198,7 @@ func (user *User) Ban(bot *tgbotapi.BotAPI) error {
 		return err
 	}
 	if err := user.UpdateActive(false); err != nil {
+		log.Debug("Func Ban", "updateActive", false)
 		return fmt.Errorf("Error with updating inactivity: %s ban count: %s",
 			user.GetName(), err)
 	}
