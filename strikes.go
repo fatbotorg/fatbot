@@ -39,22 +39,22 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 	for _, user := range users {
 		if user.OnProbation {
 			log.Debug("Probation", "user.OnProbation", user.OnProbation)
-			if lastWorkout, err := user.GetLastXWorkout(2); err != nil {
+			lastWorkout, err := user.GetLastXWorkout(2)
+			if err != nil {
 				log.Errorf("Err getting last 2 workout for user %s: %s", user.GetName(), err)
-			} else {
-				diffHours := int(totalDays*24 - time.Now().Sub(lastWorkout.CreatedAt).Hours())
-				log.Debug("Probation", "diffHours", diffHours)
-				rejoinedLastHour := time.Now().Sub(user.UpdatedAt).Minutes() <= 60
-				lastTwoWorkoutsOk := diffHours > 0
-				if !lastTwoWorkoutsOk && !rejoinedLastHour {
-					if err := user.Ban(bot); err != nil {
-						log.Errorf("Issue banning %s from %d: %s", user.GetName(), user.ChatID, err)
-					}
-				} else if lastTwoWorkoutsOk {
-					log.Debug("Probation", "lastTwoWorkoutsOk", lastTwoWorkoutsOk)
-					if err := user.UpdateOnProbation(false); err != nil {
-						log.Errorf("Issue updating unprobation %s from %d: %s", user.GetName(), user.ChatID, err)
-					}
+			}
+			diffHours := int(totalDays*24 - time.Now().Sub(lastWorkout.CreatedAt).Hours())
+			log.Debug("Probation", "diffHours", diffHours)
+			rejoinedLastHour := time.Now().Sub(user.UpdatedAt).Minutes() <= 60
+			lastTwoWorkoutsOk := diffHours > 0
+			if !lastTwoWorkoutsOk && !rejoinedLastHour {
+				if err := user.Ban(bot); err != nil {
+					log.Errorf("Issue banning %s from %d: %s", user.GetName(), user.ChatID, err)
+				}
+			} else if lastTwoWorkoutsOk {
+				log.Debug("Probation", "lastTwoWorkoutsOk", lastTwoWorkoutsOk)
+				if err := user.UpdateOnProbation(false); err != nil {
+					log.Errorf("Issue updating unprobation %s from %d: %s", user.GetName(), user.ChatID, err)
 				}
 			}
 			continue
