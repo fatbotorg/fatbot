@@ -22,6 +22,7 @@ type User struct {
 	TelegramUserID int64
 	Active         bool
 	IsAdmin        bool
+	OnProbation    bool
 	Workouts       []Workout
 	Events         []Event
 	// NotificationCount int

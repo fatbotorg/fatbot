@@ -17,7 +17,7 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		log.Error(err)
 		return msg
 	}
-	lastWorkout, err := user.GetLastWorkout()
+	lastWorkout, err := user.GetLastXWorkout(1)
 	if err != nil {
 		log.Errorf("Err getting last workout: %s", err)
 		return msg
@@ -47,7 +47,7 @@ func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	message := ""
 	var lastWorkoutStr string
 	for _, user := range users {
-		lastWorkout, err := user.GetLastWorkout()
+		lastWorkout, err := user.GetLastXWorkout(1)
 		if err != nil {
 			log.Errorf("Err getting last workout: %s", err)
 			return msg
@@ -71,11 +71,11 @@ func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotap
 	if err != nil {
 		return msg, err
 	}
-	lastWorkout, err := user.GetLastWorkout()
+	lastWorkout, err := user.GetLastXWorkout(1)
 	if err != nil {
 		return msg, err
 	}
-	if !lastWorkout.IsOlderThan(30) {
+	if !lastWorkout.IsOlderThan(30) && !user.OnProbation {
 		log.Warn("Workout not older than 30 minutes: %s", user.GetName())
 		return msg, nil
 	}
@@ -95,8 +95,9 @@ func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotap
 			days := int(hours / 24)
 			timeAgo = fmt.Sprintf("%d days and %d hours ago", days, int(hours)-days*24)
 		}
-		message = fmt.Sprintf("%s nice work!\nYour last workout was on %s (%s)",
+		message = fmt.Sprintf("%s %s\nYour last workout was on %s (%s)",
 			user.GetName(),
+			users.GetRandomWorkoutMessage(),
 			lastWorkout.CreatedAt.Weekday(),
 			timeAgo,
 		)
