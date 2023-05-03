@@ -66,6 +66,9 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 			if err := user.UpdateActive(true); err != nil {
 				return err
 			}
+			if err := user.UpdateOnProbation(true); err != nil {
+				return err
+			}
 			msg.Text = "Ok, approved"
 		}
 		if _, err := bot.Send(msg); err != nil {
