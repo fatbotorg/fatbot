@@ -50,8 +50,6 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 				log.Debug("Probation", "diffHours", diffHours)
 				rejoinedLastHour := time.Now().Sub(user.UpdatedAt).Minutes() <= 60
 				lastTwoWorkoutsOk := diffHours > 0
-				log.Debug("Probation", "lastTwoWorkoutsOk", lastTwoWorkoutsOk)
-				log.Debug("Probation", "rejoinedLastHour", rejoinedLastHour)
 				if !lastTwoWorkoutsOk && !rejoinedLastHour {
 					if err := user.Ban(bot); err != nil {
 						log.Errorf("Issue banning %s from %d: %s", user.GetName(), user.ChatID, err)
@@ -84,12 +82,6 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 			// 	return fmt.Errorf("Error with bumping user %s notifications: %s",
 			// 		user.GetName(), err)
 			// }
-
-			// TODO:
-			// If diff is 0 remove, if diff <0 this means the user rejoined -
-			// This means that if the LAST-LAST workout isn't in the time frame:
-			// I'm kicking them out!
-			// Grace 60 minutes by check `UPDATED_BY`
 		} else if diffHours <= 0 {
 			if err := user.Ban(bot); err != nil {
 				log.Errorf("Issue banning %s from %d: %s", user.GetName(), user.ChatID, err)

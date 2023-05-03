@@ -16,13 +16,13 @@ func (user *User) RollbackLastWorkout() (Workout, error) {
 	if err := db.Where(User{TelegramUserID: user.TelegramUserID}).First(&user).Error; err != nil {
 		return Workout{}, err
 	} else {
-		lastWorkout, err := user.GetLastWorkout()
+		lastWorkout, err := user.GetLastXWorkout(1)
 		if err != nil {
 			return Workout{}, err
 		}
 		db.Delete(&Workout{}, lastWorkout.ID)
 	}
-	newLastWorkout, err := user.GetLastWorkout()
+	newLastWorkout, err := user.GetLastXWorkout(1)
 	if err != nil {
 		return Workout{}, err
 	}
@@ -54,7 +54,7 @@ func (workout *Workout) IsOlderThan(minutes int) bool {
 	return diffInMinutes > minutes
 }
 
-func (user *User) GetLastWorkout() (Workout, error) {
+func (user *User) GetLastXWorkout(lastx int) (Workout, error) {
 	db := getDB()
 	if err := db.Model(&User{}).Where("telegram_user_id = ?", user.TelegramUserID).Preload("Workouts").Limit(2).Find(&user).Error; err != nil {
 		return Workout{}, err
@@ -62,5 +62,5 @@ func (user *User) GetLastWorkout() (Workout, error) {
 	if len(user.Workouts) == 0 {
 		return Workout{}, nil
 	}
-	return user.Workouts[len(user.Workouts)-1], nil
+	return user.Workouts[len(user.Workouts)-lastx], nil
 }
