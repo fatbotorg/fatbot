@@ -147,6 +147,10 @@ func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, e
 		msg.Text = "Welcome! I've sent your request to the admins"
 		return msg, nil
 	} else {
+		if user.Active {
+			msg.Text = "You are already active"
+			return msg, nil
+		}
 		timeSinceBan := int(time.Now().Sub(user.UpdatedAt).Hours())
 		if timeSinceBan < 48 {
 			msg.Text = fmt.Sprintf("%s, it's only been %d hours, you have to wait 48", user.GetName(), timeSinceBan)
