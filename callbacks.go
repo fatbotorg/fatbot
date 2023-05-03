@@ -63,6 +63,9 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 			if err := user.Invite(fatBotUpdate.Bot); err != nil {
 				return fmt.Errorf("Issue with inviting %s: %s", user.GetName(), err)
 			}
+			if err := user.UpdateActive(true); err != nil {
+				return err
+			}
 			msg.Text = "Ok, approved"
 		}
 		if _, err := bot.Send(msg); err != nil {
