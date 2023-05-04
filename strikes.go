@@ -37,6 +37,9 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 	db.Find(&users)
 	const totalDays = 5.0
 	for _, user := range users {
+		if !user.Active {
+			continue
+		}
 		if user.OnProbation {
 			log.Debug("Probation", "user.OnProbation", user.OnProbation)
 			lastWorkout, err := user.GetLastXWorkout(2)
