@@ -90,10 +90,21 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 			update.CallbackQuery.Message.From.UserName,
 		)
 		dataSlice := strings.Split(update.CallbackData(), " ")
-		chatId, _ := strconv.ParseInt(dataSlice[0], 10, 64)
 		userId, _ := strconv.ParseInt(dataSlice[1], 10, 64)
-		if err := users.InviteNewUser(fatBotUpdate.Bot, chatId, userId, name); err != nil {
-			return fmt.Errorf("Issue with inviting: %s", err)
+		if dataSlice[0] == "block" {
+			msg.Text = "Blocked"
+			if err := users.BlockUserId(userId); err != nil {
+				log.Error(err)
+			}
+		} else {
+			chatId, _ := strconv.ParseInt(dataSlice[0], 10, 64)
+			if err := users.InviteNewUser(fatBotUpdate.Bot, chatId, userId, name); err != nil {
+				log.Error(fmt.Errorf("Issue with inviting: %s", err))
+			}
+			msg.Text = "Invitation sent"
+		}
+		if _, err := bot.Send(msg); err != nil {
+			return err
 		}
 	}
 	return nil
