@@ -123,9 +123,6 @@ func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
 		Name:           message.From.FirstName,
 		TelegramUserID: message.From.ID,
 	}).FirstOrCreate(&user)
-	if err := user.UpdateActive(true); err != nil {
-		return user, err
-	}
 	if user.ChatID == user.TelegramUserID || user.ChatID == 0 {
 		if err := db.Model(&user).
 			Where("telegram_user_id = ?", user.TelegramUserID).
