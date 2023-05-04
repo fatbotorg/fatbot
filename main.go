@@ -17,6 +17,9 @@ func main() {
 	var bot *tgbotapi.BotAPI
 	var err error
 	var updates tgbotapi.UpdatesChannel
+	if os.Getenv("ENVIRONMENT") != "production" {
+		log.SetLevel(log.DebugLevel)
+	}
 	if err := initDB(); err != nil {
 		log.Fatal(err)
 	}
