@@ -1,15 +1,21 @@
 package main
 
 import (
+	"fatbot/users"
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/log"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 func handleUpdates(fatBotUpdate FatBotUpdate) error {
 	update := fatBotUpdate.Update
 	bot := fatBotUpdate.Bot
+	if users.BlackListed(update.SentFrom().ID) {
+		log.Debug("Blocked", "id", update.SentFrom().ID)
+		return nil
+	}
 	if fatBotUpdate.Update.Message == nil {
 		if fatBotUpdate.Update.CallbackQuery != nil {
 			return handleCallbacks(fatBotUpdate)

@@ -50,6 +50,11 @@ type Workout struct {
 	PhotoMessageID int
 }
 
+type Blacklist struct {
+	gorm.Model
+	TelegramUserID int64
+}
+
 func getDB() *gorm.DB {
 	path := os.Getenv("DBPATH")
 	if path == "" {
@@ -123,6 +128,9 @@ func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
 		Name:           message.From.FirstName,
 		TelegramUserID: message.From.ID,
 	}).FirstOrCreate(&user)
+	if err := user.UpdateActive(true); err != nil {
+		return user, err
+	}
 	if user.ChatID == user.TelegramUserID || user.ChatID == 0 {
 		if err := db.Model(&user).
 			Where("telegram_user_id = ?", user.TelegramUserID).
@@ -301,4 +309,24 @@ func extractInviteLinkFromResponse(response *tgbotapi.APIResponse) (string, erro
 		}
 	}
 	return "", fmt.Errorf("Could not find invite link")
+}
+
+func BlockUserId(userId int64) error {
+	db := getDB()
+	blackListed := Blacklist{
+		TelegramUserID: userId,
+	}
+	if err := db.Create(&blackListed); err != nil {
+		log.Error(err.Error)
+	}
+	return nil
+}
+
+func BlackListed(id int64) bool {
+	db := getDB()
+	var black Blacklist
+	if err := db.Where(Blacklist{TelegramUserID: id}).First(&black).Error; err != nil {
+		return false
+	}
+	return true
 }

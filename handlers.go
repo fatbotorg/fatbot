@@ -127,6 +127,11 @@ func createAccountsKeyboard(userId int64) tgbotapi.InlineKeyboardMarkup {
 	if len(row) > 0 && len(row) < 3 {
 		rows = append(rows, row)
 	}
+	blockRow := []tgbotapi.InlineKeyboardButton{}
+	blockButton := tgbotapi.NewInlineKeyboardButtonData("Block", fmt.Sprintf("%s %d", "block", userId))
+	blockRow = append(blockRow, blockButton)
+	rows = append(rows, blockRow)
+
 	var keyboard = tgbotapi.NewInlineKeyboardMarkup(rows...)
 	return keyboard
 }
