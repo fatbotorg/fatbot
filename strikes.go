@@ -48,8 +48,8 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 			rejoinedLastHour := time.Now().Sub(user.UpdatedAt).Minutes() <= 60
 			lastTwoWorkoutsOk := diffHours > 0
 			if !lastTwoWorkoutsOk && !rejoinedLastHour {
-				if err := user.Ban(bot); err != nil {
-					log.Errorf("Issue banning %s from %d: %s", user.GetName(), user.ChatID, err)
+				if errors := user.Ban(bot); errors != nil {
+					log.Errorf("Issue banning %s from %d: %s", user.GetName(), user.ChatID, errors)
 				}
 			} else if lastTwoWorkoutsOk {
 				log.Debug("Probation", "lastTwoWorkoutsOk", lastTwoWorkoutsOk)

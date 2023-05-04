@@ -173,7 +173,7 @@ func (user *User) CreateChatMemberConfig(botName string) tgbotapi.ChatMemberConf
 	}
 }
 
-func (user *User) Ban(bot *tgbotapi.BotAPI) error {
+func (user *User) Ban(bot *tgbotapi.BotAPI) (errors []error) {
 	chatMemberConfig := user.CreateChatMemberConfig(bot.Self.UserName)
 	getChatMemberConfig := tgbotapi.GetChatMemberConfig{
 		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
@@ -188,28 +188,43 @@ func (user *User) Ban(bot *tgbotapi.BotAPI) error {
 		RevokeMessages:   false,
 	}
 	if chatMemeber, err := bot.GetChatMember(getChatMemberConfig); err != nil {
-		return err
+		errors = append(errors, err)
 	} else if chatMemeber.WasKicked() {
 		log.Debug("Func Ban", "wasKicked", chatMemeber.WasKicked())
 		return nil
 	}
 	_, err := bot.Request(banChatMemberConfig)
 	if err != nil {
-		return err
+		errors = append(errors, err)
 	}
 	if err := user.UpdateActive(false); err != nil {
 		log.Debug("Func Ban", "updateActive", false)
-		return fmt.Errorf("Error with updating inactivity: %s ban count: %s",
-			user.GetName(), err)
+		errors = append(errors, fmt.Errorf("Error with updating inactivity: %s ban count: %s", user.GetName(), err))
+
 	}
 	// TODO:
 	// Add a ban event to the user
 	//
-	msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("It's been 5 full days since %s worked out.\nI kicked them", user.GetName()))
-	if _, err := bot.Send(msg); err != nil {
-		return err
+	messagesToSend := []tgbotapi.MessageConfig{}
+	groupMessage := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf(
+		"%s was not working out.\nThey are banned for 48 hours",
+		user.GetName(),
+	))
+	userMessage := tgbotapi.NewMessage(user.TelegramUserID, fmt.Sprintf(
+		`%s You were banned from the group after not working out.\n
+		You can rejoin using /join but only in 48 hours.\n
+		Note that once approved, you'll have 60 minutes to send 2 workouts.\n
+		Please don't hit the command more than once or you'll get another 24 hours delay...`,
+		user.GetName(),
+	))
+	messagesToSend = append(messagesToSend, groupMessage)
+	messagesToSend = append(messagesToSend, userMessage)
+	for _, msg := range messagesToSend {
+		if _, err := bot.Send(msg); err != nil {
+			errors = append(errors, err)
+		}
 	}
-	return nil
+	return
 }
 
 func (user *User) UnBan(bot *tgbotapi.BotAPI) error {
