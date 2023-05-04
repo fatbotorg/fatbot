@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fatbot/admin"
 	"fatbot/reports"
 	"fatbot/users"
 
@@ -64,11 +65,11 @@ func handleAdminCommandUpdate(fatBotUpdate FatBotUpdate) error {
 			msg = handleShowUsersCommand(update)
 		}
 	case "admin_delete_last":
-		msg = handleAdminDeleteLastCommand(update)
+		msg = admin.HandleAdminDeleteLastCommand(update)
 	case "admin_rename":
-		msg = handleAdminRenameCommand(update)
+		msg = admin.HandleAdminRenameCommand(update)
 	case "admin_push_workout":
-		msg = handleAdminPushWorkoutCommand(update)
+		msg = admin.HandleAdminPushWorkoutCommand(update)
 	case "admin_help":
 		msg.Text = "/admin_delete_last\n/admin_rename\n/admin_help\n/admin_show_users\n/admin_push_workout"
 	case "admin_send_report":

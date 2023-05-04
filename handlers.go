@@ -2,6 +2,7 @@ package main
 
 import (
 	"fatbot/accounts"
+	"fatbot/admin"
 	"fatbot/users"
 	"fmt"
 	"time"
@@ -143,7 +144,7 @@ func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, e
 			),
 		)
 		adminMessage.ReplyMarkup = createAccountsKeyboard(from.ID)
-		sendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
+		admin.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
 		msg.Text = "Welcome! I've sent your request to the admins"
 		return msg, nil
 	} else {
@@ -164,7 +165,7 @@ func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, e
 				),
 			)
 			adminMessage.ReplyMarkup = approvalKeyboard
-			sendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
+			admin.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
 		}
 	}
 	return
