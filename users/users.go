@@ -120,7 +120,7 @@ func GetUserById(userId int64) (user User, err error) {
 	return user, nil
 }
 
-func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
+func GetOrCreateUserFromMessage(message *tgbotapi.Message) (User, error) {
 	db := getDB()
 	var user User
 	db.Where(User{
@@ -139,6 +139,19 @@ func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
 			}).Error; err != nil {
 			return user, err
 		}
+	}
+	return user, nil
+}
+
+func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
+	db := getDB()
+	var user User
+	if err := db.Where(User{
+		Username:       message.From.UserName,
+		Name:           message.From.FirstName,
+		TelegramUserID: message.From.ID,
+	}).Find(&user).Error; err != nil {
+		return user, err
 	}
 	return user, nil
 }
@@ -325,7 +338,8 @@ func BlockUserId(userId int64) error {
 func BlackListed(id int64) bool {
 	db := getDB()
 	var black Blacklist
-	if err := db.Where(Blacklist{TelegramUserID: id}).First(&black).Error; err != nil {
+	db.Where(Blacklist{TelegramUserID: id}).Find(&black)
+	if black.TelegramUserID == 0 {
 		return false
 	}
 	return true

@@ -12,10 +12,13 @@ import (
 )
 
 func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
+	var user users.User
+	var err error
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	user, err := users.GetUserFromMessage(update.Message)
-	if err != nil {
+	if user, err = users.GetUserFromMessage(update.Message); err != nil {
 		log.Error(err)
+	} else {
+		msg.Text = "Unregistered user"
 		return msg
 	}
 	lastWorkout, err := user.GetLastXWorkout(1)
@@ -68,7 +71,7 @@ func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotapi.MessageConfig, error) {
 	var message string
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	user, err := users.GetUserFromMessage(update.Message)
+	user, err := users.GetOrCreateUserFromMessage(update.Message)
 	if err != nil {
 		return msg, err
 	}
