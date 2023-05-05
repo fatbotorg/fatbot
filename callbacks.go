@@ -70,7 +70,7 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 			if err := user.UnBan(fatBotUpdate.Bot); err != nil {
 				return fmt.Errorf("Issue with unbanning %s: %s", user.GetName(), err)
 			}
-			if err := user.Invite(fatBotUpdate.Bot); err != nil {
+			if err := user.InviteExistingUser(fatBotUpdate.Bot); err != nil {
 				return fmt.Errorf("Issue with inviting %s: %s", user.GetName(), err)
 			}
 			if err := user.UpdateActive(true); err != nil {

@@ -255,7 +255,7 @@ func (user *User) UnBan(bot *tgbotapi.BotAPI) error {
 	return nil
 }
 
-func (user *User) Invite(bot *tgbotapi.BotAPI) error {
+func (user *User) InviteExistingUser(bot *tgbotapi.BotAPI) error {
 	msg := tgbotapi.NewMessage(user.TelegramUserID, "")
 	unixTime24HoursFromNow := int(time.Now().Add(time.Duration(24 * time.Hour)).Unix())
 	chatConfig := tgbotapi.ChatConfig{
