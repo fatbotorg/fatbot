@@ -85,11 +85,6 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 			return err
 		}
 	} else if strings.Contains(update.CallbackQuery.Message.Text, "new and wants to join a group") {
-		name := fmt.Sprintf("%s-%s-%s",
-			update.CallbackQuery.Message.From.FirstName,
-			update.CallbackQuery.Message.From.LastName,
-			update.CallbackQuery.Message.From.UserName,
-		)
 		dataSlice := strings.Split(update.CallbackData(), " ")
 		userId, _ := strconv.ParseInt(dataSlice[1], 10, 64)
 		if dataSlice[0] == "block" {
@@ -99,7 +94,16 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 			}
 		} else {
 			chatId, _ := strconv.ParseInt(dataSlice[0], 10, 64)
-			if err := users.InviteNewUser(fatBotUpdate.Bot, chatId, userId, name); err != nil {
+			name := dataSlice[2]
+			username := dataSlice[3]
+			user := users.User{
+				Username:       username,
+				Name:           name,
+				ChatID:         chatId,
+				TelegramUserID: userId,
+				Active:         true,
+			}
+			if err := user.InviteNewUser(fatBotUpdate.Bot); err != nil {
 				log.Error(fmt.Errorf("Issue with inviting: %s", err))
 			}
 			msg.Text = "Invitation sent"

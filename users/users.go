@@ -120,25 +120,32 @@ func GetUserById(userId int64) (user User, err error) {
 	return user, nil
 }
 
-func GetOrCreateUserFromMessage(message *tgbotapi.Message) (User, error) {
+func GetOrCreateUser(userName, firstName string, userTelegramId int64) (User, error) {
 	db := getDB()
 	var user User
 	db.Where(User{
-		Username:       message.From.UserName,
-		Name:           message.From.FirstName,
-		TelegramUserID: message.From.ID,
+		Username:       userName,
+		Name:           firstName,
+		TelegramUserID: userTelegramId,
 	}).FirstOrCreate(&user)
 	if err := user.UpdateActive(true); err != nil {
 		return user, err
 	}
-	if user.ChatID == user.TelegramUserID || user.ChatID == 0 {
-		if err := db.Model(&user).
-			Where("telegram_user_id = ?", user.TelegramUserID).
-			Updates(User{
-				ChatID: message.Chat.ID,
-			}).Error; err != nil {
-			return user, err
-		}
+	return user, nil
+}
+
+func (user *User) create() error {
+	db := getDB()
+	return db.Create(&user).Error
+}
+
+func GetOrCreateUserFromMessage(message *tgbotapi.Message) (User, error) {
+	user, err := GetOrCreateUser(message.From.UserName, message.From.FirstName, message.From.ID)
+	if err != nil {
+		return user, err
+	}
+	if err := user.UpdateActive(true); err != nil {
+		return user, err
 	}
 	return user, nil
 }
@@ -229,9 +236,9 @@ func (user *User) Ban(bot *tgbotapi.BotAPI) (errors []error) {
 		user.GetName(),
 	))
 	userMessage := tgbotapi.NewMessage(user.TelegramUserID, fmt.Sprintf(
-		`%s You were banned from the group after not working out.\n
-		You can rejoin using /join but only in 48 hours.\n
-		Note that once approved, you'll have 60 minutes to send 2 workouts.\n
+		`%s You were banned from the group after not working out.
+		You can rejoin using /join but only in 48 hours.
+		Note that once approved, you'll have 60 minutes to send 2 workouts.
 		Please don't hit the command more than once or you'll get another 24 hours delay...`,
 		user.GetName(),
 	))
@@ -284,16 +291,16 @@ func (user *User) InviteExistingUser(bot *tgbotapi.BotAPI) error {
 	return nil
 }
 
-func InviteNewUser(bot *tgbotapi.BotAPI, chatId, userId int64, name string) error {
-	msg := tgbotapi.NewMessage(userId, "")
+func (user *User) InviteNewUser(bot *tgbotapi.BotAPI) error {
+	msg := tgbotapi.NewMessage(user.TelegramUserID, "")
 	unixTime24HoursFromNow := int(time.Now().Add(time.Duration(24 * time.Hour)).Unix())
 	chatConfig := tgbotapi.ChatConfig{
-		ChatID:             chatId,
+		ChatID:             user.ChatID,
 		SuperGroupUsername: bot.Self.UserName,
 	}
 	createInviteLinkConfig := tgbotapi.CreateChatInviteLinkConfig{
 		ChatConfig:         chatConfig,
-		Name:               name,
+		Name:               user.Name,
 		ExpireDate:         unixTime24HoursFromNow,
 		MemberLimit:        1,
 		CreatesJoinRequest: false,
@@ -310,7 +317,7 @@ func InviteNewUser(bot *tgbotapi.BotAPI, chatId, userId int64, name string) erro
 	if _, err := bot.Send(msg); err != nil {
 		return err
 	}
-	return nil
+	return user.create()
 }
 
 func extractInviteLinkFromResponse(response *tgbotapi.APIResponse) (string, error) {

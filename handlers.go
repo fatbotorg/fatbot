@@ -112,7 +112,7 @@ func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotap
 	return msg, nil
 }
 
-func createAccountsKeyboard(userId int64) tgbotapi.InlineKeyboardMarkup {
+func createNewUserAccountsKeyboard(userId int64, name, username string) tgbotapi.InlineKeyboardMarkup {
 	accounts := accounts.GetAccounts()
 	row := []tgbotapi.InlineKeyboardButton{}
 	rows := [][]tgbotapi.InlineKeyboardButton{}
@@ -120,7 +120,7 @@ func createAccountsKeyboard(userId int64) tgbotapi.InlineKeyboardMarkup {
 		accountLabel := fmt.Sprintf("%s", account.Title)
 		row = append(row, tgbotapi.NewInlineKeyboardButtonData(
 			accountLabel,
-			fmt.Sprintf("%d %d", account.ChatID, userId),
+			fmt.Sprintf("%d %d %s %s", account.ChatID, userId, name, username),
 		))
 		if len(row) == 3 {
 			rows = append(rows, row)
@@ -151,7 +151,7 @@ func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, e
 				from.FirstName, from.LastName, from.UserName,
 			),
 		)
-		adminMessage.ReplyMarkup = createAccountsKeyboard(from.ID)
+		adminMessage.ReplyMarkup = createNewUserAccountsKeyboard(from.ID, from.FirstName, from.UserName)
 		admin.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
 		msg.Text = "Welcome! I've sent your request to the admins"
 		return msg, nil
