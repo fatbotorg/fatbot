@@ -70,7 +70,7 @@ func (workout *Workout) IsOlderThan(minutes int) bool {
 
 func (user *User) GetLastXWorkout(lastx int) (Workout, error) {
 	db := getDB()
-	if err := db.Model(&User{}).Where("telegram_user_id = ?", user.TelegramUserID).Preload("Workouts").Limit(2).Find(&user).Error; err != nil {
+	if err := db.Model(&User{}).Preload("Workouts").Limit(lastx).Find(&user).Error; err != nil {
 		return Workout{}, err
 	}
 	if len(user.Workouts) == 0 || lastx > len(user.Workouts) {

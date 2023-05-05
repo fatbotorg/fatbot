@@ -77,7 +77,8 @@ func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotap
 	}
 	lastWorkout, err := user.GetLastXWorkout(1)
 	if err != nil {
-		return msg, err
+		log.Warn(err)
+
 	}
 	if !lastWorkout.IsOlderThan(30) && !user.OnProbation {
 		log.Warn("Workout not older than 30 minutes: %s", user.GetName())

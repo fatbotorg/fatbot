@@ -313,7 +313,7 @@ func (user *User) InviteNewUser(bot *tgbotapi.BotAPI) error {
 	if err != nil {
 		return err
 	}
-	msg.Text = "You are invited to join: " + link + "\nPLEASE NOTE: Upload a workout **as soon** as you join or you will be banned!"
+	msg.Text = "You are invited to join, but PLEASE NOTE: Upload a workout **as soon** as you join or you will be banned!" + link
 	if _, err := bot.Send(msg); err != nil {
 		return err
 	}
