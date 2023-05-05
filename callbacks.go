@@ -74,10 +74,10 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 				return fmt.Errorf("Issue with inviting %s: %s", user.GetName(), err)
 			}
 			if err := user.UpdateActive(true); err != nil {
-				return err
+				return fmt.Errorf("Issue updating active %s: %s", user.GetName(), err)
 			}
 			if err := user.UpdateOnProbation(true); err != nil {
-				return err
+				return fmt.Errorf("Issue updating probation %s: %s", user.GetName(), err)
 			}
 			msg.Text = "Ok, approved"
 		}
