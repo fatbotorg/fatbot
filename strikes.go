@@ -65,7 +65,6 @@ func scanUsersForStrikes(bot *tgbotapi.BotAPI) error {
 		lastWorkout, err := user.GetLastXWorkout(1)
 		if err != nil {
 			log.Errorf("Err getting last workout for user %s: %s", user.GetName(), err)
-			continue
 		}
 		diffHours := int(totalDays*24 - time.Now().Sub(lastWorkout.CreatedAt).Hours())
 		if diffHours == 23 {
