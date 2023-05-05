@@ -17,7 +17,7 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	if user, err = users.GetUserFromMessage(update.Message); err != nil {
 		log.Error(err)
-	} else {
+	} else if user.ID == 0 {
 		msg.Text = "Unregistered user"
 		return msg
 	}
