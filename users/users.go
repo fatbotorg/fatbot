@@ -232,7 +232,7 @@ func (user *User) Ban(bot *tgbotapi.BotAPI) (errors []error) {
 	//
 	messagesToSend := []tgbotapi.MessageConfig{}
 	groupMessage := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf(
-		"%s was not working out.\nThey are banned for 48 hours",
+		"%s was not working out. 🦥⛔",
 		user.GetName(),
 	))
 	userMessage := tgbotapi.NewMessage(user.TelegramUserID, fmt.Sprintf(
