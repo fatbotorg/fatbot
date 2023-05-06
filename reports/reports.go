@@ -13,7 +13,7 @@ import (
 )
 
 type Leader struct {
-	Name     string
+	User     users.User
 	Workouts int
 }
 
@@ -43,14 +43,15 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 			leader := leaders[0]
 			msg.Caption = fmt.Sprintf(
 				"Weekly summary:\n%s is the ⭐ with %d workouts!",
-				leader.Name,
+				leader.User.GetName(),
 				leader.Workouts,
 			)
+			leader.User.RegisterEvent(users.WeeklyLeader)
 		} else if len(leaders) > 1 {
 			caption := fmt.Sprintf("Weekly summary:\n⭐ Leaders of the week with %d workouts:\n",
 				leaders[0].Workouts)
 			for _, leader := range leaders {
-				caption = caption + leader.Name + " "
+				caption = caption + leader.User.GetName() + " "
 			}
 			msg.Caption = caption
 		}
@@ -63,12 +64,12 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 func collectUsersData(accountChatId int64) (usersNames, usersWorkouts []string, leaders []Leader) {
 	// BUG: THIS GETS ALL USERS
 	// use chat_id in the argument to get specific group
-	users := users.GetUsers(0)
+	allUsers := users.GetUsers(0)
 	leaders = append(leaders, Leader{
-		Name:     "",
+		User:     users.User{},
 		Workouts: 0,
 	})
-	for _, user := range users {
+	for _, user := range allUsers {
 		if user.ChatID != accountChatId {
 			continue
 		}
@@ -81,7 +82,7 @@ func collectUsersData(accountChatId int64) (usersNames, usersWorkouts []string, 
 			leaders = []Leader{}
 		}
 		leaders = append(leaders, Leader{
-			Name:     user.GetName(),
+			User:     user,
 			Workouts: len(userPastWeekWorkouts),
 		})
 	}

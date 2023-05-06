@@ -25,29 +25,6 @@ type User struct {
 	OnProbation    bool
 	Workouts       []Workout
 	Events         []Event
-	// NotificationCount int
-	// BanCount          int
-	// LeaderCoun       int
-}
-
-type eventType string
-
-const (
-	Ban                 eventType = "ban"
-	LastDayNotification eventType = "lastDayNotification"
-	WeeklyLeader        eventType = "weeklyLeader"
-)
-
-type Event struct {
-	gorm.Model
-	UserID uint
-	Event  eventType
-}
-
-type Workout struct {
-	gorm.Model
-	UserID         uint
-	PhotoMessageID int
 }
 
 type Blacklist struct {

@@ -3,7 +3,15 @@ package users
 import (
 	"fmt"
 	"time"
+
+	"gorm.io/gorm"
 )
+
+type Workout struct {
+	gorm.Model
+	UserID         uint
+	PhotoMessageID int
+}
 
 func (user *User) GetPastWeekWorkouts() []Workout {
 	db := getDB()
