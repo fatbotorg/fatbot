@@ -37,8 +37,6 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 		qc.Write(file)
 
 		msg := tgbotapi.NewPhoto(account.ChatID, tgbotapi.FilePath(fileName))
-		// TODO:
-		// Count the leaders!
 		if len(leaders) == 1 {
 			leader := leaders[0]
 			msg.Caption = fmt.Sprintf(

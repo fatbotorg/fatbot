@@ -5,9 +5,9 @@ import "gorm.io/gorm"
 type eventType string
 
 const (
-	Ban                 eventType = "ban"
-	LastDayNotification eventType = "lastDayNotification"
-	WeeklyLeader        eventType = "weeklyLeader"
+	BanEventType                 eventType = "ban"
+	LastDayNotificationEventType eventType = "lastDayNotification"
+	WeeklyLeaderEventType        eventType = "weeklyLeader"
 )
 
 type Event struct {
