@@ -51,6 +51,9 @@ func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	message := ""
 	var lastWorkoutStr string
 	for _, user := range users {
+		if !user.Active {
+			continue
+		}
 		lastWorkout, err := user.GetLastXWorkout(1)
 		if err != nil {
 			log.Errorf("Err getting last workout: %s", err)
