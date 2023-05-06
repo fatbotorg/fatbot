@@ -13,10 +13,6 @@ func ScanUsers(bot *tgbotapi.BotAPI) error {
 	users := users.GetUsers(0)
 	const totalDays = 5.0
 	for _, user := range users {
-		// if user.ID == 18 {
-		// 	user.UnBan(bot)
-		// 	continue
-		// }
 		if !user.Active {
 			continue
 		}
