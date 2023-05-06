@@ -81,7 +81,7 @@ func GetUsers(chatId int64) []User {
 	db := getDB()
 	var users []User
 	if chatId == 0 {
-		db.Find(&users)
+		db.Where("active = ?", true).Find(&users)
 	} else {
 		db.Where("chat_id = ? AND active = ?", chatId, true).Find(&users)
 	}
