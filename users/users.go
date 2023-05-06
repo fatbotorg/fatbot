@@ -204,7 +204,9 @@ func (user *User) Ban(bot *tgbotapi.BotAPI) (errors []error) {
 		errors = append(errors, fmt.Errorf("Error with updating inactivity: %s ban count: %s", user.GetName(), err))
 
 	}
-	user.RegisterEvent(BanEventType)
+	if err := user.RegisterBanEvent(); err != nil {
+		log.Errorf("Error while registering ban event: %s", err)
+	}
 	messagesToSend := []tgbotapi.MessageConfig{}
 	groupMessage := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf(
 		"%s was not working out. 🦥⛔",

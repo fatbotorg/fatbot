@@ -16,11 +16,23 @@ type Event struct {
 	Event  eventType
 }
 
-func (user *User) RegisterEvent(kind eventType) {
+func (user *User) registerEvent(kind eventType) error {
 	db := getDB()
 	event := Event{
 		UserID: user.ID,
 		Event:  kind,
 	}
-	db.Create(&event)
+	return db.Create(&event).Error
+}
+
+func (user *User) RegisterBanEvent() error {
+	return user.registerEvent(BanEventType)
+}
+
+func (user *User) RegisterLastDayNotificationEvent() error {
+	return user.registerEvent(LastDayNotificationEventType)
+}
+
+func (user *User) RegisterWeeklyLeaderEvent() error {
+	return user.registerEvent(WeeklyLeaderEventType)
 }

@@ -44,7 +44,9 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 				leader.User.GetName(),
 				leader.Workouts,
 			)
-			leader.User.RegisterEvent(users.WeeklyLeader)
+			if err := leader.User.RegisterWeeklyLeaderEvent(); err != nil {
+				log.Errorf("Error while registering weekly leader event: %s", err)
+			}
 		} else if len(leaders) > 1 {
 			caption := fmt.Sprintf("Weekly summary:\n⭐ Leaders of the week with %d workouts:\n",
 				leaders[0].Workouts)
