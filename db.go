@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fatbot/accounts"
 	"fatbot/users"
 	"os"
 
@@ -24,16 +23,6 @@ func getDB() *gorm.DB {
 
 func initDB() error {
 	db := getDB()
-	db.AutoMigrate(&users.User{}, &accounts.Account{}, &users.Workout{}, &users.Event{}, &users.Blacklist{})
+	db.AutoMigrate(&users.User{}, &users.Group{}, &users.Workout{}, &users.Event{}, &users.Blacklist{})
 	return nil
-}
-
-func isApprovedChatID(chatID int64) bool {
-	db := getDB()
-	var account accounts.Account
-	result := db.Where("chat_id = ?", chatID).Find(&account)
-	if result.RowsAffected == 0 {
-		return false
-	}
-	return account.Approved
 }
