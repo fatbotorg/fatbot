@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fatbot/accounts"
 	"fatbot/admin"
 	"fatbot/users"
 	"fmt"
@@ -116,15 +115,15 @@ func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotap
 	return msg, nil
 }
 
-func createNewUserAccountsKeyboard(userId int64, name, username string) tgbotapi.InlineKeyboardMarkup {
-	accounts := accounts.GetAccounts()
+func createNewUserGroupsKeyboard(userId int64, name, username string) tgbotapi.InlineKeyboardMarkup {
+	groups := users.GetGroups()
 	row := []tgbotapi.InlineKeyboardButton{}
 	rows := [][]tgbotapi.InlineKeyboardButton{}
-	for _, account := range accounts {
-		accountLabel := fmt.Sprintf("%s", account.Title)
+	for _, group := range groups {
+		groupLabel := fmt.Sprintf("%s", group.Title)
 		row = append(row, tgbotapi.NewInlineKeyboardButtonData(
-			accountLabel,
-			fmt.Sprintf("%d %d %s %s", account.ChatID, userId, name, username),
+			groupLabel,
+			fmt.Sprintf("%d %d %s %s", group.ChatID, userId, name, username),
 		))
 		if len(row) == 3 {
 			rows = append(rows, row)
@@ -155,7 +154,7 @@ func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, e
 				from.FirstName, from.LastName, from.UserName,
 			),
 		)
-		adminMessage.ReplyMarkup = createNewUserAccountsKeyboard(from.ID, from.FirstName, from.UserName)
+		adminMessage.ReplyMarkup = createNewUserGroupsKeyboard(from.ID, from.FirstName, from.UserName)
 		admin.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
 		msg.Text = "Welcome! I've sent your request to the admins"
 		return msg, nil
