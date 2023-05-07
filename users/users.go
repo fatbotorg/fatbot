@@ -50,6 +50,16 @@ func GetUser(id uint) (user User, err error) {
 	if err := db.Find(&user, id).Error; err != nil {
 		return user, err
 	}
+	if len(user.Groups) == 0 {
+		group, err := GetGroup(user.ChatID)
+		if err != nil {
+			return User{}, err
+		}
+		// NOTE: temp iteration to fill up the groups struct from the "old" chatId
+		if err := db.Model(&user).Association("Groups").Append(group); err != nil {
+			return user, err
+		}
+	}
 	return user, nil
 }
 
@@ -90,23 +100,9 @@ func (user *User) GetName() (name string) {
 	return
 }
 
-func GetUserById(userId int64) (user User, err error) {
+func GetUserById(userId, chatId int64) (user User, err error) {
 	db := getDB()
 	if err := db.Model(&user).Where("telegram_user_id = ?", userId).Find(&user).Error; err != nil {
-		return user, err
-	}
-	return user, nil
-}
-
-func GetOrCreateUser(userName, firstName string, userTelegramId int64) (User, error) {
-	db := getDB()
-	var user User
-	db.Where(User{
-		Username:       userName,
-		Name:           firstName,
-		TelegramUserID: userTelegramId,
-	}).FirstOrCreate(&user)
-	if err := user.UpdateActive(true); err != nil {
 		return user, err
 	}
 	return user, nil
@@ -115,17 +111,6 @@ func GetOrCreateUser(userName, firstName string, userTelegramId int64) (User, er
 func (user *User) create() error {
 	db := getDB()
 	return db.Create(&user).Error
-}
-
-func GetOrCreateUserFromMessage(message *tgbotapi.Message) (User, error) {
-	user, err := GetOrCreateUser(message.From.UserName, message.From.FirstName, message.From.ID)
-	if err != nil {
-		return user, err
-	}
-	if err := user.UpdateActive(true); err != nil {
-		return user, err
-	}
-	return user, nil
 }
 
 func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
