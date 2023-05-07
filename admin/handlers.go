@@ -27,7 +27,7 @@ func HandleAdminRenameCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		argsSlice := strings.Split(args, " ")
 		userId, _ := strconv.ParseInt(argsSlice[0], 10, 64)
 		newName := argsSlice[1]
-		user, err := users.GetUserById(userId)
+		user, err := users.GetUserById(userId, update.FromChat().ID)
 		if err != nil {
 			log.Error(err)
 		}
@@ -51,7 +51,7 @@ func HandleAdminPushWorkoutCommand(update tgbotapi.Update) tgbotapi.MessageConfi
 		argsSlice := strings.Split(args, " ")
 		userId, _ := strconv.ParseInt(argsSlice[0], 10, 64)
 		days, _ := strconv.ParseInt(argsSlice[1], 10, 64)
-		user, err := users.GetUserById(userId)
+		user, err := users.GetUserById(userId, update.FromChat().ID)
 		if err != nil {
 			log.Error(err)
 		}
