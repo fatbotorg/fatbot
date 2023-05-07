@@ -25,6 +25,7 @@ type User struct {
 	OnProbation    bool
 	Workouts       []Workout
 	Events         []Event
+	Groups         []*Group `gorm:"many2many:user_groups;"`
 }
 
 type Blacklist struct {

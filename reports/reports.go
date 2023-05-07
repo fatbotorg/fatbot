@@ -1,7 +1,6 @@
 package reports
 
 import (
-	"fatbot/accounts"
 	"fatbot/users"
 	"fmt"
 	"os"
@@ -18,10 +17,10 @@ type Leader struct {
 }
 
 func CreateChart(bot *tgbotapi.BotAPI) {
-	accounts := accounts.GetAccounts()
-	for _, account := range accounts {
-		fileName := fmt.Sprintf("%d.png", account.ChatID)
-		usersNames, usersWorkouts, leaders := collectUsersData(account.ChatID)
+	groups := users.GetGroups()
+	for _, group := range groups {
+		fileName := fmt.Sprintf("%d.png", group.ChatID)
+		usersNames, usersWorkouts, leaders := collectUsersData(group.ChatID)
 		if len(usersNames) == 0 {
 			continue
 		}
@@ -36,7 +35,7 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 		defer file.Close()
 		qc.Write(file)
 
-		msg := tgbotapi.NewPhoto(account.ChatID, tgbotapi.FilePath(fileName))
+		msg := tgbotapi.NewPhoto(group.ChatID, tgbotapi.FilePath(fileName))
 		if len(leaders) == 1 {
 			leader := leaders[0]
 			msg.Caption = fmt.Sprintf(
@@ -61,7 +60,7 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 	}
 }
 
-func collectUsersData(accountChatId int64) (usersNames, usersWorkouts []string, leaders []Leader) {
+func collectUsersData(groupChatId int64) (usersNames, usersWorkouts []string, leaders []Leader) {
 	// BUG: THIS GETS ALL USERS
 	// use chat_id in the argument to get specific group
 	allUsers := users.GetUsers(0)
@@ -70,7 +69,7 @@ func collectUsersData(accountChatId int64) (usersNames, usersWorkouts []string, 
 		Workouts: 0,
 	})
 	for _, user := range allUsers {
-		if user.ChatID != accountChatId {
+		if user.ChatID != groupChatId {
 			continue
 		}
 		usersNames = append(usersNames, user.GetName())

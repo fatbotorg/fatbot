@@ -33,7 +33,7 @@ func handleUpdates(fatBotUpdate FatBotUpdate) error {
 		return nil
 	}
 
-	if !isApprovedChatID(update.FromChat().ID) && !update.FromChat().IsPrivate() {
+	if !users.IsApprovedChatID(update.FromChat().ID) && !update.FromChat().IsPrivate() {
 		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID,
 			fmt.Sprintf("Group %s not activated, send this to the admin: `%d`", update.Message.Chat.Title, update.FromChat().ID),
 		))
