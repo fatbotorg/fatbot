@@ -73,7 +73,7 @@ func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotapi.MessageConfig, error) {
 	var message string
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	user, err := users.GetOrCreateUserFromMessage(update.Message)
+	user, err := users.GetUserById(update.SentFrom().ID)
 	if err != nil {
 		return msg, err
 	}

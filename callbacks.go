@@ -132,12 +132,19 @@ func handleNewJoinCallback(fatBotUpdate FatBotUpdate) error {
 		chatId, _ := strconv.ParseInt(dataSlice[0], 10, 64)
 		name := dataSlice[2]
 		username := dataSlice[3]
+		group, err := users.GetGroup(chatId)
+		if err != nil {
+			return err
+		}
 		user := users.User{
 			Username:       username,
 			Name:           name,
 			ChatID:         chatId,
 			TelegramUserID: userId,
 			Active:         true,
+			Groups: []*users.Group{
+				&group,
+			},
 		}
 		if err := user.InviteNewUser(fatBotUpdate.Bot); err != nil {
 			log.Error(fmt.Errorf("Issue with inviting: %s", err))

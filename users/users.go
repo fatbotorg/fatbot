@@ -100,7 +100,7 @@ func (user *User) GetName() (name string) {
 	return
 }
 
-func GetUserById(userId, chatId int64) (user User, err error) {
+func GetUserById(userId int64) (user User, err error) {
 	db := getDB()
 	if err := db.Model(&user).Where("telegram_user_id = ?", userId).Find(&user).Error; err != nil {
 		return user, err
