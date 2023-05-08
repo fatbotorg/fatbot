@@ -52,7 +52,7 @@ func handleNonCommandUpdates(fatBotUpdate FatBotUpdate) error {
 		if update.FromChat().IsPrivate() {
 			return nil
 		}
-		msg, err := handleWorkoutUpload(update, bot)
+		msg, err := handleWorkoutUpload(update)
 		if err != nil {
 			return fmt.Errorf("Error handling last workout: %s", err)
 		}

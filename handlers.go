@@ -70,12 +70,18 @@ func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	return msg
 }
 
-func handleWorkoutUpload(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotapi.MessageConfig, error) {
+func handleWorkoutUpload(update tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	var message string
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	user, err := users.GetUserById(update.SentFrom().ID)
 	if err != nil {
 		return msg, err
+	}
+	chatId := update.FromChat().ID
+	if !user.IsInGroup(chatId) {
+		if err := user.RegisterInGroup(chatId); err != nil {
+			log.Errorf("Error registering user %s in new group %s", user.GetName(), chatId)
+		}
 	}
 	lastWorkout, err := user.GetLastXWorkout(1, update.FromChat().ID)
 	if err != nil {

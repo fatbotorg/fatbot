@@ -45,6 +45,15 @@ func getDB() *gorm.DB {
 	return db
 }
 
+func (user *User) LoadGroups() (*User, error) {
+	err := getDB().Preload("Groups").Find(&user).Error
+	if err != nil {
+		return &User{}, err
+	} else {
+		return user, nil
+	}
+}
+
 func GetUser(id uint) (user User, err error) {
 	db := getDB()
 	if err := db.Find(&user, id).Error; err != nil {
@@ -102,7 +111,10 @@ func (user *User) GetName() (name string) {
 
 func GetUserById(userId int64) (user User, err error) {
 	db := getDB()
-	if err := db.Model(&user).Where("telegram_user_id = ?", userId).Find(&user).Error; err != nil {
+	if err := db.Model(&user).
+		Preload("Groups").
+		Where("telegram_user_id = ?", userId).
+		Find(&user).Error; err != nil {
 		return user, err
 	}
 	return user, nil
