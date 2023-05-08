@@ -22,6 +22,22 @@ func GetGroup(chatId int64) (group Group, err error) {
 	return
 }
 
+func (group *Group) GetUsers() (users []User, err error) {
+	err = getDB().Model(&group).Association("Users").Find(&users)
+	return
+}
+
+func (group *Group) GetUserFixedNamesList() (userNames []string) {
+	users, err := group.GetUsers()
+	if err != nil {
+		return nil
+	}
+	for _, user := range users {
+		userNames = append(userNames, user.GetName())
+	}
+	return
+}
+
 func IsApprovedChatID(chatID int64) bool {
 	db := getDB()
 	var group Group
