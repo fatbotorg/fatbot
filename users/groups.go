@@ -9,11 +9,12 @@ type Group struct {
 	ChatID   int64
 	Approved bool
 	Title    string
-	Users    []*User `gorm:"many2many:user_groups;"`
+	Users    []User `gorm:"many2many:user_groups;"`
+	Workouts []Workout
 }
 
-func GetGroups() (groups []Group) {
-	getDB().Find(&groups)
+func GetGroupsWithUsers() (groups []Group) {
+	getDB().Preload("Users").Find(&groups)
 	return
 }
 

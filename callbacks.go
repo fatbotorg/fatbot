@@ -48,7 +48,7 @@ func handleDeleteLastWorkoutCallback(fatBotUpdate FatBotUpdate) error {
 	if err != nil {
 		return err
 	}
-	if newLastWorkout, err := user.RollbackLastWorkout(); err != nil {
+	if newLastWorkout, err := user.RollbackLastWorkout(fatBotUpdate.Update.FromChat().ID); err != nil {
 		return err
 	} else {
 		message := fmt.Sprintf("Deleted last workout for user %s\nRolledback to: %s",

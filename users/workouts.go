@@ -1,6 +1,7 @@
 package users
 
 import (
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -10,7 +11,7 @@ type Workout struct {
 	gorm.Model
 	UserID         uint
 	PhotoMessageID int
-	Group          Group
+	GroupID        uint
 }
 
 func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
@@ -24,23 +25,23 @@ func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
 	return user.Workouts
 }
 
-func (user *User) RollbackLastWorkout() (Workout, error) {
+func (user *User) RollbackLastWorkout(chatId int64) (Workout, error) {
 	db := getDB()
-	lastWorkout, err := user.GetLastXWorkout(1)
+	lastWorkout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
 		return Workout{}, err
 	}
 	db.Delete(&Workout{}, lastWorkout.ID)
-	newLastWorkout, err := user.GetLastXWorkout(1)
+	newLastWorkout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
 		return Workout{}, err
 	}
 	return newLastWorkout, nil
 }
 
-func (user *User) PushWorkout(days int64) error {
+func (user *User) PushWorkout(days, chatId int64) error {
 	db := getDB()
-	workout, err := user.GetLastXWorkout(1)
+	workout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
 		return err
 	}
@@ -66,16 +67,15 @@ func (workout *Workout) IsOlderThan(minutes int) bool {
 	return diffInMinutes > minutes
 }
 
-func (user *User) GetLastXWorkout(lastx int) (Workout, error) {
+func (user *User) GetLastXWorkout(lastx int, chatId int64) (Workout, error) {
+	db := getDB()
+	if err := db.Model(&User{}).
+		Preload("Groups", "chat_id = ?", chatId).
+		Preload("Workouts").Limit(lastx).Find(&user).Error; err != nil {
+		return Workout{}, err
+	}
+	if len(user.Workouts) == 0 || lastx > len(user.Workouts) {
+		return Workout{}, fmt.Errorf("No workouts, or not enough: %s", user.GetName())
+	}
 	return user.Workouts[len(user.Workouts)-lastx], nil
-	// db := getDB()
-	// if err := db.Model(&User{}).
-	// 	Preload("Groups", "chat_id = ?", chatId).
-	// 	Preload("Workouts").Limit(lastx).Find(&user).Error; err != nil {
-	// 	return Workout{}, err
-	// }
-	// if len(user.Workouts) == 0 || lastx > len(user.Workouts) {
-	// 	return Workout{}, fmt.Errorf("No workouts, or not enough: %s", user.GetName())
-	// }
-	// return user.Workouts[len(user.Workouts)-lastx], nil
 }

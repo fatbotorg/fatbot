@@ -20,7 +20,7 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		msg.Text = "Unregistered user"
 		return msg
 	}
-	lastWorkout, err := user.GetLastXWorkout(1)
+	lastWorkout, err := user.GetLastXWorkout(1, update.FromChat().ID)
 	if err != nil {
 		log.Errorf("Err getting last workout: %s", err)
 		return msg
@@ -53,7 +53,7 @@ func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		if !user.Active {
 			continue
 		}
-		lastWorkout, err := user.GetLastXWorkout(1)
+		lastWorkout, err := user.GetLastXWorkout(1, update.FromChat().ID)
 		if err != nil {
 			log.Errorf("Err getting last workout: %s", err)
 			continue
@@ -77,7 +77,7 @@ func handleWorkoutUpload(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotapi
 	if err != nil {
 		return msg, err
 	}
-	lastWorkout, err := user.GetLastXWorkout(1)
+	lastWorkout, err := user.GetLastXWorkout(1, update.FromChat().ID)
 	if err != nil {
 		log.Warn(err)
 
@@ -116,7 +116,7 @@ func handleWorkoutUpload(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotapi
 }
 
 func createNewUserGroupsKeyboard(userId int64, name, username string) tgbotapi.InlineKeyboardMarkup {
-	groups := users.GetGroups()
+	groups := users.GetGroupsWithUsers()
 	row := []tgbotapi.InlineKeyboardButton{}
 	rows := [][]tgbotapi.InlineKeyboardButton{}
 	for _, group := range groups {

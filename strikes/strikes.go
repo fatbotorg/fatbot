@@ -10,43 +10,47 @@ import (
 )
 
 func ScanUsers(bot *tgbotapi.BotAPI) error {
-	users := users.GetUsers(0)
+	groups := users.GetGroupsWithUsers()
+	// users := users.GetUsers(0)
 	const totalDays = 5.0
-	for _, user := range users {
-		if !user.Active {
-			continue
-		}
-		if user.OnProbation {
-			handleProbation(bot, user, totalDays)
-			continue
-		}
-		lastWorkout, err := user.GetLastXWorkout(1)
-		if err != nil {
-			log.Errorf("Err getting last workout for user %s: %s", user.GetName(), err)
-		}
-		diffHours := int(totalDays*24 - time.Now().Sub(lastWorkout.CreatedAt).Hours())
-		if diffHours == 23 {
-			msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("[%s](tg://user?id=%d) you have 24 hours left",
-				user.GetName(),
-				user.TelegramUserID))
-			msg.ParseMode = "MarkdownV2"
-			bot.Send(msg)
-			if err := user.RegisterLastDayNotificationEvent(); err != nil {
-				log.Errorf("Error while registering ban event: %s", err)
-			}
-		} else if diffHours <= 0 {
-			if err := user.Ban(bot); err != nil {
-				log.Errorf("Issue banning %s from %d: %s", user.GetName(), user.ChatID, err)
+	for _, group := range groups {
+		for _, user := range group.Users {
+			log.Infof("User %s in group %s", user.GetName(), group.Title)
+			if !user.Active {
 				continue
+			}
+			if user.OnProbation {
+				handleProbation(bot, user, group, totalDays)
+				continue
+			}
+			lastWorkout, err := user.GetLastXWorkout(1, group.ChatID)
+			if err != nil {
+				log.Errorf("Err getting last workout for user %s: %s", user.GetName(), err)
+			}
+			diffHours := int(totalDays*24 - time.Now().Sub(lastWorkout.CreatedAt).Hours())
+			if diffHours == 23 {
+				msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("[%s](tg://user?id=%d) you have 24 hours left",
+					user.GetName(),
+					user.TelegramUserID))
+				msg.ParseMode = "MarkdownV2"
+				bot.Send(msg)
+				if err := user.RegisterLastDayNotificationEvent(); err != nil {
+					log.Errorf("Error while registering ban event: %s", err)
+				}
+			} else if diffHours <= 0 {
+				if err := user.Ban(bot); err != nil {
+					log.Errorf("Issue banning %s from %d: %s", user.GetName(), user.ChatID, err)
+					continue
+				}
 			}
 		}
 	}
 	return nil
 }
 
-func handleProbation(bot *tgbotapi.BotAPI, user users.User, totalDays float64) {
+func handleProbation(bot *tgbotapi.BotAPI, user users.User, group users.Group, totalDays float64) {
 	log.Debug("Probation", "user.OnProbation", user.OnProbation)
-	lastWorkout, err := user.GetLastXWorkout(2)
+	lastWorkout, err := user.GetLastXWorkout(2, group.ChatID)
 	if err != nil {
 		log.Errorf("Err getting last 2 workout for user %s: %s", user.GetName(), err)
 	}

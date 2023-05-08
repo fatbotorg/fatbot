@@ -17,7 +17,7 @@ type Leader struct {
 }
 
 func CreateChart(bot *tgbotapi.BotAPI) {
-	groups := users.GetGroups()
+	groups := users.GetGroupsWithUsers()
 	for _, group := range groups {
 		if len(group.Users) == 0 {
 			continue
