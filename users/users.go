@@ -2,14 +2,13 @@ package users
 
 import (
 	"encoding/json"
+	"fatbot/db"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/charmbracelet/log"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -33,20 +32,14 @@ type Blacklist struct {
 	TelegramUserID int64
 }
 
-func getDB() *gorm.DB {
-	path := os.Getenv("DBPATH")
-	if path == "" {
-		path = "fat.db"
-	}
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
-	if err != nil {
-		log.Fatal(err)
-	}
-	return db
+func InitDB() error {
+	db := db.GetDB()
+	db.AutoMigrate(&User{}, &Group{}, &Workout{}, &Event{}, &Blacklist{})
+	return nil
 }
 
 func (user *User) LoadGroups() (*User, error) {
-	err := getDB().Preload("Groups").Find(&user).Error
+	err := db.GetDB().Preload("Groups").Find(&user).Error
 	if err != nil {
 		return &User{}, err
 	} else {
@@ -55,27 +48,17 @@ func (user *User) LoadGroups() (*User, error) {
 }
 
 func GetUser(id uint) (user User, err error) {
-	db := getDB()
+	db := db.GetDB()
 	if err := db.Find(&user, id).Error; err != nil {
 		return user, err
 	}
-	if len(user.Groups) == 0 {
-		group, err := GetGroup(user.ChatID)
-		if err != nil {
-			return User{}, err
-		}
-		// NOTE: temp iteration to fill up the groups struct from the "old" chatId
-		if err := db.Model(&user).Association("Groups").Append(group); err != nil {
-			return user, err
-		}
-	}
-	return user, nil
+	return
 }
 
 // BUG: #7
 // returns the entire DB, needs filtering by chat_id
 func GetUsers(chatId int64) []User {
-	db := getDB()
+	db := db.GetDB()
 	var users []User
 	if chatId == 0 {
 		db.Where("active = ?", true).Find(&users)
@@ -86,7 +69,7 @@ func GetUsers(chatId int64) []User {
 }
 
 func GetAdminUsers() []User {
-	db := getDB()
+	db := db.GetDB()
 	var users []User
 	db.Where("is_admin = ?", true).Find(&users)
 	return users
@@ -110,7 +93,7 @@ func (user *User) GetName() (name string) {
 }
 
 func GetUserById(userId int64) (user User, err error) {
-	db := getDB()
+	db := db.GetDB()
 	if err := db.Model(&user).
 		Preload("Groups").
 		Where("telegram_user_id = ?", userId).
@@ -121,12 +104,12 @@ func GetUserById(userId int64) (user User, err error) {
 }
 
 func (user *User) create() error {
-	db := getDB()
+	db := db.GetDB()
 	return db.Create(&user).Error
 }
 
 func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
-	db := getDB()
+	db := db.GetDB()
 	var user User
 	if err := db.Where(User{
 		Username:       message.From.UserName,
@@ -139,7 +122,7 @@ func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
 }
 
 func (user *User) UpdateActive(should bool) error {
-	db := getDB()
+	db := db.GetDB()
 	if err := db.Model(&user).Update("active", should).Error; err != nil {
 		return err
 	}
@@ -147,7 +130,7 @@ func (user *User) UpdateActive(should bool) error {
 }
 
 func (user *User) UpdateOnProbation(probation bool) error {
-	db := getDB()
+	db := db.GetDB()
 	if err := db.Model(&user).
 		Update("on_probation", probation).Error; err != nil {
 		return err
@@ -156,7 +139,7 @@ func (user *User) UpdateOnProbation(probation bool) error {
 }
 
 func (user *User) Rename(name string) error {
-	db := getDB()
+	db := db.GetDB()
 	if err := db.Model(&user).
 		Update("nick_name", name).Error; err != nil {
 		return err
@@ -307,7 +290,7 @@ func extractInviteLinkFromResponse(response *tgbotapi.APIResponse) (string, erro
 }
 
 func BlockUserId(userId int64) error {
-	db := getDB()
+	db := db.GetDB()
 	blackListed := Blacklist{
 		TelegramUserID: userId,
 	}
@@ -318,7 +301,7 @@ func BlockUserId(userId int64) error {
 }
 
 func BlackListed(id int64) bool {
-	db := getDB()
+	db := db.GetDB()
 	var black Blacklist
 	db.Where(Blacklist{TelegramUserID: id}).Find(&black)
 	if black.TelegramUserID == 0 {

@@ -1,6 +1,10 @@
 package users
 
-import "gorm.io/gorm"
+import (
+	"fatbot/db"
+
+	"gorm.io/gorm"
+)
 
 type eventType string
 
@@ -17,7 +21,7 @@ type Event struct {
 }
 
 func (user *User) registerEvent(kind eventType) error {
-	db := getDB()
+	db := db.GetDB()
 	event := Event{
 		UserID: user.ID,
 		Event:  kind,

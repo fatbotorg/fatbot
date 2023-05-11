@@ -1,6 +1,7 @@
 package users
 
 import (
+	"fatbot/db"
 	"fmt"
 	"time"
 
@@ -15,7 +16,7 @@ type Workout struct {
 }
 
 func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
-	db := getDB()
+	db := db.GetDB()
 	lastWeek := time.Now().Add(time.Duration(-7) * time.Hour * 24)
 	if err := db.Model(&User{}).
 		Preload("Groups", "chat_id = ?", chatId).
@@ -26,7 +27,7 @@ func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
 }
 
 func (user *User) RollbackLastWorkout(chatId int64) (Workout, error) {
-	db := getDB()
+	db := db.GetDB()
 	lastWorkout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
 		return Workout{}, err
@@ -40,7 +41,7 @@ func (user *User) RollbackLastWorkout(chatId int64) (Workout, error) {
 }
 
 func (user *User) PushWorkout(days, chatId int64) error {
-	db := getDB()
+	db := db.GetDB()
 	workout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
 		return err
@@ -51,7 +52,7 @@ func (user *User) PushWorkout(days, chatId int64) error {
 }
 
 func (user *User) UpdateWorkout(messageId int) error {
-	db := getDB()
+	db := db.GetDB()
 	db.Where("telegram_user_id = ?", user.TelegramUserID).Find(&user)
 	db.Model(&user).Update("was_notified", 0)
 	workout := &Workout{
@@ -68,7 +69,7 @@ func (workout *Workout) IsOlderThan(minutes int) bool {
 }
 
 func (user *User) GetLastXWorkout(lastx int, chatId int64) (Workout, error) {
-	db := getDB()
+	db := db.GetDB()
 	if err := db.Model(&User{}).
 		Preload("Groups", "chat_id = ?", chatId).
 		Preload("Workouts").Limit(lastx).Find(&user).Error; err != nil {

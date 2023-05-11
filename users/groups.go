@@ -1,6 +1,8 @@
 package users
 
 import (
+	"fatbot/db"
+
 	"github.com/charmbracelet/log"
 	"gorm.io/gorm"
 )
@@ -15,17 +17,17 @@ type Group struct {
 }
 
 func GetGroupsWithUsers() (groups []Group) {
-	getDB().Preload("Users").Find(&groups)
+	db.GetDB().Preload("Users").Find(&groups)
 	return
 }
 
 func GetGroup(chatId int64) (group Group, err error) {
-	err = getDB().Where("chat_id = ?", chatId).Find(&group).Error
+	err = db.GetDB().Where("chat_id = ?", chatId).Find(&group).Error
 	return
 }
 
 func (group *Group) GetUsers() (users []User, err error) {
-	err = getDB().Model(&group).Association("Users").Find(&users)
+	err = db.GetDB().Model(&group).Association("Users").Find(&users)
 	return
 }
 
@@ -41,7 +43,7 @@ func (group *Group) GetUserFixedNamesList() (userNames []string) {
 }
 
 func IsApprovedChatID(chatID int64) bool {
-	db := getDB()
+	db := db.GetDB()
 	var group Group
 	result := db.Where("chat_id = ?", chatID).Find(&group)
 	if result.RowsAffected == 0 {
@@ -67,7 +69,7 @@ func (user *User) IsInGroup(chatId int64) bool {
 }
 
 func (user *User) RegisterInGroup(chatId int64) error {
-	db := getDB()
+	db := db.GetDB()
 	if group, err := GetGroup(chatId); err != nil {
 		return err
 	} else {
