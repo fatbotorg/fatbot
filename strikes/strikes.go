@@ -1,6 +1,7 @@
 package strikes
 
 import (
+	"fatbot/migrations"
 	"fatbot/users"
 	"fmt"
 	"time"
@@ -15,6 +16,7 @@ func ScanUsers(bot *tgbotapi.BotAPI) error {
 	const totalDays = 5.0
 	for _, group := range groups {
 		for _, user := range group.Users {
+			migrations.ChatIdToGroupsMigration(&user)
 			log.Infof("User %s in group %s", user.GetName(), group.Title)
 			if !user.Active {
 				continue

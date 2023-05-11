@@ -2,6 +2,7 @@ package main
 
 import (
 	"fatbot/schedule"
+	"fatbot/users"
 	"os"
 
 	"github.com/charmbracelet/log"
@@ -20,7 +21,7 @@ func main() {
 	if os.Getenv("ENVIRONMENT") != "production" {
 		log.SetLevel(log.DebugLevel)
 	}
-	if err := initDB(); err != nil {
+	if err := users.InitDB(); err != nil {
 		log.Fatal(err)
 	}
 	if bot, err = tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_APITOKEN")); err != nil {
