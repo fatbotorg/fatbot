@@ -80,7 +80,7 @@ func handleWorkoutUpload(update tgbotapi.Update) (tgbotapi.MessageConfig, error)
 	chatId := update.FromChat().ID
 	if !user.IsInGroup(chatId) {
 		if err := user.RegisterInGroup(chatId); err != nil {
-			log.Errorf("Error registering user %s in new group %s", user.GetName(), chatId)
+			log.Errorf("Error registering user %s in new group %d", user.GetName(), chatId)
 		}
 	}
 	lastWorkout, err := user.GetLastXWorkout(1, update.FromChat().ID)
