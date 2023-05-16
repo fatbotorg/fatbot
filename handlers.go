@@ -40,7 +40,7 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		} else {
 			timeLeftMessage = "You are already out.."
 		}
-		msg.Text = fmt.Sprintf("%s, your last workout was on %s\n %s",
+		msg.Text = fmt.Sprintf("%s, your last workout was on %s.\n %s",
 			user.GetName(),
 			lastWorkout.CreatedAt.Weekday(),
 	       		timeLeftMessage
