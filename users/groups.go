@@ -55,7 +55,7 @@ func IsApprovedChatID(chatID int64) bool {
 func (user *User) IsInGroup(chatId int64) bool {
 	var err error
 	if len(user.Groups) == 0 {
-		user, err = user.LoadGroups()
+		err = user.LoadGroups()
 		if err != nil {
 			log.Error(err)
 		}
@@ -73,7 +73,9 @@ func (user *User) RegisterInGroup(chatId int64) error {
 	if group, err := GetGroup(chatId); err != nil {
 		return err
 	} else {
-		db.Model(&user).Association("Groups").Append(group)
+		if err := db.Model(&user).Association("Groups").Append(&group); err != nil {
+			return err
+		}
 	}
 	return nil
 }
