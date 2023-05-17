@@ -38,13 +38,8 @@ func InitDB() error {
 	return nil
 }
 
-func (user *User) LoadGroups() (*User, error) {
-	err := db.GetDB().Preload("Groups").Find(&user).Error
-	if err != nil {
-		return &User{}, err
-	} else {
-		return user, nil
-	}
+func (user *User) LoadGroups() error {
+	return db.GetDB().Preload("Groups").Find(&user).Error
 }
 
 func GetUser(id uint) (user User, err error) {
