@@ -50,12 +50,12 @@ func GetUser(id uint) (user User, err error) {
 	return
 }
 
-// BUG: #7
-// returns the entire DB, needs filtering by chat_id
 func GetUsers(chatId int64) []User {
 	db := db.GetDB()
 	var users []User
-	if chatId == 0 {
+	if chatId == -1 {
+		db.Find(&users)
+	} else if chatId == 0 {
 		db.Where("active = ?", true).Find(&users)
 	} else {
 		db.Where("chat_id = ? AND active = ?", chatId, true).Find(&users)
