@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
 	"gorm.io/gorm"
 )
 
@@ -51,13 +53,19 @@ func (user *User) PushWorkout(days, chatId int64) error {
 	return nil
 }
 
-func (user *User) UpdateWorkout(messageId int) error {
+func (user *User) UpdateWorkout(update tgbotapi.Update) error {
 	db := db.GetDB()
+	messageId := update.Message.MessageID
 	db.Where("telegram_user_id = ?", user.TelegramUserID).Find(&user)
 	db.Model(&user).Update("was_notified", 0)
+	group, err := GetGroup(update.FromChat().ID)
+	if err != nil {
+		return err
+	}
 	workout := &Workout{
 		UserID:         user.ID,
 		PhotoMessageID: messageId,
+		GroupID:        group.ID,
 	}
 	db.Model(&user).Association("Workouts").Append(workout)
 	return nil
@@ -70,9 +78,12 @@ func (workout *Workout) IsOlderThan(minutes int) bool {
 
 func (user *User) GetLastXWorkout(lastx int, chatId int64) (Workout, error) {
 	db := db.GetDB()
+	group, err := GetGroup(chatId)
+	if err != nil {
+		return Workout{}, err
+	}
 	if err := db.Model(&User{}).
-		Preload("Groups", "chat_id = ?", chatId).
-		Preload("Workouts").Limit(lastx).Find(&user).Error; err != nil {
+		Preload("Workouts", "group_id = ?", group.ID).Limit(lastx).Find(&user).Error; err != nil {
 		return Workout{}, err
 	}
 	if len(user.Workouts) == 0 || lastx > len(user.Workouts) {
