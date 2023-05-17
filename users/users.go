@@ -142,20 +142,20 @@ func (user *User) Rename(name string) error {
 	return nil
 }
 
-func (user *User) CreateChatMemberConfig(botName string) tgbotapi.ChatMemberConfig {
+func (user *User) CreateChatMemberConfig(botName string, chatId int64) tgbotapi.ChatMemberConfig {
 	return tgbotapi.ChatMemberConfig{
-		ChatID:             user.ChatID,
+		ChatID:             chatId,
 		SuperGroupUsername: botName,
 		ChannelUsername:    "",
 		UserID:             user.TelegramUserID,
 	}
 }
 
-func (user *User) Ban(bot *tgbotapi.BotAPI) (errors []error) {
-	chatMemberConfig := user.CreateChatMemberConfig(bot.Self.UserName)
+func (user *User) Ban(bot *tgbotapi.BotAPI, chatId int64) (errors []error) {
+	chatMemberConfig := user.CreateChatMemberConfig(bot.Self.UserName, chatId)
 	getChatMemberConfig := tgbotapi.GetChatMemberConfig{
 		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
-			ChatID:             user.ChatID,
+			ChatID:             chatId,
 			SuperGroupUsername: bot.Self.UserName,
 			UserID:             user.TelegramUserID,
 		},
@@ -184,7 +184,7 @@ func (user *User) Ban(bot *tgbotapi.BotAPI) (errors []error) {
 		log.Errorf("Error while registering ban event: %s", err)
 	}
 	messagesToSend := []tgbotapi.MessageConfig{}
-	groupMessage := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf(
+	groupMessage := tgbotapi.NewMessage(chatId, fmt.Sprintf(
 		"%s was not working out. 🦥⛔",
 		user.GetName(),
 	))
@@ -205,9 +205,26 @@ func (user *User) Ban(bot *tgbotapi.BotAPI) (errors []error) {
 	return
 }
 
+func (user *User) getChatId() (chatId int64, err error) {
+	user.LoadGroups()
+	switch len(user.Groups) {
+	case 0:
+		return 0, fmt.Errorf("user has no groups")
+	case 1:
+		chatId = user.Groups[0].ChatID
+		return chatId, nil
+	default:
+		return 0, fmt.Errorf("user has multiple groups - ambiguate")
+	}
+}
+
 func (user *User) UnBan(bot *tgbotapi.BotAPI) error {
+	chatId, err := user.getChatId()
+	if err != nil {
+		return err
+	}
 	unbanConfig := tgbotapi.UnbanChatMemberConfig{
-		ChatMemberConfig: user.CreateChatMemberConfig(bot.Self.UserName),
+		ChatMemberConfig: user.CreateChatMemberConfig(bot.Self.UserName, chatId),
 	}
 	if _, err := bot.Request(unbanConfig); err != nil {
 		return err
@@ -216,10 +233,14 @@ func (user *User) UnBan(bot *tgbotapi.BotAPI) error {
 }
 
 func (user *User) InviteExistingUser(bot *tgbotapi.BotAPI) error {
+	chatId, err := user.getChatId()
+	if err != nil {
+		return err
+	}
 	msg := tgbotapi.NewMessage(user.TelegramUserID, "")
 	unixTime24HoursFromNow := int(time.Now().Add(time.Duration(24 * time.Hour)).Unix())
 	chatConfig := tgbotapi.ChatConfig{
-		ChatID:             user.ChatID,
+		ChatID:             chatId,
 		SuperGroupUsername: bot.Self.UserName,
 	}
 	createInviteLinkConfig := tgbotapi.CreateChatInviteLinkConfig{
@@ -244,11 +265,11 @@ func (user *User) InviteExistingUser(bot *tgbotapi.BotAPI) error {
 	return nil
 }
 
-func (user *User) InviteNewUser(bot *tgbotapi.BotAPI) error {
+func (user *User) InviteNewUser(bot *tgbotapi.BotAPI, chatId int64) error {
 	msg := tgbotapi.NewMessage(user.TelegramUserID, "")
 	unixTime24HoursFromNow := int(time.Now().Add(time.Duration(24 * time.Hour)).Unix())
 	chatConfig := tgbotapi.ChatConfig{
-		ChatID:             user.ChatID,
+		ChatID:             chatId,
 		SuperGroupUsername: bot.Self.UserName,
 	}
 	createInviteLinkConfig := tgbotapi.CreateChatInviteLinkConfig{
