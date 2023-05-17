@@ -146,7 +146,7 @@ func handleNewJoinCallback(fatBotUpdate FatBotUpdate) error {
 				&group,
 			},
 		}
-		if err := user.InviteNewUser(fatBotUpdate.Bot); err != nil {
+		if err := user.InviteNewUser(fatBotUpdate.Bot, chatId); err != nil {
 			log.Error(fmt.Errorf("Issue with inviting: %s", err))
 		}
 		msg.Text = "Invitation sent"

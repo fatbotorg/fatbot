@@ -11,13 +11,16 @@ import (
 )
 
 func ScanUsers(bot *tgbotapi.BotAPI) error {
+	log.Info("migration running")
+	migrations.CreateGroupsMigration()
 	groups := users.GetGroupsWithUsers()
-	// users := users.GetUsers(0)
+	users := users.GetUsers(-1)
+	for _, user := range users {
+		migrations.ChatIdToGroupsMigration(&user)
+	}
 	const totalDays = 5.0
 	for _, group := range groups {
 		for _, user := range group.Users {
-			migrations.ChatIdToGroupsMigration(&user)
-			log.Infof("User %s in group %s", user.GetName(), group.Title)
 			if !user.Active {
 				continue
 			}
@@ -31,7 +34,7 @@ func ScanUsers(bot *tgbotapi.BotAPI) error {
 			}
 			diffHours := int(totalDays*24 - time.Now().Sub(lastWorkout.CreatedAt).Hours())
 			if diffHours == 23 {
-				msg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("[%s](tg://user?id=%d) you have 24 hours left",
+				msg := tgbotapi.NewMessage(group.ChatID, fmt.Sprintf("[%s](tg://user?id=%d) you have 24 hours left",
 					user.GetName(),
 					user.TelegramUserID))
 				msg.ParseMode = "MarkdownV2"
@@ -40,8 +43,8 @@ func ScanUsers(bot *tgbotapi.BotAPI) error {
 					log.Errorf("Error while registering ban event: %s", err)
 				}
 			} else if diffHours <= 0 {
-				if err := user.Ban(bot); err != nil {
-					log.Errorf("Issue banning %s from %d: %s", user.GetName(), user.ChatID, err)
+				if err := user.Ban(bot, group.ChatID); err != nil {
+					log.Errorf("Issue banning %s from %d: %s", user.GetName(), group.ChatID, err)
 					continue
 				}
 			}
@@ -61,13 +64,13 @@ func handleProbation(bot *tgbotapi.BotAPI, user users.User, group users.Group, t
 	rejoinedLastHour := time.Now().Sub(user.UpdatedAt).Minutes() <= 60
 	lastTwoWorkoutsOk := diffHours > 0
 	if !lastTwoWorkoutsOk && !rejoinedLastHour {
-		if errors := user.Ban(bot); errors != nil {
-			log.Errorf("Issue banning %s from %d: %s", user.GetName(), user.ChatID, errors)
+		if errors := user.Ban(bot, group.ChatID); errors != nil {
+			log.Errorf("Issue banning %s from %d: %s", user.GetName(), group.ChatID, errors)
 		}
 	} else if lastTwoWorkoutsOk {
 		log.Debug("Probation", "lastTwoWorkoutsOk", lastTwoWorkoutsOk)
 		if err := user.UpdateOnProbation(false); err != nil {
-			log.Errorf("Issue updating unprobation %s from %d: %s", user.GetName(), user.ChatID, err)
+			log.Errorf("Issue updating unprobation %s from %d: %s", user.GetName(), group.ChatID, err)
 		}
 	}
 }
