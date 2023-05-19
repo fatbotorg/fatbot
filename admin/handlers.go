@@ -55,7 +55,8 @@ func HandleAdminPushWorkoutCommand(update tgbotapi.Update) tgbotapi.MessageConfi
 		if err != nil {
 			log.Error(err)
 		}
-		if err := user.PushWorkout(days, update.FromChat().ID); err != nil {
+		chatId, err := user.GetChatId()
+		if err := user.PushWorkout(days, chatId); err != nil {
 			log.Error(err)
 			msg.Text = "There was an error with pushing workout"
 		} else {
