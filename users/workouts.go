@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/charmbracelet/log"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"gorm.io/gorm"
@@ -20,10 +21,14 @@ type Workout struct {
 func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
 	db := db.GetDB()
 	lastWeek := time.Now().Add(time.Duration(-7) * time.Hour * 24)
+	group, err := GetGroup(chatId)
+	if err != nil {
+		log.Error(err)
+		return []Workout{}
+	}
 	if err := db.Model(&User{}).
-		Preload("Groups", "chat_id = ?", chatId).
-		Preload("Workouts", "created_at > ?", lastWeek).
-		Find(&user, "telegram_user_id = ? AND group.chat_id = ?", user.TelegramUserID, chatId).Error; err != nil {
+		Preload("Workouts", "created_at > ? AND group_id = ?", lastWeek, group.ID).
+		Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
 	}
 	return user.Workouts
 }

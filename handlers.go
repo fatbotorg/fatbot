@@ -80,7 +80,12 @@ func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		if !user.Active {
 			continue
 		}
-		lastWorkout, err := user.GetLastXWorkout(1, update.FromChat().ID)
+		chatId, err := user.GetChatId()
+		if err != nil {
+			log.Warn(err)
+			continue
+		}
+		lastWorkout, err := user.GetLastXWorkout(1, chatId)
 		if err != nil {
 			log.Errorf("Err getting last workout: %s", err)
 			continue

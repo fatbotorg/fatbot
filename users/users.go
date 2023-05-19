@@ -244,7 +244,7 @@ func (user *User) GetChatId() (chatId int64, err error) {
 }
 
 func (user *User) UnBan(bot *tgbotapi.BotAPI) error {
-	chatId, err := user.getChatId()
+	chatId, err := user.GetChatId()
 	if err != nil {
 		return err
 	}
@@ -258,7 +258,7 @@ func (user *User) UnBan(bot *tgbotapi.BotAPI) error {
 }
 
 func (user *User) InviteExistingUser(bot *tgbotapi.BotAPI) error {
-	chatId, err := user.getChatId()
+	chatId, err := user.GetChatId()
 	if err != nil {
 		return err
 	}
