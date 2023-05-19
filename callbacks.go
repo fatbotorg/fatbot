@@ -14,7 +14,7 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 	switch fatBotUpdate.Update.CallbackQuery.Message.Text {
 	case "Pick a user to delete last workout for":
 		if err := handleDeleteLastWorkoutCallback(fatBotUpdate); err != nil {
-			return nil
+			return err
 		}
 	case "Pick a user to rename":
 		if err := handleRenameUserCallback(fatBotUpdate); err != nil {
@@ -48,7 +48,11 @@ func handleDeleteLastWorkoutCallback(fatBotUpdate FatBotUpdate) error {
 	if err != nil {
 		return err
 	}
-	if newLastWorkout, err := user.RollbackLastWorkout(fatBotUpdate.Update.FromChat().ID); err != nil {
+	chatId, err := user.GetChatId()
+	if err != nil {
+		return err
+	}
+	if newLastWorkout, err := user.RollbackLastWorkout(chatId); err != nil {
 		return err
 	} else {
 		message := fmt.Sprintf("Deleted last workout for user %s\nRolledback to: %s",
