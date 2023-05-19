@@ -205,11 +205,36 @@ func (user *User) Ban(bot *tgbotapi.BotAPI, chatId int64) (errors []error) {
 	return
 }
 
-func (user *User) getChatId() (chatId int64, err error) {
+func (user *User) GetChatIds() (chatIds []int64, err error) {
 	user.LoadGroups()
+	if user.Groups == nil {
+		return []int64{}, fmt.Errorf("user %s has nil groups", user.GetName())
+	}
 	switch len(user.Groups) {
 	case 0:
-		return 0, fmt.Errorf("user has no groups")
+		return []int64{}, fmt.Errorf("user %s has no groups", user.GetName())
+	case 1:
+		chatIds = []int64{
+			user.Groups[0].ChatID,
+		}
+		return chatIds, nil
+	default:
+		chatIds = []int64{}
+		for _, group := range user.Groups {
+			chatIds = append(chatIds, group.ChatID)
+		}
+		return chatIds, nil
+	}
+}
+
+func (user *User) GetChatId() (chatId int64, err error) {
+	user.LoadGroups()
+	if user.Groups == nil {
+		return 0, fmt.Errorf("user %s has nil groups", user.GetName())
+	}
+	switch len(user.Groups) {
+	case 0:
+		return 0, fmt.Errorf("user %s has no groups", user.GetName())
 	case 1:
 		chatId = user.Groups[0].ChatID
 		return chatId, nil

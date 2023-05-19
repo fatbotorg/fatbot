@@ -20,7 +20,34 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		msg.Text = "Unregistered user"
 		return msg
 	}
-	lastWorkout, err := user.GetLastXWorkout(1, update.FromChat().ID)
+	chatId, err := user.GetChatId()
+	// FIX: user typed errors not this
+	if err != nil {
+		if err.Error() == "user has multiple groups - ambiguate" {
+			if chatIds, err := user.GetChatIds(); err != nil {
+				log.Error(err)
+				return msg
+			} else {
+				for _, chatId := range chatIds {
+					group, _ := users.GetGroup(chatId)
+					msg.Text = msg.Text +
+						"\n\n" +
+						fmt.Sprint(group.Title) +
+						": " +
+						createStatusMessage(user, chatId, msg).Text
+				}
+			}
+		} else {
+			log.Error(err)
+			return msg
+		}
+	}
+	msg = createStatusMessage(user, chatId, msg)
+	return msg
+}
+
+func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConfig) tgbotapi.MessageConfig {
+	lastWorkout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
 		log.Errorf("Err getting last workout: %s", err)
 		return msg
