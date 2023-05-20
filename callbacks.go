@@ -143,7 +143,6 @@ func handleNewJoinCallback(fatBotUpdate FatBotUpdate) error {
 		user := users.User{
 			Username:       username,
 			Name:           name,
-			ChatID:         chatId,
 			TelegramUserID: userId,
 			Active:         true,
 			Groups: []*users.Group{
