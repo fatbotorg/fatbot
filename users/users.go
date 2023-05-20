@@ -17,7 +17,6 @@ type User struct {
 	Username       string
 	Name           string
 	NickName       string
-	ChatID         int64
 	TelegramUserID int64
 	Active         bool
 	IsAdmin        bool
