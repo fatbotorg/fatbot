@@ -2,14 +2,13 @@ package users
 
 import (
 	"encoding/json"
+	"fatbot/db"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/charmbracelet/log"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -25,6 +24,7 @@ type User struct {
 	OnProbation    bool
 	Workouts       []Workout
 	Events         []Event
+	Groups         []*Group `gorm:"many2many:user_groups;"`
 }
 
 type Blacklist struct {
@@ -32,32 +32,30 @@ type Blacklist struct {
 	TelegramUserID int64
 }
 
-func getDB() *gorm.DB {
-	path := os.Getenv("DBPATH")
-	if path == "" {
-		path = "fat.db"
-	}
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
-	if err != nil {
-		log.Fatal(err)
-	}
-	return db
+func InitDB() error {
+	db := db.GetDB()
+	db.AutoMigrate(&User{}, &Group{}, &Workout{}, &Event{}, &Blacklist{})
+	return nil
+}
+
+func (user *User) LoadGroups() error {
+	return db.GetDB().Preload("Groups").Find(&user).Error
 }
 
 func GetUser(id uint) (user User, err error) {
-	db := getDB()
+	db := db.GetDB()
 	if err := db.Find(&user, id).Error; err != nil {
 		return user, err
 	}
-	return user, nil
+	return
 }
 
-// BUG: #7
-// returns the entire DB, needs filtering by chat_id
 func GetUsers(chatId int64) []User {
-	db := getDB()
+	db := db.GetDB()
 	var users []User
-	if chatId == 0 {
+	if chatId == -1 {
+		db.Find(&users)
+	} else if chatId == 0 {
 		db.Where("active = ?", true).Find(&users)
 	} else {
 		db.Where("chat_id = ? AND active = ?", chatId, true).Find(&users)
@@ -66,7 +64,7 @@ func GetUsers(chatId int64) []User {
 }
 
 func GetAdminUsers() []User {
-	db := getDB()
+	db := db.GetDB()
 	var users []User
 	db.Where("is_admin = ?", true).Find(&users)
 	return users
@@ -90,45 +88,23 @@ func (user *User) GetName() (name string) {
 }
 
 func GetUserById(userId int64) (user User, err error) {
-	db := getDB()
-	if err := db.Model(&user).Where("telegram_user_id = ?", userId).Find(&user).Error; err != nil {
-		return user, err
-	}
-	return user, nil
-}
-
-func GetOrCreateUser(userName, firstName string, userTelegramId int64) (User, error) {
-	db := getDB()
-	var user User
-	db.Where(User{
-		Username:       userName,
-		Name:           firstName,
-		TelegramUserID: userTelegramId,
-	}).FirstOrCreate(&user)
-	if err := user.UpdateActive(true); err != nil {
+	db := db.GetDB()
+	if err := db.Model(&user).
+		Preload("Groups").
+		Where("telegram_user_id = ?", userId).
+		Find(&user).Error; err != nil {
 		return user, err
 	}
 	return user, nil
 }
 
 func (user *User) create() error {
-	db := getDB()
+	db := db.GetDB()
 	return db.Create(&user).Error
 }
 
-func GetOrCreateUserFromMessage(message *tgbotapi.Message) (User, error) {
-	user, err := GetOrCreateUser(message.From.UserName, message.From.FirstName, message.From.ID)
-	if err != nil {
-		return user, err
-	}
-	if err := user.UpdateActive(true); err != nil {
-		return user, err
-	}
-	return user, nil
-}
-
 func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
-	db := getDB()
+	db := db.GetDB()
 	var user User
 	if err := db.Where(User{
 		Username:       message.From.UserName,
@@ -141,7 +117,7 @@ func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
 }
 
 func (user *User) UpdateActive(should bool) error {
-	db := getDB()
+	db := db.GetDB()
 	if err := db.Model(&user).Update("active", should).Error; err != nil {
 		return err
 	}
@@ -149,7 +125,7 @@ func (user *User) UpdateActive(should bool) error {
 }
 
 func (user *User) UpdateOnProbation(probation bool) error {
-	db := getDB()
+	db := db.GetDB()
 	if err := db.Model(&user).
 		Update("on_probation", probation).Error; err != nil {
 		return err
@@ -158,7 +134,7 @@ func (user *User) UpdateOnProbation(probation bool) error {
 }
 
 func (user *User) Rename(name string) error {
-	db := getDB()
+	db := db.GetDB()
 	if err := db.Model(&user).
 		Update("nick_name", name).Error; err != nil {
 		return err
@@ -166,20 +142,20 @@ func (user *User) Rename(name string) error {
 	return nil
 }
 
-func (user *User) CreateChatMemberConfig(botName string) tgbotapi.ChatMemberConfig {
+func (user *User) CreateChatMemberConfig(botName string, chatId int64) tgbotapi.ChatMemberConfig {
 	return tgbotapi.ChatMemberConfig{
-		ChatID:             user.ChatID,
+		ChatID:             chatId,
 		SuperGroupUsername: botName,
 		ChannelUsername:    "",
 		UserID:             user.TelegramUserID,
 	}
 }
 
-func (user *User) Ban(bot *tgbotapi.BotAPI) (errors []error) {
-	chatMemberConfig := user.CreateChatMemberConfig(bot.Self.UserName)
+func (user *User) Ban(bot *tgbotapi.BotAPI, chatId int64) (errors []error) {
+	chatMemberConfig := user.CreateChatMemberConfig(bot.Self.UserName, chatId)
 	getChatMemberConfig := tgbotapi.GetChatMemberConfig{
 		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
-			ChatID:             user.ChatID,
+			ChatID:             chatId,
 			SuperGroupUsername: bot.Self.UserName,
 			UserID:             user.TelegramUserID,
 		},
@@ -208,7 +184,7 @@ func (user *User) Ban(bot *tgbotapi.BotAPI) (errors []error) {
 		log.Errorf("Error while registering ban event: %s", err)
 	}
 	messagesToSend := []tgbotapi.MessageConfig{}
-	groupMessage := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf(
+	groupMessage := tgbotapi.NewMessage(chatId, fmt.Sprintf(
 		"%s was not working out. 🦥⛔",
 		user.GetName(),
 	))
@@ -229,9 +205,51 @@ func (user *User) Ban(bot *tgbotapi.BotAPI) (errors []error) {
 	return
 }
 
+func (user *User) GetChatIds() (chatIds []int64, err error) {
+	user.LoadGroups()
+	if user.Groups == nil {
+		return []int64{}, fmt.Errorf("user %s has nil groups", user.GetName())
+	}
+	switch len(user.Groups) {
+	case 0:
+		return []int64{}, fmt.Errorf("user %s has no groups", user.GetName())
+	case 1:
+		chatIds = []int64{
+			user.Groups[0].ChatID,
+		}
+		return chatIds, nil
+	default:
+		chatIds = []int64{}
+		for _, group := range user.Groups {
+			chatIds = append(chatIds, group.ChatID)
+		}
+		return chatIds, nil
+	}
+}
+
+func (user *User) GetChatId() (chatId int64, err error) {
+	user.LoadGroups()
+	if user.Groups == nil {
+		return 0, fmt.Errorf("user %s has nil groups", user.GetName())
+	}
+	switch len(user.Groups) {
+	case 0:
+		return 0, fmt.Errorf("user %s has no groups", user.GetName())
+	case 1:
+		chatId = user.Groups[0].ChatID
+		return chatId, nil
+	default:
+		return 0, fmt.Errorf("user has multiple groups - ambiguate")
+	}
+}
+
 func (user *User) UnBan(bot *tgbotapi.BotAPI) error {
+	chatId, err := user.GetChatId()
+	if err != nil {
+		return err
+	}
 	unbanConfig := tgbotapi.UnbanChatMemberConfig{
-		ChatMemberConfig: user.CreateChatMemberConfig(bot.Self.UserName),
+		ChatMemberConfig: user.CreateChatMemberConfig(bot.Self.UserName, chatId),
 	}
 	if _, err := bot.Request(unbanConfig); err != nil {
 		return err
@@ -240,10 +258,14 @@ func (user *User) UnBan(bot *tgbotapi.BotAPI) error {
 }
 
 func (user *User) InviteExistingUser(bot *tgbotapi.BotAPI) error {
+	chatId, err := user.GetChatId()
+	if err != nil {
+		return err
+	}
 	msg := tgbotapi.NewMessage(user.TelegramUserID, "")
 	unixTime24HoursFromNow := int(time.Now().Add(time.Duration(24 * time.Hour)).Unix())
 	chatConfig := tgbotapi.ChatConfig{
-		ChatID:             user.ChatID,
+		ChatID:             chatId,
 		SuperGroupUsername: bot.Self.UserName,
 	}
 	createInviteLinkConfig := tgbotapi.CreateChatInviteLinkConfig{
@@ -268,11 +290,11 @@ func (user *User) InviteExistingUser(bot *tgbotapi.BotAPI) error {
 	return nil
 }
 
-func (user *User) InviteNewUser(bot *tgbotapi.BotAPI) error {
+func (user *User) InviteNewUser(bot *tgbotapi.BotAPI, chatId int64) error {
 	msg := tgbotapi.NewMessage(user.TelegramUserID, "")
 	unixTime24HoursFromNow := int(time.Now().Add(time.Duration(24 * time.Hour)).Unix())
 	chatConfig := tgbotapi.ChatConfig{
-		ChatID:             user.ChatID,
+		ChatID:             chatId,
 		SuperGroupUsername: bot.Self.UserName,
 	}
 	createInviteLinkConfig := tgbotapi.CreateChatInviteLinkConfig{
@@ -309,7 +331,7 @@ func extractInviteLinkFromResponse(response *tgbotapi.APIResponse) (string, erro
 }
 
 func BlockUserId(userId int64) error {
-	db := getDB()
+	db := db.GetDB()
 	blackListed := Blacklist{
 		TelegramUserID: userId,
 	}
@@ -320,7 +342,7 @@ func BlockUserId(userId int64) error {
 }
 
 func BlackListed(id int64) bool {
-	db := getDB()
+	db := db.GetDB()
 	var black Blacklist
 	db.Where(Blacklist{TelegramUserID: id}).Find(&black)
 	if black.TelegramUserID == 0 {

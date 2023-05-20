@@ -1,5 +1,10 @@
 # SSHing into FLY
 
+### Create a key
+```bash
+flyctl ssh issue --agent
+```
+
 ### In a separate terminal:
 ```bash
 fly proxy 10022:22

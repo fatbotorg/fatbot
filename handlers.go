@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fatbot/accounts"
 	"fatbot/admin"
 	"fatbot/users"
 	"fmt"
@@ -21,7 +20,34 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		msg.Text = "Unregistered user"
 		return msg
 	}
-	lastWorkout, err := user.GetLastXWorkout(1)
+	chatId, err := user.GetChatId()
+	// FIX: user typed errors not this
+	if err != nil {
+		if err.Error() == "user has multiple groups - ambiguate" {
+			if chatIds, err := user.GetChatIds(); err != nil {
+				log.Error(err)
+				return msg
+			} else {
+				for _, chatId := range chatIds {
+					group, _ := users.GetGroup(chatId)
+					msg.Text = msg.Text +
+						"\n\n" +
+						fmt.Sprint(group.Title) +
+						": " +
+						createStatusMessage(user, chatId, msg).Text
+				}
+			}
+		} else {
+			log.Error(err)
+			return msg
+		}
+	}
+	msg = createStatusMessage(user, chatId, msg)
+	return msg
+}
+
+func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConfig) tgbotapi.MessageConfig {
+	lastWorkout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
 		log.Errorf("Err getting last workout: %s", err)
 		return msg
@@ -54,7 +80,12 @@ func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		if !user.Active {
 			continue
 		}
-		lastWorkout, err := user.GetLastXWorkout(1)
+		chatId, err := user.GetChatId()
+		if err != nil {
+			log.Warn(err)
+			continue
+		}
+		lastWorkout, err := user.GetLastXWorkout(1, chatId)
 		if err != nil {
 			log.Errorf("Err getting last workout: %s", err)
 			continue
@@ -71,14 +102,20 @@ func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	return msg
 }
 
-func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotapi.MessageConfig, error) {
+func handleWorkoutUpload(update tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	var message string
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	user, err := users.GetOrCreateUserFromMessage(update.Message)
+	user, err := users.GetUserById(update.SentFrom().ID)
 	if err != nil {
 		return msg, err
 	}
-	lastWorkout, err := user.GetLastXWorkout(1)
+	chatId := update.FromChat().ID
+	if !user.IsInGroup(chatId) {
+		if err := user.RegisterInGroup(chatId); err != nil {
+			log.Errorf("Error registering user %s in new group %d", user.GetName(), chatId)
+		}
+	}
+	lastWorkout, err := user.GetLastXWorkout(1, update.FromChat().ID)
 	if err != nil {
 		log.Warn(err)
 
@@ -87,7 +124,7 @@ func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotap
 		log.Warn("Workout not older than 30 minutes: %s", user.GetName())
 		return msg, nil
 	}
-	if err := user.UpdateWorkout(update.Message.MessageID); err != nil {
+	if err := user.UpdateWorkout(update); err != nil {
 		return msg, err
 	}
 	if lastWorkout.CreatedAt.IsZero() {
@@ -116,15 +153,15 @@ func handleWorkoutCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotap
 	return msg, nil
 }
 
-func createNewUserAccountsKeyboard(userId int64, name, username string) tgbotapi.InlineKeyboardMarkup {
-	accounts := accounts.GetAccounts()
+func createNewUserGroupsKeyboard(userId int64, name, username string) tgbotapi.InlineKeyboardMarkup {
+	groups := users.GetGroupsWithUsers()
 	row := []tgbotapi.InlineKeyboardButton{}
 	rows := [][]tgbotapi.InlineKeyboardButton{}
-	for _, account := range accounts {
-		accountLabel := fmt.Sprintf("%s", account.Title)
+	for _, group := range groups {
+		groupLabel := fmt.Sprintf("%s", group.Title)
 		row = append(row, tgbotapi.NewInlineKeyboardButtonData(
-			accountLabel,
-			fmt.Sprintf("%d %d %s %s", account.ChatID, userId, name, username),
+			groupLabel,
+			fmt.Sprintf("%d %d %s %s", group.ChatID, userId, name, username),
 		))
 		if len(row) == 3 {
 			rows = append(rows, row)
@@ -155,7 +192,7 @@ func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, e
 				from.FirstName, from.LastName, from.UserName,
 			),
 		)
-		adminMessage.ReplyMarkup = createNewUserAccountsKeyboard(from.ID, from.FirstName, from.UserName)
+		adminMessage.ReplyMarkup = createNewUserGroupsKeyboard(from.ID, from.FirstName, from.UserName)
 		admin.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
 		msg.Text = "Welcome! I've sent your request to the admins"
 		return msg, nil

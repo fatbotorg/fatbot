@@ -1,8 +1,12 @@
 package users
 
 import (
+	"fatbot/db"
 	"fmt"
 	"time"
+
+	"github.com/charmbracelet/log"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"gorm.io/gorm"
 )
@@ -11,38 +15,41 @@ type Workout struct {
 	gorm.Model
 	UserID         uint
 	PhotoMessageID int
+	GroupID        uint
 }
 
-func (user *User) GetPastWeekWorkouts() []Workout {
-	db := getDB()
+func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
+	db := db.GetDB()
 	lastWeek := time.Now().Add(time.Duration(-7) * time.Hour * 24)
-	if err := db.Model(&User{}).Where("telegram_user_id = ?", user.TelegramUserID).
-		Preload("Workouts", "created_at > ?", lastWeek).Find(&user).Error; err != nil {
+	group, err := GetGroup(chatId)
+	if err != nil {
+		log.Error(err)
+		return []Workout{}
+	}
+	if err := db.Model(&User{}).
+		Preload("Workouts", "created_at > ? AND group_id = ?", lastWeek, group.ID).
+		Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
 	}
 	return user.Workouts
 }
 
-func (user *User) RollbackLastWorkout() (Workout, error) {
-	db := getDB()
-	if err := db.Where(User{TelegramUserID: user.TelegramUserID}).First(&user).Error; err != nil {
+func (user *User) RollbackLastWorkout(chatId int64) (Workout, error) {
+	db := db.GetDB()
+	lastWorkout, err := user.GetLastXWorkout(1, chatId)
+	if err != nil {
 		return Workout{}, err
-	} else {
-		lastWorkout, err := user.GetLastXWorkout(1)
-		if err != nil {
-			return Workout{}, err
-		}
-		db.Delete(&Workout{}, lastWorkout.ID)
 	}
-	newLastWorkout, err := user.GetLastXWorkout(1)
+	db.Delete(&Workout{}, lastWorkout.ID)
+	newLastWorkout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
 		return Workout{}, err
 	}
 	return newLastWorkout, nil
 }
 
-func (user *User) PushWorkout(days int64) error {
-	db := getDB()
-	workout, err := user.GetLastXWorkout(1)
+func (user *User) PushWorkout(days, chatId int64) error {
+	db := db.GetDB()
+	workout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
 		return err
 	}
@@ -51,21 +58,19 @@ func (user *User) PushWorkout(days int64) error {
 	return nil
 }
 
-func (user *User) UpdateWorkout(messageId int) error {
-	db := getDB()
+func (user *User) UpdateWorkout(update tgbotapi.Update) error {
+	db := db.GetDB()
+	messageId := update.Message.MessageID
 	db.Where("telegram_user_id = ?", user.TelegramUserID).Find(&user)
-	// when := time.Now()
-	// TODO:
-	// Allow old updates
-	//
-	// if daysago != 0 {
-	// 	when = time.Now().Add(time.Duration(-24*daysago) * time.Hour)
-	// }
-	// db.Model(&user).Where("telegram_user_id = ?", user.TelegramUserID).Update("last_workout", when)
 	db.Model(&user).Update("was_notified", 0)
+	group, err := GetGroup(update.FromChat().ID)
+	if err != nil {
+		return err
+	}
 	workout := &Workout{
 		UserID:         user.ID,
 		PhotoMessageID: messageId,
+		GroupID:        group.ID,
 	}
 	db.Model(&user).Association("Workouts").Append(workout)
 	return nil
@@ -76,9 +81,14 @@ func (workout *Workout) IsOlderThan(minutes int) bool {
 	return diffInMinutes > minutes
 }
 
-func (user *User) GetLastXWorkout(lastx int) (Workout, error) {
-	db := getDB()
-	if err := db.Model(&User{}).Preload("Workouts").Limit(lastx).Find(&user).Error; err != nil {
+func (user *User) GetLastXWorkout(lastx int, chatId int64) (Workout, error) {
+	db := db.GetDB()
+	group, err := GetGroup(chatId)
+	if err != nil {
+		return Workout{}, err
+	}
+	if err := db.Model(&User{}).
+		Preload("Workouts", "group_id = ?", group.ID).Limit(lastx).Find(&user).Error; err != nil {
 		return Workout{}, err
 	}
 	if len(user.Workouts) == 0 || lastx > len(user.Workouts) {

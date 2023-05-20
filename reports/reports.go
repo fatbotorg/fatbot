@@ -1,7 +1,6 @@
 package reports
 
 import (
-	"fatbot/accounts"
 	"fatbot/users"
 	"fmt"
 	"os"
@@ -18,14 +17,15 @@ type Leader struct {
 }
 
 func CreateChart(bot *tgbotapi.BotAPI) {
-	accounts := accounts.GetAccounts()
-	for _, account := range accounts {
-		fileName := fmt.Sprintf("%d.png", account.ChatID)
-		usersNames, usersWorkouts, leaders := collectUsersData(account.ChatID)
-		if len(usersNames) == 0 {
+	groups := users.GetGroupsWithUsers()
+	for _, group := range groups {
+		if len(group.Users) == 0 {
 			continue
 		}
-		usersStringSlice := "'" + strings.Join(usersNames, "', '") + "'"
+		fileName := fmt.Sprintf("%d.png", group.ChatID)
+		usersWorkouts, leaders := collectUsersData(group)
+		userNames := group.GetUserFixedNamesList()
+		usersStringSlice := "'" + strings.Join(userNames, "', '") + "'"
 		workoutsStringSlice := strings.Join(usersWorkouts, ", ")
 		chartConfig := createChartConfig(usersStringSlice, workoutsStringSlice)
 		qc := createQuickChart(chartConfig)
@@ -36,7 +36,7 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 		defer file.Close()
 		qc.Write(file)
 
-		msg := tgbotapi.NewPhoto(account.ChatID, tgbotapi.FilePath(fileName))
+		msg := tgbotapi.NewPhoto(group.ChatID, tgbotapi.FilePath(fileName))
 		if len(leaders) == 1 {
 			leader := leaders[0]
 			msg.Caption = fmt.Sprintf(
@@ -61,20 +61,24 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 	}
 }
 
-func collectUsersData(accountChatId int64) (usersNames, usersWorkouts []string, leaders []Leader) {
-	// BUG: THIS GETS ALL USERS
-	// use chat_id in the argument to get specific group
-	allUsers := users.GetUsers(0)
+func collectUsersData(group users.Group) (usersWorkouts []string, leaders []Leader) {
+	groupUsers, err := group.GetUsers()
+	if err != nil {
+		return
+	}
 	leaders = append(leaders, Leader{
 		User:     users.User{},
 		Workouts: 0,
 	})
-	for _, user := range allUsers {
-		if user.ChatID != accountChatId {
-			continue
-		}
-		usersNames = append(usersNames, user.GetName())
-		userPastWeekWorkouts := user.GetPastWeekWorkouts()
+	for _, user := range groupUsers {
+		// TODO: > remove
+		//
+		// if user.ChatID != group.ChatID {
+		// 	continue
+		// }
+		//
+		// TODO: < remove
+		userPastWeekWorkouts := user.GetPastWeekWorkouts(group.ChatID)
 		usersWorkouts = append(usersWorkouts, fmt.Sprint(len(userPastWeekWorkouts)))
 		if leaders[0].Workouts > len(userPastWeekWorkouts) {
 			continue

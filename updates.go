@@ -12,6 +12,15 @@ import (
 func handleUpdates(fatBotUpdate FatBotUpdate) error {
 	update := fatBotUpdate.Update
 	bot := fatBotUpdate.Bot
+	if update.SentFrom() == nil {
+		return fmt.Errorf("can't handle update with no SentFrom details...")
+	}
+	if !users.IsApprovedChatID(update.FromChat().ID) && !update.FromChat().IsPrivate() {
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID,
+			fmt.Sprintf("Group %s not activated, send this to the admin: `%d`", update.Message.Chat.Title, update.FromChat().ID),
+		))
+		return nil
+	}
 	if users.BlackListed(update.SentFrom().ID) {
 		log.Debug("Blocked", "id", update.SentFrom().ID)
 		return nil
@@ -33,12 +42,6 @@ func handleUpdates(fatBotUpdate FatBotUpdate) error {
 		return nil
 	}
 
-	if !isApprovedChatID(update.FromChat().ID) && !update.FromChat().IsPrivate() {
-		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID,
-			fmt.Sprintf("Group %s not activated, send this to the admin: `%d`", update.Message.Chat.Title, update.FromChat().ID),
-		))
-		return nil
-	}
 	if err := handleCommandUpdate(fatBotUpdate); err != nil {
 		return err
 	}
@@ -52,7 +55,7 @@ func handleNonCommandUpdates(fatBotUpdate FatBotUpdate) error {
 		if update.FromChat().IsPrivate() {
 			return nil
 		}
-		msg, err := handleWorkoutCommand(update, bot)
+		msg, err := handleWorkoutUpload(update)
 		if err != nil {
 			return fmt.Errorf("Error handling last workout: %s", err)
 		}

@@ -1,4 +1,4 @@
-package accounts
+package db
 
 import (
 	"log"
@@ -8,14 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type Account struct {
-	gorm.Model
-	ChatID   int64
-	Approved bool
-	Title    string
-}
-
-func getDB() *gorm.DB {
+func GetDB() *gorm.DB {
 	path := os.Getenv("DBPATH")
 	if path == "" {
 		path = "fat.db"
@@ -25,9 +18,4 @@ func getDB() *gorm.DB {
 		log.Fatal(err)
 	}
 	return db
-}
-
-func GetAccounts() (accounts []Account) {
-	getDB().Find(&accounts)
-	return
 }
