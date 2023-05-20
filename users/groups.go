@@ -14,6 +14,7 @@ type Group struct {
 	Title    string
 	Users    []User `gorm:"many2many:user_groups;"`
 	Workouts []Workout
+	Events   []Event
 }
 
 func GetGroupsWithUsers() (groups []Group) {
