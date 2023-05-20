@@ -13,8 +13,6 @@ func ChatIdToGroupsMigration(user *users.User) {
 		if err != nil {
 			log.Error(err)
 		}
-		// db.Model(&user).Association("Workouts").Append(workout)
-		// db.Model(&user).Association("Languages").Append(&Language{Name: "DE"})
 		db.GetDB().Model(&user).Association("Groups").Append(&group)
 	}
 	return
@@ -53,4 +51,18 @@ func inList(chatId int64, groups []users.Group) bool {
 	return false
 }
 
-func PopulateGroupsUsersMigration() {}
+func WorkoutsToGroupsMigration() {
+	var workouts []users.Workout
+
+	if err := db.GetDB().Find(&workouts).Error; err != nil {
+		log.Error(err)
+		return
+	}
+	for _, workout := range workouts {
+		if workout.GroupID == 0 {
+			user, _ := users.GetUser(workout.UserID)
+			group, _ := users.GetGroup(user.ChatID)
+			db.GetDB().Model(&workout).Update("group_id", group.ID)
+		}
+	}
+}

@@ -11,8 +11,9 @@ import (
 )
 
 func ScanUsers(bot *tgbotapi.BotAPI) error {
-	log.Info("migration running")
+	log.Info("migrations running")
 	migrations.CreateGroupsMigration()
+	migrations.WorkoutsToGroupsMigration()
 	groups := users.GetGroupsWithUsers()
 	users := users.GetUsers(-1)
 	for _, user := range users {
