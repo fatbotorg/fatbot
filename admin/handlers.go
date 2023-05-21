@@ -13,7 +13,7 @@ import (
 func HandleAdminDeleteLastCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	msg.Text = "Pick a user to delete last workout for"
-	msg.ReplyMarkup = createUsersKeyboard()
+	msg.ReplyMarkup = CreateUsersKeyboard(0)
 	return msg
 }
 
@@ -21,7 +21,7 @@ func HandleAdminRenameCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	if update.Message.CommandArguments() == "" {
 		msg.Text = "Pick a user to rename"
-		msg.ReplyMarkup = createUsersKeyboard()
+		msg.ReplyMarkup = CreateUsersKeyboard(0)
 	} else {
 		args := update.Message.CommandArguments()
 		argsSlice := strings.Split(args, " ")
@@ -45,7 +45,7 @@ func HandleAdminPushWorkoutCommand(update tgbotapi.Update) tgbotapi.MessageConfi
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	if update.Message.CommandArguments() == "" {
 		msg.Text = "Pick a user to change workout for"
-		msg.ReplyMarkup = createUsersKeyboard()
+		msg.ReplyMarkup = CreateUsersKeyboard(0)
 	} else {
 		args := update.Message.CommandArguments()
 		argsSlice := strings.Split(args, " ")

@@ -14,10 +14,10 @@ func SendMessageToAdmins(bot *tgbotapi.BotAPI, message tgbotapi.MessageConfig) {
 	}
 }
 
-func createUsersKeyboard() tgbotapi.InlineKeyboardMarkup {
+func CreateUsersKeyboard(chatId int64) tgbotapi.InlineKeyboardMarkup {
 	// BUG: THIS GETS ALL USERS #7
 	// use chat_id in the argument to get specific group
-	users := users.GetUsers(0)
+	users := users.GetUsers(chatId)
 	row := []tgbotapi.InlineKeyboardButton{}
 	rows := [][]tgbotapi.InlineKeyboardButton{}
 	for _, user := range users {

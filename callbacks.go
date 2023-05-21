@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fatbot/state"
 	"fatbot/users"
 	"fmt"
 	"strconv"
@@ -10,7 +11,61 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
+	var messageId int
+	var data string
+	chatId := fatBotUpdate.Update.FromChat().ID
+
+	msg := tgbotapi.NewMessage(0, "")
+	if fatBotUpdate.Update.CallbackQuery == nil {
+		data = fatBotUpdate.Update.Message.Text
+		messageId = fatBotUpdate.Update.Message.MessageID
+		msg.Text = data
+	} else {
+		data = fatBotUpdate.Update.CallbackData()
+		messageId = fatBotUpdate.Update.CallbackQuery.Message.MessageID
+	}
+	msg.ChatID = chatId
+	menuState, err := state.New(chatId)
+	if err != nil {
+		return err
+	}
+	if menuState.IsLastStep() {
+		if err := menuState.PerformAction(data); err != nil {
+			log.Error(err)
+		}
+		msg.Text = fmt.Sprintf("%s done. -> %s", menuState.Menu.Name, data)
+		fatBotUpdate.Bot.Request(msg)
+		err := state.DeleteStateEntry(chatId)
+		if err != nil {
+			log.Error(err)
+		}
+		return nil
+	}
+	step := menuState.CurrentStep()
+	switch step.Kind {
+	case state.KeyboardStepKind:
+		if len(step.Keyboard.InlineKeyboard) == 0 {
+			data, _ := menuState.ExtractData()
+			step.PopulateKeyboard(data)
+		}
+		edit := tgbotapi.NewEditMessageTextAndMarkup(
+			chatId, messageId, step.Message, step.Keyboard,
+		)
+		if _, err := fatBotUpdate.Bot.Send(edit); err != nil {
+			log.Error(err)
+		}
+	case state.InputStepKind:
+		msg.Text = step.Message
+	}
+	fatBotUpdate.Bot.Request(msg)
+	value := menuState.Value + state.Delimiter + data
+	state.CreateStateEntry(chatId, value)
+	return nil
+}
+
 func handleCallbacks(fatBotUpdate FatBotUpdate) error {
+	handleStatefulCallback(fatBotUpdate)
 	switch fatBotUpdate.Update.CallbackQuery.Message.Text {
 	case "Pick a user to delete last workout for":
 		if err := handleDeleteLastWorkoutCallback(fatBotUpdate); err != nil {
