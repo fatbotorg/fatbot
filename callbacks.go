@@ -64,8 +64,52 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 	return nil
 }
 
+func initAdminRename(fatBotUpdate FatBotUpdate) error {
+	if _, err := users.GetUserById(fatBotUpdate.Update.FromChat().ID); err != nil {
+		return err
+	} else {
+		if menu, err := state.CreateRenameMenu(); err != nil {
+			return err
+		} else {
+			step := menu.Steps[0]
+			edit := tgbotapi.NewEditMessageTextAndMarkup(
+				fatBotUpdate.Update.FromChat().ID,
+				fatBotUpdate.Update.CallbackQuery.Message.MessageID,
+				step.Message,
+				step.Keyboard,
+			)
+			fatBotUpdate.Bot.Send(edit)
+			state.CreateStateEntry(fatBotUpdate.Update.FromChat().ID, menu.Name)
+		}
+	}
+	return nil
+}
+
+func initAdminPushWorkout(fatBotUpdate FatBotUpdate) error {
+	if _, err := users.GetUserById(fatBotUpdate.Update.FromChat().ID); err != nil {
+		return err
+	} else {
+		if menu, err := state.CreatePushWorkoutMenu(); err != nil {
+			return err
+		} else {
+			step := menu.Steps[0]
+			edit := tgbotapi.NewEditMessageTextAndMarkup(
+				fatBotUpdate.Update.FromChat().ID,
+				fatBotUpdate.Update.CallbackQuery.Message.MessageID,
+				step.Message,
+				step.Keyboard,
+			)
+			fatBotUpdate.Bot.Send(edit)
+			state.CreateStateEntry(fatBotUpdate.Update.FromChat().ID, menu.Name)
+		}
+	}
+	return nil
+}
 func handleCallbacks(fatBotUpdate FatBotUpdate) error {
-	handleStatefulCallback(fatBotUpdate)
+	err := handleStatefulCallback(fatBotUpdate)
+	if err != nil {
+		log.Error(err)
+	}
 	switch fatBotUpdate.Update.CallbackQuery.Message.Text {
 	case "Pick a user to delete last workout for":
 		if err := handleDeleteLastWorkoutCallback(fatBotUpdate); err != nil {
