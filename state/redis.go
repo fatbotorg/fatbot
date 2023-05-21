@@ -40,12 +40,10 @@ func get(key string) (string, error) {
 }
 
 func clear(key string) error {
-	log.Debug(key)
 	c, err := dial()
 	if err != nil {
 		return err
 	}
 	_, err = redis.String(c.Do("DEL", key))
-	log.Debug(err)
 	return err
 }

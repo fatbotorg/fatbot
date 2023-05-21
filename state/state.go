@@ -18,25 +18,30 @@ func New(chatId int64) (*State, error) {
 	var state State
 	var err error
 	state.ChatId = chatId
-	if state.Value, err = GetState(chatId); err != nil {
+	if state.Value, err = getState(chatId); err != nil {
 		return nil, err
 	}
-	if err := state.Parse(); err != nil {
+	if err = state.setKind(); err != nil {
+		return nil, err
+	}
+	if err := state.setMenu(); err != nil {
 		return nil, err
 	}
 	return &state, err
 }
 
-func (state *State) Parse() (err error) {
+func (state *State) setMenu() (err error) {
 	stateSlice := strings.Split(state.Value, ":")
 	if len(stateSlice) == 0 {
 		return fmt.Errorf("Empty value slice")
 	}
-	state.Kind = menuKind(stateSlice[0])
-
 	switch state.Kind {
 	case RenameMenuKind:
 		if state.Menu, err = CreateRenameMenu(); err != nil {
+			return err
+		}
+	case PushWorkoutMenuKind:
+		if state.Menu, err = CreatePushWorkoutMenu(); err != nil {
 			return err
 		}
 	}
@@ -59,6 +64,24 @@ func (state *State) PerformAction(data string) error {
 		} else {
 			user.Rename(data)
 		}
+	case PushWorkoutMenuKind:
+		telegramUserId, err := state.getTelegramUserId()
+		groupChatId, err := state.getGroupChatId()
+		if err != nil {
+			return err
+		}
+		if user, err := users.GetUserById(telegramUserId); err != nil {
+			return err
+		} else {
+			days, err := strconv.ParseInt(data, 10, 64)
+			if err != nil {
+				return err
+			}
+			if err := user.PushWorkout(days, groupChatId); err != nil {
+				return err
+			}
+		}
+
 	default:
 		return fmt.Errorf("could not find action")
 	}
@@ -74,6 +97,20 @@ func (state *State) getTelegramUserId() (userId int64, err error) {
 				return 0, err
 			}
 			return userId, nil
+		}
+	}
+	return 0, fmt.Errorf("Could not find telegramuserid step")
+}
+
+func (state *State) getGroupChatId() (userId int64, err error) {
+	for stepIndex, step := range state.Menu.Steps {
+		if step.Result == GroupIdStepResult {
+			stateSlice := strings.Split(state.Value, ":")
+			groupId, err := strconv.ParseInt(stateSlice[stepIndex+1], 10, 64)
+			if err != nil {
+				return 0, err
+			}
+			return groupId, nil
 		}
 	}
 	return 0, fmt.Errorf("Could not find telegramuserid step")
@@ -98,6 +135,20 @@ func (state *State) CurrentStep() Step {
 	return state.Menu.Steps[len(stateSlice)]
 }
 
+func (state *State) setKind() error {
+	stateSlice := strings.Split(state.Value, ":")
+	rawKind := stateSlice[0]
+	switch rawKind {
+	case string(RenameMenuKind):
+		state.Kind = RenameMenuKind
+		return nil
+	case string(PushWorkoutMenuKind):
+		state.Kind = PushWorkoutMenuKind
+		return nil
+	}
+	return fmt.Errorf("can't find menu kind")
+}
+
 func CreateStateEntry(chatId int64, value string) error {
 	if err := set(fmt.Sprint(chatId), value); err != nil {
 		return err
@@ -112,6 +163,6 @@ func DeleteStateEntry(chatId int64) error {
 	return nil
 }
 
-func GetState(chatId int64) (string, error) {
+func getState(chatId int64) (string, error) {
 	return get(fmt.Sprint(chatId))
 }

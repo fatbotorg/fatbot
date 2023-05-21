@@ -146,7 +146,6 @@ func CreateDeleteLastWorkoutMenu() (Menu, error) {
 	return menu, nil
 }
 
-
 func (step *Step) PopulateKeyboard(data int64) {
 	switch step.Result {
 	case TelegramUserIdStepResult:
