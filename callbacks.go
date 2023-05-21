@@ -15,7 +15,6 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 	var messageId int
 	var data string
 	chatId := fatBotUpdate.Update.FromChat().ID
-
 	msg := tgbotapi.NewMessage(0, "")
 	if fatBotUpdate.Update.CallbackQuery == nil {
 		data = fatBotUpdate.Update.Message.Text
@@ -24,6 +23,19 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 	} else {
 		data = fatBotUpdate.Update.CallbackData()
 		messageId = fatBotUpdate.Update.CallbackQuery.Message.MessageID
+	}
+	if strings.Contains(data, "adminmenu") {
+		switch data {
+		case "adminmenurename":
+			if err := initAdminRename(fatBotUpdate); err != nil {
+				return err
+			}
+		case "adminmenupushworkout":
+			if err := initAdminPushWorkout(fatBotUpdate); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 	msg.ChatID = chatId
 	menuState, err := state.New(chatId)
