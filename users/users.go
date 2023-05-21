@@ -350,3 +350,16 @@ func BlackListed(id int64) bool {
 	}
 	return true
 }
+
+func (user User) GetLastBanDate() (time.Time, error) {
+	if err := db.GetDB().Preload("Events").Find(&user).Error; err != nil {
+		return time.Time{}, err
+	}
+	var banEvents []Event
+	for _, event := range user.Events {
+		if event.Event == BanEventType {
+			banEvents = append(banEvents, event)
+		}
+	}
+	return banEvents[len(banEvents)-1].CreatedAt, nil
+}
