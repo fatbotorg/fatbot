@@ -32,8 +32,6 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 		}
 	case "status":
 		msg = handleStatusCommand(update)
-	case "test":
-		msg = handleTestCommand(fatBotUpdate)
 	case "help":
 		msg.ChatID = update.FromChat().ID
 		msg.Text = "/status\n/join"
@@ -60,6 +58,8 @@ func handleAdminCommandUpdate(fatBotUpdate FatBotUpdate) error {
 		return nil
 	}
 	switch update.Message.Command() {
+	case "admin":
+		msg = handleAdminCommand(fatBotUpdate)
 	case "admin_show_users":
 		//TODO:
 		// handlr pergroup
@@ -68,10 +68,10 @@ func handleAdminCommandUpdate(fatBotUpdate FatBotUpdate) error {
 		}
 	case "admin_delete_last":
 		msg = admin.HandleAdminDeleteLastCommand(update)
-	case "admin_rename":
-		msg = admin.HandleAdminRenameCommand(update)
-	case "admin_push_workout":
-		msg = admin.HandleAdminPushWorkoutCommand(update)
+	// case "admin_rename":
+	// 	msg = admin.HandleAdminRenameCommand(update)
+	// case "admin_push_workout":
+	// 	msg = admin.HandleAdminPushWorkoutCommand(update)
 	case "admin_help":
 		msg.Text = "/admin_delete_last\n/admin_rename\n/admin_help\n/admin_show_users\n/admin_push_workout"
 	case "admin_send_report":
