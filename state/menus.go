@@ -118,6 +118,35 @@ func CreatePushWorkoutMenu() (Menu, error) {
 	return menu, nil
 }
 
+func CreateDeleteLastWorkoutMenu() (Menu, error) {
+	chooseGroup := Step{
+		Name:     "choosegroup",
+		Kind:     KeyboardStepKind,
+		Message:  "Choose Group",
+		Keyboard: createGroupsKeyboard(),
+		Result:   GroupIdStepResult,
+	}
+	chooseUser := Step{
+		Name:     "chooseuser",
+		Kind:     KeyboardStepKind,
+		Message:  "Choose User",
+		Keyboard: tgbotapi.InlineKeyboardMarkup{},
+		Result:   TelegramUserIdStepResult,
+	}
+	insertDays := Step{
+		Name:    "insertdays",
+		Kind:    InputStepKind,
+		Message: "Insert Days",
+		Result:  PushDaysStepResult,
+	}
+	menu := Menu{
+		Name:  "deletelastworkout",
+		Steps: []Step{chooseGroup, chooseUser, insertDays},
+	}
+	return menu, nil
+}
+
+
 func (step *Step) PopulateKeyboard(data int64) {
 	switch step.Result {
 	case TelegramUserIdStepResult:
