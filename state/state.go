@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type State struct {
 	ChatId int64
 	Value  string
-	Kind   menuKind
+	Kind   MenuKind
 	Menu   Menu
 }
 
@@ -37,13 +39,11 @@ func (state *State) setMenu() (err error) {
 	}
 	switch state.Kind {
 	case RenameMenuKind:
-		if state.Menu, err = CreateRenameMenu(); err != nil {
-			return err
-		}
+		state.Menu, err = CreateRenameMenu()
 	case PushWorkoutMenuKind:
-		if state.Menu, err = CreatePushWorkoutMenu(); err != nil {
-			return err
-		}
+		state.Menu, err = CreatePushWorkoutMenu()
+	case DeleteLastWorkoutMenuKind:
+		state.Menu, err = CreateDeleteLastWorkoutMenu()
 	}
 	return nil
 }
@@ -52,7 +52,7 @@ func (state *State) IsLastStep() bool {
 	return len(state.Menu.Steps) == len(strings.Split(state.Value, ":"))
 }
 
-func (state *State) PerformAction(data string) error {
+func (state *State) PerformAction(data string, bot tgbotapi.BotAPI, update tgbotapi.Update) error {
 	switch state.Kind {
 	case RenameMenuKind:
 		telegramUserId, err := state.getTelegramUserId()
@@ -81,7 +81,28 @@ func (state *State) PerformAction(data string) error {
 				return err
 			}
 		}
-
+	case DeleteLastWorkoutMenuKind:
+		groupChatId, err := state.getGroupChatId()
+		userId, _ := strconv.ParseInt(data, 10, 64)
+		user, err := users.GetUserById(userId)
+		if err != nil {
+			return err
+		}
+		if newLastWorkout, err := user.RollbackLastWorkout(groupChatId); err != nil {
+			return err
+		} else {
+			msg := tgbotapi.NewMessage(update.FromChat().ID, "")
+			message := fmt.Sprintf("Deleted last workout for user %s\nRolledback to: %s",
+				user.GetName(), newLastWorkout.CreatedAt.Format("2006-01-02 15:04:05"))
+			msg.Text = message
+			if _, err := bot.Send(msg); err != nil {
+				return err
+			}
+			messageToUser := tgbotapi.NewMessage(0,
+				fmt.Sprintf("Your last workout was cancelled by the admin.\nUpdated workout: %s",
+					newLastWorkout.CreatedAt))
+			user.SendPrivateMessage(&bot, messageToUser)
+		}
 	default:
 		return fmt.Errorf("could not find action")
 	}
@@ -141,12 +162,14 @@ func (state *State) setKind() error {
 	switch rawKind {
 	case string(RenameMenuKind):
 		state.Kind = RenameMenuKind
-		return nil
 	case string(PushWorkoutMenuKind):
 		state.Kind = PushWorkoutMenuKind
-		return nil
+	case string(DeleteLastWorkoutMenuKind):
+		state.Kind = DeleteLastWorkoutMenuKind
+	default:
+		return fmt.Errorf("can't find menu kind")
 	}
-	return fmt.Errorf("can't find menu kind")
+	return nil
 }
 
 func CreateStateEntry(chatId int64, value string) error {

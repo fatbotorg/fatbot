@@ -11,23 +11,24 @@ import (
 type Menu struct {
 	Name  string
 	Steps []Step
-	Kind  menuKind
+	Kind  MenuKind
 }
 
 type stepKind string
-type menuKind string
+type MenuKind string
 type stepResult string
 
 const (
-	Delimiter                           = ":"
-	InputStepKind            stepKind   = "input"
-	KeyboardStepKind         stepKind   = "keyboard"
-	RenameMenuKind           menuKind   = "rename"
-	PushWorkoutMenuKind      menuKind   = "pushworkout"
-	GroupIdStepResult        stepResult = "groupId"
-	TelegramUserIdStepResult stepResult = "telegramUserId"
-	NewNameStepResult        stepResult = "newName"
-	PushDaysStepResult       stepResult = "pushDays"
+	Delimiter                            = ":"
+	InputStepKind             stepKind   = "input"
+	KeyboardStepKind          stepKind   = "keyboard"
+	RenameMenuKind            MenuKind   = "rename"
+	PushWorkoutMenuKind       MenuKind   = "pushworkout"
+	DeleteLastWorkoutMenuKind MenuKind   = "deletelastworkout"
+	GroupIdStepResult         stepResult = "groupId"
+	TelegramUserIdStepResult  stepResult = "telegramUserId"
+	NewNameStepResult         stepResult = "newName"
+	PushDaysStepResult        stepResult = "pushDays"
 )
 
 type Step struct {
@@ -86,6 +87,7 @@ func CreateRenameMenu() (Menu, error) {
 	menu := Menu{
 		Name:  "rename",
 		Steps: []Step{chooseGroup, chooseUser, insertName},
+		Kind:  RenameMenuKind,
 	}
 	return menu, nil
 }
@@ -113,6 +115,7 @@ func CreatePushWorkoutMenu() (Menu, error) {
 	}
 	menu := Menu{
 		Name:  "pushworkout",
+		Kind:  PushWorkoutMenuKind,
 		Steps: []Step{chooseGroup, chooseUser, insertDays},
 	}
 	return menu, nil
@@ -133,15 +136,10 @@ func CreateDeleteLastWorkoutMenu() (Menu, error) {
 		Keyboard: tgbotapi.InlineKeyboardMarkup{},
 		Result:   TelegramUserIdStepResult,
 	}
-	insertDays := Step{
-		Name:    "insertdays",
-		Kind:    InputStepKind,
-		Message: "Insert Days",
-		Result:  PushDaysStepResult,
-	}
 	menu := Menu{
 		Name:  "deletelastworkout",
-		Steps: []Step{chooseGroup, chooseUser, insertDays},
+		Steps: []Step{chooseGroup, chooseUser},
+		Kind:  DeleteLastWorkoutMenuKind,
 	}
 	return menu, nil
 }

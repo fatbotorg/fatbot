@@ -4,10 +4,23 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func HandleAdminDeleteLastCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	msg.Text = "Pick a user to delete last workout for"
-	msg.ReplyMarkup = CreateUsersKeyboard(0)
+// func HandleAdminDeleteLastCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
+// 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+// 	msg.Text = "Pick a user to delete last workout for"
+// 	msg.ReplyMarkup = CreateUsersKeyboard(0)
+// 	return msg
+// }
+
+func HandleAdminCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Choose an option")
+	var adminKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Rename User", "adminmenurename"),
+			tgbotapi.NewInlineKeyboardButtonData("Push Workout", "adminmenupushworkout"),
+			tgbotapi.NewInlineKeyboardButtonData("Delete Last Workout", "adminmenudeletelastworkout"),
+		),
+	)
+	msg.ReplyMarkup = adminKeyboard
 	return msg
 }
 
