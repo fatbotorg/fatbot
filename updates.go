@@ -67,7 +67,7 @@ func handleNonCommandUpdates(fatBotUpdate FatBotUpdate) error {
 		}
 	} else if update.FromChat().IsPrivate() {
 		if err := handleStatefulCallback(fatBotUpdate); err == nil {
-			return nil
+			return err
 		}
 		msg := tgbotapi.NewMessage(update.FromChat().ID, "")
 		// TODO:
