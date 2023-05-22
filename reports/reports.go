@@ -62,22 +62,11 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 }
 
 func collectUsersData(group users.Group) (usersWorkouts []string, leaders []Leader) {
-	groupUsers, err := group.GetUsers()
-	if err != nil {
-		return
-	}
 	leaders = append(leaders, Leader{
 		User:     users.User{},
 		Workouts: 0,
 	})
-	for _, user := range groupUsers {
-		// TODO: > remove
-		//
-		// if user.ChatID != group.ChatID {
-		// 	continue
-		// }
-		//
-		// TODO: < remove
+	for _, user := range group.Users {
 		userPastWeekWorkouts := user.GetPastWeekWorkouts(group.ChatID)
 		usersWorkouts = append(usersWorkouts, fmt.Sprint(len(userPastWeekWorkouts)))
 		if leaders[0].Workouts > len(userPastWeekWorkouts) {

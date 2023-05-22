@@ -65,6 +65,7 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 	switch step.Kind {
 	case state.KeyboardStepKind:
 		if len(step.Keyboard.InlineKeyboard) == 0 {
+			menuState.Value = value
 			data, _ := menuState.ExtractData()
 			step.PopulateKeyboard(data)
 		}

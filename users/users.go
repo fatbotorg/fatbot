@@ -57,7 +57,7 @@ func GetUsers(chatId int64) []User {
 	} else if chatId == 0 {
 		db.Where("active = ?", true).Find(&users)
 	} else {
-		db.Where("chat_id = ? AND active = ?", chatId, true).Find(&users)
+		users = GetGroupWithUsers(chatId).Users
 	}
 	return users
 }
