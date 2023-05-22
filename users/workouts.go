@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"gorm.io/gorm"
@@ -24,6 +25,7 @@ func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
 	group, err := GetGroup(chatId)
 	if err != nil {
 		log.Error(err)
+		sentry.CaptureException(err)
 		return []Workout{}
 	}
 	if err := db.Model(&User{}).

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/log"
+	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	quickchartgo "github.com/henomis/quickchart-go"
 )
@@ -46,6 +47,7 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 			)
 			if err := leader.User.RegisterWeeklyLeaderEvent(); err != nil {
 				log.Errorf("Error while registering weekly leader event: %s", err)
+				sentry.CaptureException(err)
 			}
 		} else if len(leaders) > 1 {
 			caption := fmt.Sprintf("Weekly summary:\n⭐ Leaders of the week with %d workouts:\n",
@@ -57,6 +59,7 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 		}
 		if _, err = bot.Send(msg); err != nil {
 			log.Error(err)
+			sentry.CaptureException(err)
 		}
 	}
 }

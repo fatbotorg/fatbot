@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -16,6 +17,7 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	if user, err = users.GetUserFromMessage(update.Message); err != nil {
 		log.Error(err)
+		sentry.CaptureException(err)
 	} else if user.ID == 0 {
 		msg.Text = "Unregistered user"
 		return msg
@@ -26,6 +28,7 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		if err.Error() == "user has multiple groups - ambiguate" {
 			if chatIds, err := user.GetChatIds(); err != nil {
 				log.Error(err)
+				sentry.CaptureException(err)
 				return msg
 			} else {
 				for _, chatId := range chatIds {
@@ -39,6 +42,7 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 			}
 		} else {
 			log.Error(err)
+			sentry.CaptureException(err)
 			return msg
 		}
 	}
@@ -50,6 +54,7 @@ func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConf
 	lastWorkout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
 		log.Errorf("Err getting last workout: %s", err)
+		sentry.CaptureException(err)
 		return msg
 	}
 	if lastWorkout.CreatedAt.IsZero() {
@@ -88,6 +93,7 @@ func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		lastWorkout, err := user.GetLastXWorkout(1, chatId)
 		if err != nil {
 			log.Errorf("Err getting last workout: %s", err)
+			sentry.CaptureException(err)
 			continue
 		}
 		if lastWorkout.CreatedAt.IsZero() {
@@ -113,6 +119,7 @@ func handleWorkoutUpload(update tgbotapi.Update) (tgbotapi.MessageConfig, error)
 	if !user.IsInGroup(chatId) {
 		if err := user.RegisterInGroup(chatId); err != nil {
 			log.Errorf("Error registering user %s in new group %d", user.GetName(), chatId)
+			sentry.CaptureException(err)
 		}
 	}
 	lastWorkout, err := user.GetLastXWorkout(1, update.FromChat().ID)

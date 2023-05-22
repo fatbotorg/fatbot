@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/log"
+	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -131,6 +132,7 @@ func handleNewJoinCallback(fatBotUpdate FatBotUpdate) error {
 		msg.Text = "Blocked"
 		if err := users.BlockUserId(userId); err != nil {
 			log.Error(err)
+			sentry.CaptureException(err)
 		}
 	} else {
 		chatId, _ := strconv.ParseInt(dataSlice[0], 10, 64)
@@ -152,6 +154,7 @@ func handleNewJoinCallback(fatBotUpdate FatBotUpdate) error {
 		}
 		if err := user.InviteNewUser(fatBotUpdate.Bot, chatId); err != nil {
 			log.Error(fmt.Errorf("Issue with inviting: %s", err))
+			sentry.CaptureException(err)
 		}
 		msg.Text = "Invitation sent"
 	}

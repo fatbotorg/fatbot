@@ -4,8 +4,10 @@ import (
 	"fatbot/schedule"
 	"fatbot/users"
 	"os"
+	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -20,6 +22,15 @@ func main() {
 	var updates tgbotapi.UpdatesChannel
 	if os.Getenv("ENVIRONMENT") != "production" {
 		log.SetLevel(log.DebugLevel)
+	} else {
+		err := sentry.Init(sentry.ClientOptions{
+			Dsn:              os.Getenv("SENTRY_DSN"),
+			TracesSampleRate: 1.0,
+		})
+		if err != nil {
+			log.Fatalf("sentry.Init: %s", err)
+		}
+		defer sentry.Flush(2 * time.Second)
 	}
 	if err := users.InitDB(); err != nil {
 		log.Fatal(err)
@@ -39,6 +50,7 @@ func main() {
 		fatBotUpdate.Update = update
 		if err := handleUpdates(fatBotUpdate); err != nil {
 			log.Error(err)
+			sentry.CaptureException(err)
 		}
 	}
 }

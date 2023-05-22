@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/log"
+	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -30,9 +31,11 @@ func HandleAdminRenameCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		user, err := users.GetUserById(userId)
 		if err != nil {
 			log.Error(err)
+			sentry.CaptureException(err)
 		}
 		if err := user.Rename(newName); err != nil {
 			log.Error(err)
+			sentry.CaptureException(err)
 			msg.Text = "There was an error with renaming"
 		} else {
 			msg.Text = fmt.Sprintf("Ok, renamed %d to %s", userId, newName)
@@ -54,10 +57,12 @@ func HandleAdminPushWorkoutCommand(update tgbotapi.Update) tgbotapi.MessageConfi
 		user, err := users.GetUserById(userId)
 		if err != nil {
 			log.Error(err)
+			sentry.CaptureException(err)
 		}
 		chatId, err := user.GetChatId()
 		if err := user.PushWorkout(days, chatId); err != nil {
 			log.Error(err)
+			sentry.CaptureException(err)
 			msg.Text = "There was an error with pushing workout"
 		} else {
 			msg.Text = fmt.Sprintf("Ok, pushed %d days for %s", days, user.GetName())
