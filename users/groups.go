@@ -17,7 +17,7 @@ type Group struct {
 }
 
 func GetGroupsWithUsers() (groups []Group) {
-	db.GetDB().Preload("Users").Find(&groups)
+	db.GetDB().Preload("Users", "active = ?", true).Find(&groups)
 	return
 }
 
