@@ -8,7 +8,7 @@ import (
 func dial() (redis.Conn, error) {
 	connection, err := redis.Dial("tcp", ":6379")
 	if err != nil {
-		log.Error("SHIT")
+		log.Fatal("cannot find redis!")
 	}
 	return connection, nil
 }
