@@ -25,6 +25,7 @@ const (
 	RenameMenuKind            MenuKind   = "rename"
 	PushWorkoutMenuKind       MenuKind   = "pushworkout"
 	DeleteLastWorkoutMenuKind MenuKind   = "deletelastworkout"
+	ShowUsersMenuKind         MenuKind   = "showusers"
 	GroupIdStepResult         stepResult = "groupId"
 	TelegramUserIdStepResult  stepResult = "telegramUserId"
 	NewNameStepResult         stepResult = "newName"
@@ -140,6 +141,22 @@ func CreateDeleteLastWorkoutMenu() (Menu, error) {
 		Name:  "deletelastworkout",
 		Steps: []Step{chooseGroup, chooseUser},
 		Kind:  DeleteLastWorkoutMenuKind,
+	}
+	return menu, nil
+}
+
+func CreateShowUsersMenu() (Menu, error) {
+	chooseGroup := Step{
+		Name:     "choosegroup",
+		Kind:     KeyboardStepKind,
+		Message:  "Choose Group",
+		Keyboard: createGroupsKeyboard(),
+		Result:   GroupIdStepResult,
+	}
+	menu := Menu{
+		Name:  "showusers",
+		Kind:  ShowUsersMenuKind,
+		Steps: []Step{chooseGroup},
 	}
 	return menu, nil
 }

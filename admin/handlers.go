@@ -17,7 +17,10 @@ func HandleAdminCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Rename User", "adminmenurename"),
 			tgbotapi.NewInlineKeyboardButtonData("Push Workout", "adminmenupushworkout"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Delete Last Workout", "adminmenudeletelastworkout"),
+			tgbotapi.NewInlineKeyboardButtonData("Show Users", "adminmenushowusers"),
 		),
 	)
 	msg.ReplyMarkup = adminKeyboard

@@ -60,20 +60,6 @@ func handleAdminCommandUpdate(fatBotUpdate FatBotUpdate) error {
 	switch update.Message.Command() {
 	case "admin":
 		msg = admin.HandleAdminCommand(update)
-	case "admin_show_users":
-		//TODO:
-		// handlr pergroup
-		if update.FromChat().IsPrivate() {
-			msg = handleShowUsersCommand(update)
-		}
-	// case "admin_delete_last":
-	// 	msg = admin.HandleAdminDeleteLastCommand(update)
-	// case "admin_rename":
-	// 	msg = admin.HandleAdminRenameCommand(update)
-	// case "admin_push_workout":
-	// 	msg = admin.HandleAdminPushWorkoutCommand(update)
-	case "admin_help":
-		msg.Text = "/admin_delete_last\n/admin_rename\n/admin_help\n/admin_show_users\n/admin_push_workout"
 	case "admin_send_report":
 		reports.CreateChart(bot)
 	default:

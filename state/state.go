@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/log"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -44,6 +45,8 @@ func (state *State) setMenu() (err error) {
 		state.Menu, err = CreatePushWorkoutMenu()
 	case DeleteLastWorkoutMenuKind:
 		state.Menu, err = CreateDeleteLastWorkoutMenu()
+	case ShowUsersMenuKind:
+		state.Menu, err = CreateShowUsersMenu()
 	}
 	return nil
 }
@@ -103,6 +106,36 @@ func (state *State) PerformAction(data string, bot tgbotapi.BotAPI, update tgbot
 					newLastWorkout.CreatedAt))
 			user.SendPrivateMessage(&bot, messageToUser)
 		}
+	case ShowUsersMenuKind:
+		groupChatId, err := state.getGroupChatId()
+		if err != nil {
+			return err
+		}
+		users := users.GetGroupWithUsers(groupChatId).Users
+		msg := tgbotapi.NewMessage(update.FromChat().ID, "")
+		message := ""
+		var lastWorkoutStr string
+		for _, user := range users {
+			if !user.Active {
+				continue
+			}
+			lastWorkout, err := user.GetLastXWorkout(1, groupChatId)
+			if err != nil {
+				log.Errorf("Err getting last workout: %s", err)
+				continue
+			}
+			if lastWorkout.CreatedAt.IsZero() {
+				lastWorkoutStr = "no record"
+			} else {
+				hour, min, _ := lastWorkout.CreatedAt.Clock()
+				lastWorkoutStr = fmt.Sprintf("%s, %d:%d", lastWorkout.CreatedAt.Weekday().String(), hour, min)
+			}
+			message = message + fmt.Sprintf("%s [%s]", user.GetName(), lastWorkoutStr) + "\n"
+		}
+		msg.Text = message
+		if _, err := bot.Send(msg); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("could not find action")
 	}
@@ -137,15 +170,6 @@ func (state *State) getGroupChatId() (userId int64, err error) {
 	return 0, fmt.Errorf("Could not find telegramuserid step")
 }
 
-//	func (state *State) getUserNewName() (string, error) {
-//		for stepIndex, step := range state.Menu.Steps {
-//			if step.Result == NewNameStepResult {
-//				stateSlice := strings.Split(state.Value, ":")
-//				return stateSlice[stepIndex+1], nil
-//			}
-//		}
-//		return "", fmt.Errorf("Could not find newname step")
-//	}
 func (state *State) ExtractData() (data int64, err error) {
 	stateSlice := strings.Split(state.Value, ":")
 	return strconv.ParseInt(stateSlice[len(stateSlice)-1], 10, 64)
@@ -166,6 +190,8 @@ func (state *State) setKind() error {
 		state.Kind = PushWorkoutMenuKind
 	case string(DeleteLastWorkoutMenuKind):
 		state.Kind = DeleteLastWorkoutMenuKind
+	case string(ShowUsersMenuKind):
+		state.Kind = ShowUsersMenuKind
 	default:
 		return fmt.Errorf("can't find menu kind")
 	}
