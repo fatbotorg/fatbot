@@ -12,18 +12,15 @@ import (
 )
 
 func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
-	var messageId int
 	var data string
 	var init bool
 	chatId := fatBotUpdate.Update.FromChat().ID
 	msg := tgbotapi.NewMessage(chatId, "")
 	if fatBotUpdate.Update.CallbackQuery == nil {
 		data = fatBotUpdate.Update.Message.Text
-		messageId = fatBotUpdate.Update.Message.MessageID
 		msg.Text = data
 	} else {
 		data = fatBotUpdate.Update.CallbackData()
-		messageId = fatBotUpdate.Update.CallbackQuery.Message.MessageID
 	}
 	if !state.HasState(chatId) {
 		state.CreateStateEntry(chatId, data)
@@ -33,24 +30,9 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 	if err != nil {
 		return err
 	}
-
 	if data == "adminmenuback" {
-		if menuState.IsFirstStep() {
-			edit := tgbotapi.NewEditMessageTextAndMarkup(
-				chatId, messageId, "Choose an option", state.CreateAdminKeyboard(),
-			)
-			if err := state.DeleteStateEntry(chatId); err != nil {
-				log.Errorf("Error clearing state: %s", err)
-			}
-			fatBotUpdate.Bot.Request(edit)
-			return
-		} else {
-			newData, err := state.StepBack(chatId)
-			if err != nil {
-				return err
-			}
-			fatBotUpdate.Update.CallbackQuery.Data = newData
-			return handleStatefulCallback(fatBotUpdate)
+		if err := handleAdminMenuBackClick(fatBotUpdate, *menuState); err != nil {
+			return err
 		}
 	}
 	menu, err := menuState.GetStateMenu()
@@ -64,48 +46,100 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 		return nil
 	}
 	menuState.Menu = menu
-	if err != nil {
-		return err
-	} else if menu == nil {
-		return fmt.Errorf("menu is nil!")
-	}
-	// NOTE: here ->
+	// if menu == nil {
+	// 	return fmt.Errorf("menu is nil!")
+	// }
 	value := menuState.Value + state.Delimiter + data
 	if menuState.IsLastStep() {
-		menuState.Value = value
-		actionData := state.ActionData{
-			Data:   data,
-			Update: fatBotUpdate.Update,
-			Bot:    fatBotUpdate.Bot,
-			State:  menuState,
+		if err := handleAdminMenuLastStep(fatBotUpdate, menuState); err != nil {
+			return err
 		}
-		if err := menuState.Menu.PerformAction(actionData); err != nil {
-			log.Error(err)
-		} else {
-			edit := tgbotapi.NewEditMessageTextAndMarkup(
-				chatId, messageId, "Choose an option", state.CreateAdminKeyboard(),
-			)
-			fatBotUpdate.Bot.Request(edit)
-			if fatBotUpdate.Update.CallbackQuery != nil {
-				text := fmt.Sprintf("%s done. -> %s", menuState.Menu.CreateMenu().Name, data)
-				callback := tgbotapi.NewCallback(fatBotUpdate.Update.CallbackQuery.ID, text)
-				fatBotUpdate.Bot.Request(callback)
-			} else {
-				msg.Text = "Done."
-				fatBotUpdate.Bot.Request(msg)
-			}
-			err := state.DeleteStateEntry(chatId)
-			if err != nil {
-				log.Error(err)
-			}
-		}
-		return nil
 	}
 	if err := state.CreateStateEntry(chatId, value); err != nil {
 		log.Error(err)
 	}
 	menuState.Value = value
+	if err := handleAdminMenuStep(fatBotUpdate, menuState); err != nil {
+		return err
+	}
+	return nil
+}
+
+func handleAdminMenuBackClick(fatBotUpdate FatBotUpdate, menuState state.State) error {
+	chatId := fatBotUpdate.Update.FromChat().ID
+	messageId := fatBotUpdate.Update.CallbackQuery.Message.MessageID
+	if menuState.IsFirstStep() {
+		edit := tgbotapi.NewEditMessageTextAndMarkup(
+			chatId, messageId, "Choose an option", state.CreateAdminKeyboard(),
+		)
+		if err := state.DeleteStateEntry(chatId); err != nil {
+			log.Errorf("Error clearing state: %s", err)
+		}
+		fatBotUpdate.Bot.Request(edit)
+		return nil
+	} else {
+		newData, err := state.StepBack(chatId)
+		if err != nil {
+			return err
+		}
+		fatBotUpdate.Update.CallbackQuery.Data = newData
+		return handleStatefulCallback(fatBotUpdate)
+	}
+}
+
+func handleAdminMenuLastStep(fatBotUpdate FatBotUpdate, menuState *state.State) error {
+	var data string
+	chatId := fatBotUpdate.Update.FromChat().ID
+	messageId := fatBotUpdate.Update.CallbackQuery.Message.MessageID
+	msg := tgbotapi.NewMessage(chatId, "")
+	if fatBotUpdate.Update.CallbackQuery == nil {
+		data = fatBotUpdate.Update.Message.Text
+	} else {
+		data = fatBotUpdate.Update.CallbackData()
+	}
+	value := menuState.Value + state.Delimiter + data
+	menuState.Value = value
+	actionData := state.ActionData{
+		Data:   data,
+		Update: fatBotUpdate.Update,
+		Bot:    fatBotUpdate.Bot,
+		State:  menuState,
+	}
+	if err := menuState.Menu.PerformAction(actionData); err != nil {
+		log.Error(err)
+	} else {
+		edit := tgbotapi.NewEditMessageTextAndMarkup(
+			chatId, messageId, "Choose an option", state.CreateAdminKeyboard(),
+		)
+		fatBotUpdate.Bot.Request(edit)
+		if fatBotUpdate.Update.CallbackQuery != nil {
+			text := fmt.Sprintf("%s done. -> %s", menuState.Menu.CreateMenu().Name, data)
+			callback := tgbotapi.NewCallback(fatBotUpdate.Update.CallbackQuery.ID, text)
+			fatBotUpdate.Bot.Request(callback)
+		} else {
+			msg.Text = "Done."
+			fatBotUpdate.Bot.Request(msg)
+		}
+		err := state.DeleteStateEntry(chatId)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+	return nil
+}
+
+func handleAdminMenuStep(fatBotUpdate FatBotUpdate, menuState *state.State) error {
+	var data string
+	chatId := fatBotUpdate.Update.FromChat().ID
+	messageId := fatBotUpdate.Update.CallbackQuery.Message.MessageID
+	msg := tgbotapi.NewMessage(chatId, "")
 	step := menuState.CurrentStep()
+	if fatBotUpdate.Update.CallbackQuery == nil {
+		data = fatBotUpdate.Update.Message.Text
+	} else {
+		data = fatBotUpdate.Update.CallbackData()
+	}
+	value := menuState.Value + state.Delimiter + data
 	switch step.Kind {
 	case state.KeyboardStepKind:
 		if len(step.Keyboard.InlineKeyboard) == 0 {
