@@ -41,6 +41,10 @@ func (user *User) LoadGroups() error {
 	return db.GetDB().Preload("Groups").Find(&user).Error
 }
 
+func (user *User) LoadEvents() error {
+	return db.GetDB().Preload("Events").Find(&user).Error
+}
+
 func GetUser(id uint) (user User, err error) {
 	db := db.GetDB()
 	if err := db.Find(&user, id).Error; err != nil {
