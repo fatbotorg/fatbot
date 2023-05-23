@@ -1,69 +1,54 @@
 package state
 
 import (
-	"fatbot/admin"
-	"fatbot/users"
-	"fmt"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-type Menu struct {
+type MenuBase struct {
 	Name  string
 	Steps []Step
-	Kind  MenuKind
 }
 
 type stepKind string
-type MenuKind string
 type stepResult string
 
 const (
-	Delimiter                            = ":"
-	InputStepKind             stepKind   = "input"
-	KeyboardStepKind          stepKind   = "keyboard"
-	RenameMenuKind            MenuKind   = "rename"
-	PushWorkoutMenuKind       MenuKind   = "pushworkout"
-	DeleteLastWorkoutMenuKind MenuKind   = "deletelastworkout"
-	ShowUsersMenuKind         MenuKind   = "showusers"
-	GroupIdStepResult         stepResult = "groupId"
-	TelegramUserIdStepResult  stepResult = "telegramUserId"
-	NewNameStepResult         stepResult = "newName"
-	PushDaysStepResult        stepResult = "pushDays"
+	Delimiter                           = ":"
+	InputStepKind            stepKind   = "input"
+	KeyboardStepKind         stepKind   = "keyboard"
+	GroupIdStepResult        stepResult = "groupId"
+	TelegramUserIdStepResult stepResult = "telegramUserId"
+	NewNameStepResult        stepResult = "newName"
+	PushDaysStepResult       stepResult = "pushDays"
 )
 
 type Step struct {
-	Name           string
-	Kind           stepKind
-	Message        string
-	Keyboard       tgbotapi.InlineKeyboardMarkup
-	KeyboardMethod *func(int64)
-	Result         stepResult
+	Name     string
+	Kind     stepKind
+	Message  string
+	Keyboard tgbotapi.InlineKeyboardMarkup
+	Result   stepResult
 }
 
-func createGroupsKeyboard() tgbotapi.InlineKeyboardMarkup {
-	groups := users.GetGroupsWithUsers()
-	row := []tgbotapi.InlineKeyboardButton{}
-	rows := [][]tgbotapi.InlineKeyboardButton{}
-	for _, group := range groups {
-		groupLabel := fmt.Sprintf("%s", group.Title)
-		row = append(row, tgbotapi.NewInlineKeyboardButtonData(
-			groupLabel,
-			fmt.Sprintf("%d", group.ChatID),
-		))
-		if len(row) == 3 {
-			rows = append(rows, row)
-			row = []tgbotapi.InlineKeyboardButton{}
-		}
-	}
-	if len(row) > 0 && len(row) < 3 {
-		rows = append(rows, row)
-	}
-	var keyboard = tgbotapi.NewInlineKeyboardMarkup(rows...)
-	return keyboard
+type RenameMenu struct {
+	MenuBase
+}
+type PushWorkoutMenu struct {
+	MenuBase
+}
+type DeleteLastWorkoutMenu struct {
+	MenuBase
+}
+type ShowUsersMenu struct {
+	MenuBase
 }
 
-func CreateRenameMenu() (Menu, error) {
+type Menu interface {
+	CreateMenu() MenuBase
+	PerformAction(ActionData) error
+}
+
+func (menu RenameMenu) CreateMenu() MenuBase {
 	chooseGroup := Step{
 		Name:     "choosegroup",
 		Kind:     KeyboardStepKind,
@@ -85,15 +70,14 @@ func CreateRenameMenu() (Menu, error) {
 		Keyboard: tgbotapi.InlineKeyboardMarkup{},
 		Result:   NewNameStepResult,
 	}
-	menu := Menu{
+	themenu := MenuBase{
 		Name:  "rename",
 		Steps: []Step{chooseGroup, chooseUser, insertName},
-		Kind:  RenameMenuKind,
 	}
-	return menu, nil
+	return themenu
 }
 
-func CreatePushWorkoutMenu() (Menu, error) {
+func (menu PushWorkoutMenu) CreateMenu() MenuBase {
 	chooseGroup := Step{
 		Name:     "choosegroup",
 		Kind:     KeyboardStepKind,
@@ -114,15 +98,14 @@ func CreatePushWorkoutMenu() (Menu, error) {
 		Message: "Insert Days",
 		Result:  PushDaysStepResult,
 	}
-	menu := Menu{
+	themenu := MenuBase{
 		Name:  "pushworkout",
-		Kind:  PushWorkoutMenuKind,
 		Steps: []Step{chooseGroup, chooseUser, insertDays},
 	}
-	return menu, nil
+	return themenu
 }
 
-func CreateDeleteLastWorkoutMenu() (Menu, error) {
+func (menu DeleteLastWorkoutMenu) CreateMenu() MenuBase {
 	chooseGroup := Step{
 		Name:     "choosegroup",
 		Kind:     KeyboardStepKind,
@@ -137,15 +120,14 @@ func CreateDeleteLastWorkoutMenu() (Menu, error) {
 		Keyboard: tgbotapi.InlineKeyboardMarkup{},
 		Result:   TelegramUserIdStepResult,
 	}
-	menu := Menu{
+	themenu := MenuBase{
 		Name:  "deletelastworkout",
 		Steps: []Step{chooseGroup, chooseUser},
-		Kind:  DeleteLastWorkoutMenuKind,
 	}
-	return menu, nil
+	return themenu
 }
 
-func CreateShowUsersMenu() (Menu, error) {
+func (menu ShowUsersMenu) CreateMenu() MenuBase {
 	chooseGroup := Step{
 		Name:     "choosegroup",
 		Kind:     KeyboardStepKind,
@@ -153,17 +135,16 @@ func CreateShowUsersMenu() (Menu, error) {
 		Keyboard: createGroupsKeyboard(),
 		Result:   GroupIdStepResult,
 	}
-	menu := Menu{
+	themenu := MenuBase{
 		Name:  "showusers",
-		Kind:  ShowUsersMenuKind,
 		Steps: []Step{chooseGroup},
 	}
-	return menu, nil
+	return themenu
 }
 
 func (step *Step) PopulateKeyboard(data int64) {
 	switch step.Result {
 	case TelegramUserIdStepResult:
-		step.Keyboard = admin.CreateUsersKeyboard(data)
+		step.Keyboard = createUsersKeyboard(data)
 	}
 }
