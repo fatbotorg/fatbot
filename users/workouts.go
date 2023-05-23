@@ -62,7 +62,6 @@ func (user *User) UpdateWorkout(update tgbotapi.Update) error {
 	db := db.GetDB()
 	messageId := update.Message.MessageID
 	db.Where("telegram_user_id = ?", user.TelegramUserID).Find(&user)
-	db.Model(&user).Update("was_notified", 0)
 	group, err := GetGroup(update.FromChat().ID)
 	if err != nil {
 		return err
@@ -88,7 +87,9 @@ func (user *User) GetLastXWorkout(lastx int, chatId int64) (Workout, error) {
 		return Workout{}, err
 	}
 	if err := db.Model(&User{}).
-		Preload("Workouts", "group_id = ?", group.ID).Limit(lastx).Find(&user).Error; err != nil {
+		Preload("Workouts", "group_id = ?", group.ID).
+		Limit(lastx).
+		Find(&user).Error; err != nil {
 		return Workout{}, err
 	}
 	if len(user.Workouts) == 0 || lastx > len(user.Workouts) {
