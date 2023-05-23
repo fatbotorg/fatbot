@@ -14,8 +14,9 @@ import (
 func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 	var messageId int
 	var data string
+	var init bool
 	chatId := fatBotUpdate.Update.FromChat().ID
-	msg := tgbotapi.NewMessage(0, "")
+	msg := tgbotapi.NewMessage(chatId, "")
 	if fatBotUpdate.Update.CallbackQuery == nil {
 		data = fatBotUpdate.Update.Message.Text
 		messageId = fatBotUpdate.Update.Message.MessageID
@@ -24,36 +25,75 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 		data = fatBotUpdate.Update.CallbackData()
 		messageId = fatBotUpdate.Update.CallbackQuery.Message.MessageID
 	}
-	if strings.Contains(data, "adminmenu") {
-		var kind state.MenuKind
-		switch data {
-		case "adminmenurename":
-			kind = state.RenameMenuKind
-		case "adminmenupushworkout":
-			kind = state.PushWorkoutMenuKind
-		case "adminmenudeletelastworkout":
-			kind = state.DeleteLastWorkoutMenuKind
-		case "adminmenushowusers":
-			kind = state.ShowUsersMenuKind
-		}
-		if err := initAdminMenuFlow(fatBotUpdate, kind); err != nil {
-			return err
-		}
-		return nil
+	if !state.HasState(chatId) {
+		state.CreateStateEntry(chatId, data)
+		init = true
 	}
-	msg.ChatID = chatId
 	menuState, err := state.New(chatId)
 	if err != nil {
 		return err
 	}
+
+	if data == "adminmenuback" {
+		if menuState.IsFirstStep() {
+			edit := tgbotapi.NewEditMessageTextAndMarkup(
+				chatId, messageId, "Choose an option", state.CreateAdminKeyboard(),
+			)
+			if err := state.DeleteStateEntry(chatId); err != nil {
+				log.Errorf("Error clearing state: %s", err)
+			}
+			fatBotUpdate.Bot.Request(edit)
+			return
+		} else {
+			newData, err := state.StepBack(chatId)
+			if err != nil {
+				return err
+			}
+			fatBotUpdate.Update.CallbackQuery.Data = newData
+			return handleStatefulCallback(fatBotUpdate)
+		}
+	}
+	menu, err := menuState.GetStateMenu()
+	if err != nil {
+		return err
+	}
+	if init {
+		if err := initAdminMenuFlow(fatBotUpdate, menu); err != nil {
+			return err
+		}
+		return nil
+	}
+	menuState.Menu = menu
+	if err != nil {
+		return err
+	} else if menu == nil {
+		return fmt.Errorf("menu is nil!")
+	}
+	// NOTE: here ->
 	value := menuState.Value + state.Delimiter + data
 	if menuState.IsLastStep() {
 		menuState.Value = value
-		if err := menuState.PerformAction(data, *fatBotUpdate.Bot, fatBotUpdate.Update); err != nil {
+		actionData := state.ActionData{
+			Data:   data,
+			Update: fatBotUpdate.Update,
+			Bot:    fatBotUpdate.Bot,
+			State:  menuState,
+		}
+		if err := menuState.Menu.PerformAction(actionData); err != nil {
 			log.Error(err)
 		} else {
-			msg.Text = fmt.Sprintf("%s done. -> %s", menuState.Menu.Name, data)
-			fatBotUpdate.Bot.Request(msg)
+			edit := tgbotapi.NewEditMessageTextAndMarkup(
+				chatId, messageId, "Choose an option", state.CreateAdminKeyboard(),
+			)
+			fatBotUpdate.Bot.Request(edit)
+			if fatBotUpdate.Update.CallbackQuery != nil {
+				text := fmt.Sprintf("%s done. -> %s", menuState.Menu.CreateMenu().Name, data)
+				callback := tgbotapi.NewCallback(fatBotUpdate.Update.CallbackQuery.ID, text)
+				fatBotUpdate.Bot.Request(callback)
+			} else {
+				msg.Text = "Done."
+				fatBotUpdate.Bot.Request(msg)
+			}
 			err := state.DeleteStateEntry(chatId)
 			if err != nil {
 				log.Error(err)
@@ -61,6 +101,10 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 		}
 		return nil
 	}
+	if err := state.CreateStateEntry(chatId, value); err != nil {
+		log.Error(err)
+	}
+	menuState.Value = value
 	step := menuState.CurrentStep()
 	switch step.Kind {
 	case state.KeyboardStepKind:
@@ -79,30 +123,14 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 		msg.Text = step.Message
 	}
 	fatBotUpdate.Bot.Request(msg)
-	state.CreateStateEntry(chatId, value)
 	return nil
 }
 
-func initAdminMenuFlow(fatBotUpdate FatBotUpdate, menuKind state.MenuKind) error {
+func initAdminMenuFlow(fatBotUpdate FatBotUpdate, menu state.Menu) error {
 	if _, err := users.GetUserById(fatBotUpdate.Update.FromChat().ID); err != nil {
 		return err
 	} else {
-		var menu state.Menu
-		switch menuKind {
-		case state.RenameMenuKind:
-			menu, err = state.CreateRenameMenu()
-		case state.PushWorkoutMenuKind:
-			menu, err = state.CreatePushWorkoutMenu()
-		case state.DeleteLastWorkoutMenuKind:
-			menu, err = state.CreateDeleteLastWorkoutMenu()
-		case state.ShowUsersMenuKind:
-			menu, err = state.CreateShowUsersMenu()
-		default:
-			return fmt.Errorf("can't find menu")
-		}
-		if err != nil {
-			return err
-		}
+		menu := menu.CreateMenu()
 		step := menu.Steps[0]
 		edit := tgbotapi.NewEditMessageTextAndMarkup(
 			fatBotUpdate.Update.FromChat().ID,
@@ -111,7 +139,6 @@ func initAdminMenuFlow(fatBotUpdate FatBotUpdate, menuKind state.MenuKind) error
 			step.Keyboard,
 		)
 		fatBotUpdate.Bot.Send(edit)
-		state.CreateStateEntry(fatBotUpdate.Update.FromChat().ID, menu.Name)
 	}
 	return nil
 }
