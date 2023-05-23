@@ -1,9 +1,10 @@
 package admin
 
 import (
+	"fatbot/state"
 	"fatbot/users"
-	"fmt"
 
+	"github.com/charmbracelet/log"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -14,21 +15,12 @@ func SendMessageToAdmins(bot *tgbotapi.BotAPI, message tgbotapi.MessageConfig) {
 	}
 }
 
-func CreateUsersKeyboard(chatId int64) tgbotapi.InlineKeyboardMarkup {
-	users := users.GetUsers(chatId)
-	row := []tgbotapi.InlineKeyboardButton{}
-	rows := [][]tgbotapi.InlineKeyboardButton{}
-	for _, user := range users {
-		userLabel := fmt.Sprintf("%s", user.GetName())
-		row = append(row, tgbotapi.NewInlineKeyboardButtonData(userLabel, fmt.Sprint(user.TelegramUserID)))
-		if len(row) == 3 {
-			rows = append(rows, row)
-			row = []tgbotapi.InlineKeyboardButton{}
-		}
+func HandleAdminCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
+	if err := state.DeleteStateEntry(update.FromChat().ID); err != nil {
+		log.Errorf("Error clearing state: %s", err)
 	}
-	if len(row) > 0 && len(row) < 3 {
-		rows = append(rows, row)
-	}
-	var keyboard = tgbotapi.NewInlineKeyboardMarkup(rows...)
-	return keyboard
+	msg := tgbotapi.NewMessage(update.FromChat().ID, "Choose an option")
+	adminKeyboard := state.CreateAdminKeyboard()
+	msg.ReplyMarkup = adminKeyboard
+	return msg
 }
