@@ -37,6 +37,7 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 						createStatusMessage(user, chatId, msg).Text
 				}
 			}
+			return msg
 		} else {
 			log.Error(err)
 			return msg

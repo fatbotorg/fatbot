@@ -39,11 +39,11 @@ func get(key string) (string, error) {
 	return s, nil
 }
 
-func clear(key string) error {
+func clear(key int64) error {
 	c, err := dial()
 	if err != nil {
 		return err
 	}
-	_, err = redis.String(c.Do("DEL", key))
+	_, err = redis.Int64(c.Do("DEL", key))
 	return err
 }

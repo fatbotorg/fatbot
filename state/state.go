@@ -1,19 +1,14 @@
 package state
 
 import (
-	"fatbot/users"
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/charmbracelet/log"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type State struct {
 	ChatId int64
 	Value  string
-	Kind   MenuKind
 	Menu   Menu
 }
 
@@ -24,128 +19,48 @@ func New(chatId int64) (*State, error) {
 	if state.Value, err = getState(chatId); err != nil {
 		return nil, err
 	}
-	if err = state.setKind(); err != nil {
-		return nil, err
-	}
-	if err := state.setMenu(); err != nil {
-		return nil, err
-	}
 	return &state, err
 }
 
-func (state *State) setMenu() (err error) {
-	stateSlice := strings.Split(state.Value, ":")
-	if len(stateSlice) == 0 {
-		return fmt.Errorf("Empty value slice")
-	}
-	switch state.Kind {
-	case RenameMenuKind:
-		state.Menu, err = CreateRenameMenu()
-	case PushWorkoutMenuKind:
-		state.Menu, err = CreatePushWorkoutMenu()
-	case DeleteLastWorkoutMenuKind:
-		state.Menu, err = CreateDeleteLastWorkoutMenu()
-	case ShowUsersMenuKind:
-		state.Menu, err = CreateShowUsersMenu()
-	}
-	return nil
+func (state *State) getValueSplit() []string {
+	return strings.Split(state.Value, Delimiter)
+
 }
 
 func (state *State) IsLastStep() bool {
-	return len(state.Menu.Steps) == len(strings.Split(state.Value, ":"))
+	return len(state.Menu.CreateMenu().Steps) == len(state.getValueSplit())
 }
 
-func (state *State) PerformAction(data string, bot tgbotapi.BotAPI, update tgbotapi.Update) error {
-	switch state.Kind {
-	case RenameMenuKind:
-		telegramUserId, err := state.getTelegramUserId()
-		if err != nil {
-			return err
-		}
-		if user, err := users.GetUserById(telegramUserId); err != nil {
-			return err
-		} else {
-			user.Rename(data)
-		}
-	case PushWorkoutMenuKind:
-		telegramUserId, err := state.getTelegramUserId()
-		groupChatId, err := state.getGroupChatId()
-		if err != nil {
-			return err
-		}
-		if user, err := users.GetUserById(telegramUserId); err != nil {
-			return err
-		} else {
-			days, err := strconv.ParseInt(data, 10, 64)
-			if err != nil {
-				return err
-			}
-			if err := user.PushWorkout(days, groupChatId); err != nil {
-				return err
-			}
-		}
-	case DeleteLastWorkoutMenuKind:
-		groupChatId, err := state.getGroupChatId()
-		userId, _ := strconv.ParseInt(data, 10, 64)
-		user, err := users.GetUserById(userId)
-		if err != nil {
-			return err
-		}
-		if newLastWorkout, err := user.RollbackLastWorkout(groupChatId); err != nil {
-			return err
-		} else {
-			msg := tgbotapi.NewMessage(update.FromChat().ID, "")
-			message := fmt.Sprintf("Deleted last workout for user %s\nRolledback to: %s",
-				user.GetName(), newLastWorkout.CreatedAt.Format("2006-01-02 15:04:05"))
-			msg.Text = message
-			if _, err := bot.Send(msg); err != nil {
-				return err
-			}
-			messageToUser := tgbotapi.NewMessage(0,
-				fmt.Sprintf("Your last workout was cancelled by the admin.\nUpdated workout: %s",
-					newLastWorkout.CreatedAt))
-			user.SendPrivateMessage(&bot, messageToUser)
-		}
-	case ShowUsersMenuKind:
-		groupChatId, err := state.getGroupChatId()
-		if err != nil {
-			return err
-		}
-		users := users.GetGroupWithUsers(groupChatId).Users
-		msg := tgbotapi.NewMessage(update.FromChat().ID, "")
-		message := ""
-		var lastWorkoutStr string
-		for _, user := range users {
-			if !user.Active {
-				continue
-			}
-			lastWorkout, err := user.GetLastXWorkout(1, groupChatId)
-			if err != nil {
-				log.Errorf("Err getting last workout: %s", err)
-				continue
-			}
-			if lastWorkout.CreatedAt.IsZero() {
-				lastWorkoutStr = "no record"
-			} else {
-				hour, min, _ := lastWorkout.CreatedAt.Clock()
-				lastWorkoutStr = fmt.Sprintf("%s, %d:%d", lastWorkout.CreatedAt.Weekday().String(), hour, min)
-			}
-			message = message + fmt.Sprintf("%s [%s]", user.GetName(), lastWorkoutStr) + "\n"
-		}
-		msg.Text = message
-		if _, err := bot.Send(msg); err != nil {
-			return err
-		}
-	default:
-		return fmt.Errorf("could not find action")
+func (state *State) IsFirstStep() bool {
+	return len(state.getValueSplit()) == 1
+}
+
+func (state *State) GetStateMenu() (menu Menu, err error) {
+	if state == nil {
+		err = fmt.Errorf("state is nil")
+		return
 	}
-	return nil
+	rawSplit := state.getValueSplit()
+	rawMenu := rawSplit[0]
+	switch rawMenu {
+	case "rename":
+		menu = &RenameMenu{}
+	case "pushworkout":
+		menu = &PushWorkoutMenu{}
+	case "deletelastworkout":
+		menu = &DeleteLastWorkoutMenu{}
+	case "showusers":
+		menu = &ShowUsersMenu{}
+	default:
+		return menu, fmt.Errorf("unknown menu: %s", rawMenu)
+	}
+	return
 }
 
 func (state *State) getTelegramUserId() (userId int64, err error) {
-	for stepIndex, step := range state.Menu.Steps {
+	for stepIndex, step := range state.Menu.CreateMenu().Steps {
 		if step.Result == TelegramUserIdStepResult {
-			stateSlice := strings.Split(state.Value, ":")
+			stateSlice := state.getValueSplit()
 			userId, err := strconv.ParseInt(stateSlice[stepIndex+1], 10, 64)
 			if err != nil {
 				return 0, err
@@ -157,9 +72,9 @@ func (state *State) getTelegramUserId() (userId int64, err error) {
 }
 
 func (state *State) getGroupChatId() (userId int64, err error) {
-	for stepIndex, step := range state.Menu.Steps {
+	for stepIndex, step := range state.Menu.CreateMenu().Steps {
 		if step.Result == GroupIdStepResult {
-			stateSlice := strings.Split(state.Value, ":")
+			stateSlice := state.getValueSplit()
 			groupId, err := strconv.ParseInt(stateSlice[stepIndex+1], 10, 64)
 			if err != nil {
 				return 0, err
@@ -171,31 +86,13 @@ func (state *State) getGroupChatId() (userId int64, err error) {
 }
 
 func (state *State) ExtractData() (data int64, err error) {
-	stateSlice := strings.Split(state.Value, ":")
+	stateSlice := state.getValueSplit()
 	return strconv.ParseInt(stateSlice[len(stateSlice)-1], 10, 64)
 }
 
 func (state *State) CurrentStep() Step {
-	stateSlice := strings.Split(state.Value, ":")
-	return state.Menu.Steps[len(stateSlice)]
-}
-
-func (state *State) setKind() error {
-	stateSlice := strings.Split(state.Value, ":")
-	rawKind := stateSlice[0]
-	switch rawKind {
-	case string(RenameMenuKind):
-		state.Kind = RenameMenuKind
-	case string(PushWorkoutMenuKind):
-		state.Kind = PushWorkoutMenuKind
-	case string(DeleteLastWorkoutMenuKind):
-		state.Kind = DeleteLastWorkoutMenuKind
-	case string(ShowUsersMenuKind):
-		state.Kind = ShowUsersMenuKind
-	default:
-		return fmt.Errorf("can't find menu kind")
-	}
-	return nil
+	stateSlice := state.getValueSplit()
+	return state.Menu.CreateMenu().Steps[len(stateSlice)-1]
 }
 
 func CreateStateEntry(chatId int64, value string) error {
@@ -206,12 +103,36 @@ func CreateStateEntry(chatId int64, value string) error {
 }
 
 func DeleteStateEntry(chatId int64) error {
-	if err := clear(fmt.Sprint(chatId)); err != nil {
+	if err := clear(chatId); err != nil {
 		return err
 	}
 	return nil
 }
 
+func HasState(chatId int64) bool {
+	if _, err := getState(chatId); err != nil {
+		return false
+	}
+	return true
+}
+
 func getState(chatId int64) (string, error) {
 	return get(fmt.Sprint(chatId))
+}
+
+func StepBack(chatId int64) (string, error) {
+	value, err := get(fmt.Sprint(chatId))
+	if err != nil {
+		return "", err
+	}
+	stateSlice := strings.Split(value, ":")
+	stateSlice = stateSlice[:len(stateSlice)-1]
+	newValue := strings.Join(stateSlice, ":")
+	if err := set(fmt.Sprint(chatId), newValue); err != nil {
+		return "", err
+	}
+	if err := DeleteStateEntry(chatId); err != nil {
+		return "", err
+	}
+	return stateSlice[len(stateSlice)-1], nil
 }
