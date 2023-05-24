@@ -1,12 +1,20 @@
 package state
 
 import (
+	"os"
+
 	"github.com/charmbracelet/log"
 	"github.com/gomodule/redigo/redis"
 )
 
 func dial() (redis.Conn, error) {
-	connection, err := redis.Dial("tcp", ":6379")
+	var connection redis.Conn
+	var err error
+	if os.Getenv("REDIS_ADDR") == "" {
+		connection, err = redis.Dial("tcp", ":6379")
+	} else {
+		connection, err = redis.DialURL(os.Getenv("REDIS_ADDR"))
+	}
 	if err != nil {
 		log.Fatal("cannot find redis!")
 	}
