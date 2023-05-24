@@ -121,9 +121,15 @@ func getState(chatId int64) (string, error) {
 }
 
 func StepBack(chatId int64) (string, error) {
-	value, err := get(fmt.Sprint(chatId))
-	if err != nil {
-		return "", err
+	var iterations int
+	var value string
+	var err error
+	for value, err = get(fmt.Sprint(chatId)); err != nil; iterations++ {
+		log.Debug("Looping", "iter", iterations)
+		if iterations == 3 {
+			return "", err
+		}
+		value, err = get(fmt.Sprint(chatId))
 	}
 	stateSlice := strings.Split(value, ":")
 	stateSlice = stateSlice[:len(stateSlice)-1]
