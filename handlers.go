@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -16,6 +17,7 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	if user, err = users.GetUserFromMessage(update.Message); err != nil {
 		log.Error(err)
+		sentry.CaptureException(err)
 	} else if user.ID == 0 {
 		msg.Text = "Unregistered user"
 		return msg
@@ -26,6 +28,7 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		if err.Error() == "user has multiple groups - ambiguate" {
 			if chatIds, err := user.GetChatIds(); err != nil {
 				log.Error(err)
+				sentry.CaptureException(err)
 				return msg
 			} else {
 				for _, chatId := range chatIds {
@@ -40,6 +43,7 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 			return msg
 		} else {
 			log.Error(err)
+			sentry.CaptureException(err)
 			return msg
 		}
 	}
@@ -51,6 +55,7 @@ func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConf
 	lastWorkout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
 		log.Errorf("Err getting last workout: %s", err)
+		sentry.CaptureException(err)
 		return msg
 	}
 	if lastWorkout.CreatedAt.IsZero() {
@@ -70,6 +75,40 @@ func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConf
 	return msg
 }
 
+func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
+	// BUG: THIS GETS ALL USERS
+	// use chat_id in the argument to get specific group
+	users := users.GetUsers(0)
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+	message := ""
+	var lastWorkoutStr string
+	for _, user := range users {
+		if !user.Active {
+			continue
+		}
+		chatId, err := user.GetChatId()
+		if err != nil {
+			log.Warn(err)
+			continue
+		}
+		lastWorkout, err := user.GetLastXWorkout(1, chatId)
+		if err != nil {
+			log.Errorf("Err getting last workout: %s", err)
+			sentry.CaptureException(err)
+			continue
+		}
+		if lastWorkout.CreatedAt.IsZero() {
+			lastWorkoutStr = "no record"
+		} else {
+			hour, min, _ := lastWorkout.CreatedAt.Clock()
+			lastWorkoutStr = fmt.Sprintf("%s, %d:%d", lastWorkout.CreatedAt.Weekday().String(), hour, min)
+		}
+		message = message + fmt.Sprintf("%s [%s]", user.GetName(), lastWorkoutStr) + "\n"
+	}
+	msg.Text = message
+	return msg
+}
+
 func handleWorkoutUpload(update tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	var message string
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
@@ -81,6 +120,7 @@ func handleWorkoutUpload(update tgbotapi.Update) (tgbotapi.MessageConfig, error)
 	if !user.IsInGroup(chatId) {
 		if err := user.RegisterInGroup(chatId); err != nil {
 			log.Errorf("Error registering user %s in new group %d", user.GetName(), chatId)
+			sentry.CaptureException(err)
 		}
 	}
 	lastWorkout, err := user.GetLastXWorkout(1, update.FromChat().ID)

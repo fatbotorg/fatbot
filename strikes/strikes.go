@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -24,6 +25,7 @@ func ScanUsers(bot *tgbotapi.BotAPI) error {
 			lastWorkout, err := user.GetLastXWorkout(1, group.ChatID)
 			if err != nil {
 				log.Errorf("Err getting last workout for user %s: %s", user.GetName(), err)
+				sentry.CaptureException(err)
 			}
 			diffHours := int(totalDays*24 - time.Now().Sub(lastWorkout.CreatedAt).Hours())
 			if diffHours == 23 {
@@ -34,6 +36,7 @@ func ScanUsers(bot *tgbotapi.BotAPI) error {
 				bot.Send(msg)
 				if err := user.RegisterLastDayNotificationEvent(); err != nil {
 					log.Errorf("Error while registering ban event: %s", err)
+					sentry.CaptureException(err)
 				}
 			} else if diffHours <= 0 {
 				if err := user.Ban(bot, group.ChatID); err != nil {
@@ -51,6 +54,7 @@ func handleProbation(bot *tgbotapi.BotAPI, user users.User, group users.Group, t
 	lastWorkout, err := user.GetLastXWorkout(2, group.ChatID)
 	if err != nil {
 		log.Errorf("Err getting last 2 workout for user %s: %s", user.GetName(), err)
+		sentry.CaptureException(err)
 	}
 	diffHours := int(totalDays*24 - time.Now().Sub(lastWorkout.CreatedAt).Hours())
 	log.Debug("Probation", "diffHours", diffHours)
@@ -59,11 +63,13 @@ func handleProbation(bot *tgbotapi.BotAPI, user users.User, group users.Group, t
 	if !lastTwoWorkoutsOk && !rejoinedLastHour {
 		if errors := user.Ban(bot, group.ChatID); errors != nil {
 			log.Errorf("Issue banning %s from %d: %s", user.GetName(), group.ChatID, errors)
+			sentry.CaptureException(err)
 		}
 	} else if lastTwoWorkoutsOk {
 		log.Debug("Probation", "lastTwoWorkoutsOk", lastTwoWorkoutsOk)
 		if err := user.UpdateOnProbation(false); err != nil {
 			log.Errorf("Issue updating unprobation %s from %d: %s", user.GetName(), group.ChatID, err)
+			sentry.CaptureException(err)
 		}
 	}
 }
