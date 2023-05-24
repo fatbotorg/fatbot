@@ -81,6 +81,9 @@ func handleAdminMenuBackClick(fatBotUpdate FatBotUpdate, menuState state.State) 
 	} else {
 		newData, err := state.StepBack(chatId)
 		if err != nil {
+			if err := state.DeleteStateEntry(chatId); err != nil {
+				log.Errorf("Error clearing state: %s", err)
+			}
 			return err
 		}
 		fatBotUpdate.Update.CallbackQuery.Data = newData
