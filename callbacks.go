@@ -63,7 +63,12 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 
 func handleAdminMenuBackClick(fatBotUpdate FatBotUpdate, menuState state.State) error {
 	chatId := fatBotUpdate.Update.FromChat().ID
-	messageId := fatBotUpdate.Update.CallbackQuery.Message.MessageID
+	var messageId int
+	if fatBotUpdate.Update.CallbackQuery == nil {
+		messageId = fatBotUpdate.Update.Message.MessageID
+	} else {
+		messageId = fatBotUpdate.Update.CallbackQuery.Message.MessageID
+	}
 	if menuState.IsFirstStep() {
 		edit := tgbotapi.NewEditMessageTextAndMarkup(
 			chatId, messageId, "Choose an option", state.CreateAdminKeyboard(),
