@@ -17,6 +17,7 @@ func dial() (redis.Conn, error) {
 		connection, err = redis.DialURL(
 			os.Getenv("REDIS_ADDR"),
 			redis.DialReadTimeout(2*time.Second),
+			redis.DialWriteTimeout(2*time.Second),
 		)
 	}
 	if err != nil {
