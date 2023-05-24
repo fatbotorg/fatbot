@@ -60,5 +60,9 @@ func clear(key int64) error {
 		return err
 	}
 	_, err = redis.Int64(c.Do("DEL", key))
-	return err
+	if err != nil {
+		log.Errorf("del err: %s", err)
+		return err
+	}
+	return nil
 }
