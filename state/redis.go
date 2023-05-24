@@ -29,6 +29,7 @@ func dial() (redis.Conn, error) {
 func set(key, value string) error {
 	c, err := dial()
 	if err != nil {
+		log.Errorf("set dial err: %s", err)
 		return err
 	}
 	defer c.Close()
@@ -44,6 +45,7 @@ func set(key, value string) error {
 func get(key string) (string, error) {
 	c, err := dial()
 	if err != nil {
+		log.Errorf("get dial err: %s", err)
 		return "", err
 	}
 	s, err := redis.String(c.Do("GET", key))
@@ -57,6 +59,7 @@ func get(key string) (string, error) {
 func clear(key int64) error {
 	c, err := dial()
 	if err != nil {
+		log.Errorf("del dial err: %s", err)
 		return err
 	}
 	_, err = redis.Int64(c.Do("DEL", key))
