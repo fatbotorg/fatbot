@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/log"
 )
@@ -132,6 +133,7 @@ func StepBack(chatId int64) (string, error) {
 			return "", err
 		}
 		value, err = get(fmt.Sprint(chatId))
+		time.Sleep(500 * time.Millisecond)
 	}
 	stateSlice := strings.Split(value, ":")
 	stateSlice = stateSlice[:len(stateSlice)-1]
