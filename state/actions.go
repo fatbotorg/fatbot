@@ -17,6 +17,7 @@ type ActionData struct {
 }
 
 func (menu RenameMenu) PerformAction(params ActionData) error {
+	defer DeleteStateEntry(params.State.ChatId)
 	state := params.State
 	telegramUserId, err := state.getTelegramUserId()
 	if err != nil {
@@ -31,6 +32,7 @@ func (menu RenameMenu) PerformAction(params ActionData) error {
 }
 
 func (menu PushWorkoutMenu) PerformAction(params ActionData) error {
+	defer DeleteStateEntry(params.State.ChatId)
 	telegramUserId, err := params.State.getTelegramUserId()
 	if err != nil {
 		return err
@@ -54,6 +56,7 @@ func (menu PushWorkoutMenu) PerformAction(params ActionData) error {
 }
 
 func (menu DeleteLastWorkoutMenu) PerformAction(params ActionData) error {
+	defer DeleteStateEntry(params.State.ChatId)
 	groupChatId, err := params.State.getGroupChatId()
 	userId, _ := strconv.ParseInt(params.Data, 10, 64)
 	user, err := users.GetUserById(userId)
@@ -79,6 +82,7 @@ func (menu DeleteLastWorkoutMenu) PerformAction(params ActionData) error {
 }
 
 func (menu ShowUsersMenu) PerformAction(params ActionData) error {
+	defer DeleteStateEntry(params.State.ChatId)
 	groupChatId, err := params.State.getGroupChatId()
 	if err != nil {
 		return err
