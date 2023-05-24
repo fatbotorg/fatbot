@@ -35,6 +35,7 @@ func set(key, value string) error {
 
 	_, err = c.Do("SET", key, value)
 	if err != nil {
+		log.Errorf("set err: %s", err)
 		return err
 	}
 	return nil
@@ -47,6 +48,7 @@ func get(key string) (string, error) {
 	}
 	s, err := redis.String(c.Do("GET", key))
 	if err != nil {
+		log.Errorf("get err: %s", err)
 		return "", err
 	}
 	return s, nil

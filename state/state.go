@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/charmbracelet/log"
 )
 
 type State struct {
@@ -124,16 +121,9 @@ func getState(chatId int64) (string, error) {
 }
 
 func StepBack(chatId int64) (string, error) {
-	var iterations int
-	var value string
-	var err error
-	for value, err = get(fmt.Sprint(chatId)); err != nil; iterations++ {
-		log.Debug("Looping", "iter", iterations)
-		if iterations == 3 {
-			return "", err
-		}
-		value, err = get(fmt.Sprint(chatId))
-		time.Sleep(500 * time.Millisecond)
+	value, err := get(fmt.Sprint(chatId))
+	if err != nil {
+		return "", err
 	}
 	stateSlice := strings.Split(value, ":")
 	stateSlice = stateSlice[:len(stateSlice)-1]
