@@ -99,8 +99,9 @@ func (menu ShowUsersMenu) PerformAction(params ActionData) error {
 			hour, min, _ := lastWorkout.CreatedAt.Clock()
 			lastWorkoutStr = fmt.Sprintf("%s, %d:%d", lastWorkout.CreatedAt.Weekday().String(), hour, min)
 		}
-		msg.Text = message + fmt.Sprintf("%s [%s]", user.GetName(), lastWorkoutStr) + "\n"
+		message = message + fmt.Sprintf("%s [%s]", user.GetName(), lastWorkoutStr) + "\n"
 	}
+	msg.Text = message
 	if msg.Text == "" {
 		msg.Text = "No users to show"
 	}
