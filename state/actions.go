@@ -32,6 +32,9 @@ func (menu RenameMenu) PerformAction(params ActionData) error {
 
 func (menu PushWorkoutMenu) PerformAction(params ActionData) error {
 	telegramUserId, err := params.State.getTelegramUserId()
+	if err != nil {
+		return err
+	}
 	groupChatId, err := params.State.getGroupChatId()
 	if err != nil {
 		return err
