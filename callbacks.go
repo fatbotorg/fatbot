@@ -53,6 +53,7 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 		return handleAdminMenuLastStep(fatBotUpdate, menuState)
 	}
 	if err := state.CreateStateEntry(chatId, value); err != nil {
+		sentry.CaptureException(err)
 		log.Error(err)
 	}
 	menuState.Value = value
@@ -75,6 +76,7 @@ func handleAdminMenuBackClick(fatBotUpdate FatBotUpdate, menuState state.State) 
 			chatId, messageId, "Choose an option", state.CreateAdminKeyboard(),
 		)
 		if err := state.DeleteStateEntry(chatId); err != nil {
+			sentry.CaptureException(err)
 			log.Errorf("Error clearing state: %s", err)
 		}
 		fatBotUpdate.Bot.Request(edit)
@@ -83,6 +85,7 @@ func handleAdminMenuBackClick(fatBotUpdate FatBotUpdate, menuState state.State) 
 		newData, err := state.StepBack(chatId)
 		if err != nil {
 			if err := state.DeleteStateEntry(chatId); err != nil {
+				sentry.CaptureException(err)
 				log.Errorf("Error clearing state: %s", err)
 			}
 			return err
@@ -116,6 +119,7 @@ func handleAdminMenuLastStep(fatBotUpdate FatBotUpdate, menuState *state.State) 
 		State:  menuState,
 	}
 	if err := menuState.Menu.PerformAction(actionData); err != nil {
+		sentry.CaptureException(err)
 		log.Error(err)
 	} else {
 		edit := tgbotapi.NewEditMessageTextAndMarkup(
@@ -132,6 +136,7 @@ func handleAdminMenuLastStep(fatBotUpdate FatBotUpdate, menuState *state.State) 
 		}
 		err := state.DeleteStateEntry(chatId)
 		if err != nil {
+			sentry.CaptureException(err)
 			log.Error(err)
 		}
 	}
@@ -190,6 +195,7 @@ func initAdminMenuFlow(fatBotUpdate FatBotUpdate, menu state.Menu) error {
 func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 	err := handleStatefulCallback(fatBotUpdate)
 	if err != nil {
+		sentry.CaptureException(err)
 		log.Error(err)
 	}
 	if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "rejoin his group do you approve") {
