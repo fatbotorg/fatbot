@@ -13,7 +13,10 @@ func dial() (redis.Conn, error) {
 	if os.Getenv("REDIS_ADDR") == "" {
 		connection, err = redis.Dial("tcp", ":6379")
 	} else {
-		connection, err = redis.DialURL(os.Getenv("REDIS_ADDR"))
+		connection, err = redis.DialURL(
+			os.Getenv("REDIS_ADDR"),
+			redis.DialReadTimeout(2*time.Second),
+		)
 	}
 	if err != nil {
 		log.Fatal("cannot find redis!")
