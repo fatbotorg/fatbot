@@ -49,9 +49,7 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 	// }
 	value := menuState.Value + state.Delimiter + data
 	if menuState.IsLastStep() {
-		if err := handleAdminMenuLastStep(fatBotUpdate, menuState); err != nil {
-			return err
-		}
+		return handleAdminMenuLastStep(fatBotUpdate, menuState)
 	}
 	if err := state.CreateStateEntry(chatId, value); err != nil {
 		log.Error(err)
