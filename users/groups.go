@@ -17,7 +17,12 @@ type Group struct {
 }
 
 func GetGroupsWithUsers() (groups []Group) {
-	db.GetDB().Preload("Users").Find(&groups)
+	db.GetDB().Preload("Users", "active = ?", true).Find(&groups)
+	return
+}
+
+func GetGroupWithUsers(chatId int64) (group Group) {
+	db.GetDB().Preload("Users", "active = ?", true).Where("chat_id = ?", chatId).Find(&group)
 	return
 }
 
@@ -32,11 +37,7 @@ func (group *Group) GetUsers() (users []User, err error) {
 }
 
 func (group *Group) GetUserFixedNamesList() (userNames []string) {
-	users, err := group.GetUsers()
-	if err != nil {
-		return nil
-	}
-	for _, user := range users {
+	for _, user := range group.Users {
 		userNames = append(userNames, user.GetName())
 	}
 	return

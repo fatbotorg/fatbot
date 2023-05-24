@@ -17,7 +17,6 @@ type User struct {
 	Username       string
 	Name           string
 	NickName       string
-	ChatID         int64
 	TelegramUserID int64
 	Active         bool
 	IsAdmin        bool
@@ -42,6 +41,10 @@ func (user *User) LoadGroups() error {
 	return db.GetDB().Preload("Groups").Find(&user).Error
 }
 
+func (user *User) LoadEvents() error {
+	return db.GetDB().Preload("Events").Find(&user).Error
+}
+
 func GetUser(id uint) (user User, err error) {
 	db := db.GetDB()
 	if err := db.Find(&user, id).Error; err != nil {
@@ -58,7 +61,7 @@ func GetUsers(chatId int64) []User {
 	} else if chatId == 0 {
 		db.Where("active = ?", true).Find(&users)
 	} else {
-		db.Where("chat_id = ? AND active = ?", chatId, true).Find(&users)
+		users = GetGroupWithUsers(chatId).Users
 	}
 	return users
 }
