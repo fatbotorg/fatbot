@@ -75,40 +75,6 @@ func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConf
 	return msg
 }
 
-func handleShowUsersCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
-	// BUG: THIS GETS ALL USERS
-	// use chat_id in the argument to get specific group
-	users := users.GetUsers(0)
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	message := ""
-	var lastWorkoutStr string
-	for _, user := range users {
-		if !user.Active {
-			continue
-		}
-		chatId, err := user.GetChatId()
-		if err != nil {
-			log.Warn(err)
-			continue
-		}
-		lastWorkout, err := user.GetLastXWorkout(1, chatId)
-		if err != nil {
-			log.Errorf("Err getting last workout: %s", err)
-			sentry.CaptureException(err)
-			continue
-		}
-		if lastWorkout.CreatedAt.IsZero() {
-			lastWorkoutStr = "no record"
-		} else {
-			hour, min, _ := lastWorkout.CreatedAt.Clock()
-			lastWorkoutStr = fmt.Sprintf("%s, %d:%d", lastWorkout.CreatedAt.Weekday().String(), hour, min)
-		}
-		message = message + fmt.Sprintf("%s [%s]", user.GetName(), lastWorkoutStr) + "\n"
-	}
-	msg.Text = message
-	return msg
-}
-
 func handleWorkoutUpload(update tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	var message string
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
