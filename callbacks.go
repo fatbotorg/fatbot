@@ -93,8 +93,13 @@ func handleAdminMenuBackClick(fatBotUpdate FatBotUpdate, menuState state.State) 
 
 func handleAdminMenuLastStep(fatBotUpdate FatBotUpdate, menuState *state.State) error {
 	var data string
+	var messageId int
 	chatId := fatBotUpdate.Update.FromChat().ID
-	messageId := fatBotUpdate.Update.CallbackQuery.Message.MessageID
+	if fatBotUpdate.Update.CallbackQuery == nil {
+		messageId = fatBotUpdate.Update.Message.MessageID
+	} else {
+		messageId = fatBotUpdate.Update.CallbackQuery.Message.MessageID
+	}
 	msg := tgbotapi.NewMessage(chatId, "")
 	if fatBotUpdate.Update.CallbackQuery == nil {
 		data = fatBotUpdate.Update.Message.Text
