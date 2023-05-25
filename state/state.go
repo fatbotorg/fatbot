@@ -19,7 +19,7 @@ func New(chatId int64) (*State, error) {
 	if state.Value, err = getState(chatId); err != nil {
 		return nil, err
 	}
-	return &state, err
+	return &state, nil
 }
 
 func (state *State) getValueSplit() []string {
