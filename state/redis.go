@@ -52,9 +52,6 @@ func get(key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if s == "" {
-		log.Info("NIL!", "key", key)
-	}
 	return s, nil
 }
 
