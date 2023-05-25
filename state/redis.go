@@ -50,6 +50,7 @@ func get(key string) (string, error) {
 	}
 	s, err := redis.String(c.Do("GET", key))
 	if err != nil {
+		log.Info("ERR", "is", err)
 		return "", err
 	}
 	return s, nil
