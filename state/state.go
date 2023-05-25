@@ -110,7 +110,7 @@ func DeleteStateEntry(chatId int64) error {
 }
 
 func HasState(chatId int64) bool {
-	if _, err := getState(chatId); err != nil {
+	if state, err := getState(chatId); err != nil || state == "" {
 		return false
 	}
 	return true
