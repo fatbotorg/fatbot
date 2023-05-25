@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fatbot/admin"
 	"fatbot/state"
 	"fatbot/users"
 	"fmt"
@@ -212,6 +213,7 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 
 func handleRejoinCallback(fatBotUpdate FatBotUpdate) error {
 	msg := tgbotapi.NewMessage(fatBotUpdate.Update.CallbackQuery.Message.Chat.ID, "")
+	adminMsg := tgbotapi.NewMessage(0, "")
 	if fatBotUpdate.Update.CallbackQuery.Data == "false" {
 		msg.Text = "Declined the request"
 	} else {
@@ -233,6 +235,12 @@ func handleRejoinCallback(fatBotUpdate FatBotUpdate) error {
 			return fmt.Errorf("Issue updating probation %s: %s", user.GetName(), err)
 		}
 		msg.Text = "Ok, approved"
+		if adminUser, err := users.GetUserById(fatBotUpdate.Update.SentFrom().ID); err != nil {
+			return err
+		} else {
+			adminMsg.Text = fmt.Sprintf("Approved by %s", adminUser.GetName())
+			admin.SendMessageToAdmins(fatBotUpdate.Bot, adminMsg)
+		}
 	}
 	_, err := fatBotUpdate.Bot.Send(msg)
 	return err
