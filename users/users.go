@@ -192,10 +192,17 @@ func (user *User) Ban(bot *tgbotapi.BotAPI, chatId int64) (errors []error) {
 		user.GetName(),
 	))
 	userMessage := tgbotapi.NewMessage(user.TelegramUserID, fmt.Sprintf(
-		`%s You were banned from the group after not working out.
-		You can rejoin using /join but only in 48 hours.
-		Note that once approved, you'll have 60 minutes to send 2 workouts.
-		Please don't hit the command more than once or you'll get another 24 hours delay...`,
+		`%s you were banned from the group
+after not working out.
+You can rejoin after 48 hours:
+
+1. Tap this: /join
+2. Wait for approval
+3. Get a link to join the group
+
+*NOTICE!!* After joining the group, you
+will have 60 minutes to send 2 workouts
+(pictures) in the group chat.`,
 		user.GetName(),
 	))
 	messagesToSend = append(messagesToSend, groupMessage)
