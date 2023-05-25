@@ -111,6 +111,7 @@ func DeleteStateEntry(chatId int64) error {
 
 func HasState(chatId int64) bool {
 	if state, err := getState(chatId); err != nil || state == "" {
+		log.Info("No state", "id", chatId)
 		return false
 	}
 	return true
