@@ -16,6 +16,28 @@ type ActionData struct {
 	State  *State
 }
 
+func (menu ShowEventsMenu) PerformAction(params ActionData) error {
+	defer DeleteStateEntry(params.State.ChatId)
+	telegramUserId, err := params.State.getTelegramUserId()
+	if err != nil {
+		return err
+	}
+	if user, err := users.GetUserById(telegramUserId); err != nil {
+		return err
+	} else {
+		var message string
+		msg := tgbotapi.NewMessage(params.Update.FromChat().ID, "")
+		events := user.GetEvents()
+		log.Debug(events)
+		for _, event := range events {
+			message = message + "On: " + event.CreatedAt.String() + " -> event: " + string(event.Event) + "\n"
+		}
+		msg.Text = message
+		params.Bot.Request(msg)
+	}
+	return nil
+}
+
 func (menu RenameMenu) PerformAction(params ActionData) error {
 	defer DeleteStateEntry(params.State.ChatId)
 	state := params.State

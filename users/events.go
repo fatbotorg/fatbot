@@ -29,6 +29,11 @@ func (user *User) registerEvent(kind eventType) error {
 	return db.Create(&event).Error
 }
 
+func (user *User) GetEvents() (events []Event) {
+	db.GetDB().Where("user_id = ?", user.ID).Find(&events)
+	return
+}
+
 func (user *User) RegisterBanEvent() error {
 	return user.registerEvent(BanEventType)
 }

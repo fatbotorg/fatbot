@@ -51,6 +51,8 @@ func (state *State) GetStateMenu() (menu Menu, err error) {
 		menu = &DeleteLastWorkoutMenu{}
 	case "showusers":
 		menu = &ShowUsersMenu{}
+	case "showevents":
+		menu = &ShowEventsMenu{}
 	default:
 		return menu, fmt.Errorf("unknown menu: %s", rawMenu)
 	}

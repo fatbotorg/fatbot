@@ -66,6 +66,9 @@ func CreateAdminKeyboard() tgbotapi.InlineKeyboardMarkup {
 			tgbotapi.NewInlineKeyboardButtonData("Delete Workout", "deletelastworkout"),
 			tgbotapi.NewInlineKeyboardButtonData("Show Users", "showusers"),
 		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Show Events", "showevents"),
+		),
 	)
 	return adminKeyboard
 }
