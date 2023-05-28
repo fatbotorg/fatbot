@@ -28,7 +28,7 @@ func ScanUsers(bot *tgbotapi.BotAPI) error {
 				sentry.CaptureException(err)
 			}
 			diffHours := int(totalDays*24 - time.Now().Sub(lastWorkout.CreatedAt).Hours())
-			if diffHours == 23 {
+			if diffHours == 24 {
 				msg := tgbotapi.NewMessage(group.ChatID, fmt.Sprintf("[%s](tg://user?id=%d) you have 24 hours left",
 					user.GetName(),
 					user.TelegramUserID))
