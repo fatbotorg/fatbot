@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fatbot/admin"
 	"fatbot/reports"
+	"fatbot/state"
 	"fatbot/users"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -59,7 +59,7 @@ func handleAdminCommandUpdate(fatBotUpdate FatBotUpdate) error {
 	}
 	switch update.Message.Command() {
 	case "admin":
-		msg = admin.HandleAdminCommand(update)
+		msg = state.HandleAdminCommand(update)
 	case "admin_send_report":
 		reports.CreateChart(bot)
 	default:

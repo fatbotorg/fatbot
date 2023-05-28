@@ -68,6 +68,7 @@ func CreateAdminKeyboard() tgbotapi.InlineKeyboardMarkup {
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Show Events", "showevents"),
+			tgbotapi.NewInlineKeyboardButtonData("Rejoin User", "rejoinuser"),
 		),
 	)
 	return adminKeyboard

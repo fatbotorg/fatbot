@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/charmbracelet/log"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type State struct {
@@ -53,6 +56,8 @@ func (state *State) GetStateMenu() (menu Menu, err error) {
 		menu = &ShowUsersMenu{}
 	case "showevents":
 		menu = &ShowEventsMenu{}
+	case "rejoinuser":
+		menu = &RejoinUserMenu{}
 	default:
 		return menu, fmt.Errorf("unknown menu: %s", rawMenu)
 	}
@@ -137,4 +142,14 @@ func StepBack(chatId int64) (string, error) {
 		return "", err
 	}
 	return stateSlice[len(stateSlice)-1], nil
+}
+
+func HandleAdminCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
+	if err := DeleteStateEntry(update.FromChat().ID); err != nil {
+		log.Errorf("Error clearing state: %s", err)
+	}
+	msg := tgbotapi.NewMessage(update.FromChat().ID, "Choose an option")
+	adminKeyboard := CreateAdminKeyboard()
+	msg.ReplyMarkup = adminKeyboard
+	return msg
 }

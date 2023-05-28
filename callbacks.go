@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fatbot/admin"
 	"fatbot/state"
 	"fatbot/users"
 	"fmt"
@@ -213,37 +212,21 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 
 func handleRejoinCallback(fatBotUpdate FatBotUpdate) error {
 	msg := tgbotapi.NewMessage(fatBotUpdate.Update.CallbackQuery.Message.Chat.ID, "")
-	adminMsg := tgbotapi.NewMessage(0, "")
 	if fatBotUpdate.Update.CallbackQuery.Data == "false" {
 		msg.Text = "Declined the request"
+		fatBotUpdate.Bot.Send(msg)
 	} else {
 		userId, _ := strconv.ParseInt(fatBotUpdate.Update.CallbackData(), 10, 64)
 		user, err := users.GetUser(uint(userId))
 		if err != nil {
 			return err
 		}
-		if err := user.UnBan(fatBotUpdate.Bot); err != nil {
-			return fmt.Errorf("Issue with unbanning %s: %s", user.GetName(), err)
-		}
-		if err := user.InviteExistingUser(fatBotUpdate.Bot); err != nil {
-			return fmt.Errorf("Issue with inviting %s: %s", user.GetName(), err)
-		}
-		if err := user.UpdateActive(true); err != nil {
-			return fmt.Errorf("Issue updating active %s: %s", user.GetName(), err)
-		}
-		if err := user.UpdateOnProbation(true); err != nil {
-			return fmt.Errorf("Issue updating probation %s: %s", user.GetName(), err)
-		}
-		msg.Text = "Ok, approved"
-		if adminUser, err := users.GetUserById(fatBotUpdate.Update.SentFrom().ID); err != nil {
+		err = user.Rejoin(fatBotUpdate.Update, fatBotUpdate.Bot)
+		if err != nil {
 			return err
-		} else {
-			adminMsg.Text = fmt.Sprintf("Approved by %s", adminUser.GetName())
-			admin.SendMessageToAdmins(fatBotUpdate.Bot, adminMsg)
 		}
 	}
-	_, err := fatBotUpdate.Bot.Send(msg)
-	return err
+	return nil
 }
 
 func handleNewJoinCallback(fatBotUpdate FatBotUpdate) error {
