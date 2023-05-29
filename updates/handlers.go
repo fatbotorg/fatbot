@@ -42,6 +42,35 @@ func (update CallbackUpdate) handle() error {
 	return nil
 }
 
+func (update MediaUpdate) handle() error {
+	if update.Update.FromChat().IsPrivate() {
+		return nil
+	}
+	msg, err := handleWorkoutUpload(update.Update)
+	if err != nil {
+		return fmt.Errorf("Error handling last workout: %s", err)
+	}
+	if msg.Text == "" {
+		return nil
+	}
+	if _, err := update.Bot.Send(msg); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (update PrivateUpdate) handle() error {
+	if err := handleStatefulCallback(update.FatBotUpdate); err == nil {
+		return err
+	}
+	msg := tgbotapi.NewMessage(update.Update.FromChat().ID, "")
+	msg.Text = "Try /help"
+	if _, err := update.Bot.Send(msg); err != nil {
+		return err
+	}
+	return nil
+}
+
 func HandleUpdates(fatBotUpdate FatBotUpdate) error {
 	update := fatBotUpdate.Update
 	if update.SentFrom() == nil {
@@ -67,10 +96,6 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 	}
 	if isAdminCommand(update.Message.Command()) {
 		return handleAdminCommandUpdate(fatBotUpdate)
-	}
-	if !update.FromChat().IsPrivate() {
-		// NOTE: not allowing non-private commands ATM
-		return nil
 	}
 	var err error
 	var msg tgbotapi.MessageConfig
@@ -280,38 +305,6 @@ func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, e
 		}
 	}
 	return
-}
-
-func handleNonCommandUpdates(fatBotUpdate FatBotUpdate) error {
-	update := fatBotUpdate.Update
-	bot := fatBotUpdate.Bot
-	if len(update.Message.Photo) > 0 || update.Message.Video != nil {
-		if update.FromChat().IsPrivate() {
-			return nil
-		}
-		msg, err := handleWorkoutUpload(update)
-		if err != nil {
-			return fmt.Errorf("Error handling last workout: %s", err)
-		}
-		if msg.Text == "" {
-			return nil
-		}
-		if _, err := bot.Send(msg); err != nil {
-			return err
-		}
-	} else if update.FromChat().IsPrivate() {
-		if err := handleStatefulCallback(fatBotUpdate); err == nil {
-			return err
-		}
-		msg := tgbotapi.NewMessage(update.FromChat().ID, "")
-		// TODO:
-		// Think about doing this on an Inline message when tagged
-		msg.Text = "Try /help"
-		if _, err := bot.Send(msg); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func handleAdminCommandUpdate(fatBotUpdate FatBotUpdate) error {

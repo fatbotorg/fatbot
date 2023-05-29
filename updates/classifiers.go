@@ -13,6 +13,15 @@ func (fatBotUpdate FatBotUpdate) isCommandUpdate() bool {
 	return fatBotUpdate.Update.Message != nil && fatBotUpdate.Update.Message.IsCommand()
 }
 
+func (fatBotUpdate FatBotUpdate) isMediaUpdate() bool {
+	update := fatBotUpdate.Update
+	return len(update.Message.Photo) > 0 || update.Message.Video != nil
+}
+
+func (fatBotUpdate FatBotUpdate) isPrivateUpdate() bool {
+	return fatBotUpdate.Update.FromChat().IsPrivate()
+}
+
 func (fatBotUpdate FatBotUpdate) isCallbackUpdate() bool {
 	if fatBotUpdate.Update.Message == nil {
 		if fatBotUpdate.Update.CallbackQuery != nil {

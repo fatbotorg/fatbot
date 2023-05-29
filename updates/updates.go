@@ -20,7 +20,6 @@ type UpdateType interface {
 type UnknownGroupUpdate struct {
 	FatBotUpdate
 }
-
 type BlackListUpdate struct {
 	FatBotUpdate
 }
@@ -30,10 +29,10 @@ type CommandUpdate struct {
 type CallbackUpdate struct {
 	FatBotUpdate
 }
-type VideoUpdate struct {
+type MediaUpdate struct {
 	FatBotUpdate
 }
-type PhotoUpdate struct {
+type PrivateUpdate struct {
 	FatBotUpdate
 }
 
@@ -47,6 +46,12 @@ func (fatBotUpdate *FatBotUpdate) classify() error {
 		fatBotUpdate.UpdateType = CallbackUpdate{}
 	case fatBotUpdate.isCommandUpdate():
 		fatBotUpdate.UpdateType = CommandUpdate{}
+	case fatBotUpdate.isCommandUpdate():
+		fatBotUpdate.UpdateType = CommandUpdate{}
+	case fatBotUpdate.isMediaUpdate():
+		fatBotUpdate.UpdateType = MediaUpdate{}
+	case fatBotUpdate.isPrivateUpdate():
+		fatBotUpdate.UpdateType = PrivateUpdate{}
 	default:
 		err := fmt.Errorf("cannot classify update")
 		sentry.CaptureException(err)
