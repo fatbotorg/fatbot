@@ -26,6 +26,11 @@ func GetGroupWithUsers(chatId int64) (group Group) {
 	return
 }
 
+func GetGroupWithInactiveUsers(chatId int64) (group Group) {
+	db.GetDB().Preload("Users", "active = ?", false).Where("chat_id = ?", chatId).Find(&group)
+	return
+}
+
 func GetGroup(chatId int64) (group Group, err error) {
 	err = db.GetDB().Where("chat_id = ?", chatId).Find(&group).Error
 	return

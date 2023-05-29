@@ -16,6 +16,23 @@ type ActionData struct {
 	State  *State
 }
 
+func (menu RejoinUserMenu) PerformAction(params ActionData) error {
+	defer DeleteStateEntry(params.State.ChatId)
+	telegramUserId, err := params.State.getTelegramUserId()
+	if err != nil {
+		return err
+	}
+	if user, err := users.GetUserById(telegramUserId); err != nil {
+		return err
+	} else {
+		err := user.Rejoin(params.Update, params.Bot)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (menu ShowEventsMenu) PerformAction(params ActionData) error {
 	defer DeleteStateEntry(params.State.ChatId)
 	telegramUserId, err := params.State.getTelegramUserId()

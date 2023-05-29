@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/charmbracelet/log"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type State struct {
@@ -53,6 +56,8 @@ func (state *State) GetStateMenu() (menu Menu, err error) {
 		menu = &ShowUsersMenu{}
 	case "showevents":
 		menu = &ShowEventsMenu{}
+	case "rejoinuser":
+		menu = &RejoinUserMenu{}
 	default:
 		return menu, fmt.Errorf("unknown menu: %s", rawMenu)
 	}
@@ -61,7 +66,8 @@ func (state *State) GetStateMenu() (menu Menu, err error) {
 
 func (state *State) getTelegramUserId() (userId int64, err error) {
 	for stepIndex, step := range state.Menu.CreateMenu().Steps {
-		if step.Result == TelegramUserIdStepResult {
+		switch step.Result {
+		case TelegramUserIdStepResult, TelegramInactiveUserIdStepResult:
 			stateSlice := state.getValueSplit()
 			userId, err := strconv.ParseInt(stateSlice[stepIndex+1], 10, 64)
 			if err != nil {
@@ -70,7 +76,7 @@ func (state *State) getTelegramUserId() (userId int64, err error) {
 			return userId, nil
 		}
 	}
-	return 0, fmt.Errorf("Could not find telegramuserid step")
+	return 0, fmt.Errorf("could not find telegramuserid step")
 }
 
 func (state *State) getGroupChatId() (userId int64, err error) {
@@ -84,7 +90,7 @@ func (state *State) getGroupChatId() (userId int64, err error) {
 			return groupId, nil
 		}
 	}
-	return 0, fmt.Errorf("Could not find telegramuserid step")
+	return 0, fmt.Errorf("could not find groupchatid step")
 }
 
 func (state *State) ExtractData() (data int64, err error) {
@@ -137,4 +143,14 @@ func StepBack(chatId int64) (string, error) {
 		return "", err
 	}
 	return stateSlice[len(stateSlice)-1], nil
+}
+
+func HandleAdminCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
+	if err := DeleteStateEntry(update.FromChat().ID); err != nil {
+		log.Errorf("Error clearing state: %s", err)
+	}
+	msg := tgbotapi.NewMessage(update.FromChat().ID, "Choose an option")
+	adminKeyboard := CreateAdminKeyboard()
+	msg.ReplyMarkup = adminKeyboard
+	return msg
 }

@@ -1,6 +1,7 @@
 package state
 
 import (
+	"github.com/charmbracelet/log"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -13,13 +14,14 @@ type stepKind string
 type stepResult string
 
 const (
-	Delimiter                           = ":"
-	InputStepKind            stepKind   = "input"
-	KeyboardStepKind         stepKind   = "keyboard"
-	GroupIdStepResult        stepResult = "groupId"
-	TelegramUserIdStepResult stepResult = "telegramUserId"
-	NewNameStepResult        stepResult = "newName"
-	PushDaysStepResult       stepResult = "pushDays"
+	Delimiter                                   = ":"
+	InputStepKind                    stepKind   = "input"
+	KeyboardStepKind                 stepKind   = "keyboard"
+	GroupIdStepResult                stepResult = "groupId"
+	TelegramUserIdStepResult         stepResult = "telegramUserId"
+	TelegramInactiveUserIdStepResult stepResult = "telegramInactiveUserId"
+	NewNameStepResult                stepResult = "newName"
+	PushDaysStepResult               stepResult = "pushDays"
 )
 
 type Step struct {
@@ -45,10 +47,35 @@ type ShowUsersMenu struct {
 type ShowEventsMenu struct {
 	MenuBase
 }
+type RejoinUserMenu struct {
+	MenuBase
+}
 
 type Menu interface {
 	CreateMenu() MenuBase
 	PerformAction(ActionData) error
+}
+
+func (menu RejoinUserMenu) CreateMenu() MenuBase {
+	chooseGroup := Step{
+		Name:     "choosegroup",
+		Kind:     KeyboardStepKind,
+		Message:  "Choose Group",
+		Keyboard: createGroupsKeyboard(),
+		Result:   GroupIdStepResult,
+	}
+	chooseUser := Step{
+		Name:     "chooseuser",
+		Kind:     KeyboardStepKind,
+		Message:  "Choose User",
+		Keyboard: tgbotapi.InlineKeyboardMarkup{},
+		Result:   TelegramInactiveUserIdStepResult,
+	}
+	themenu := MenuBase{
+		Name:  "rejoinuser",
+		Steps: []Step{chooseGroup, chooseUser},
+	}
+	return themenu
 }
 
 func (menu ShowEventsMenu) CreateMenu() MenuBase {
@@ -170,6 +197,10 @@ func (menu ShowUsersMenu) CreateMenu() MenuBase {
 func (step *Step) PopulateKeyboard(data int64) {
 	switch step.Result {
 	case TelegramUserIdStepResult:
-		step.Keyboard = createUsersKeyboard(data)
+		step.Keyboard = createUsersKeyboard(data, true)
+	case TelegramInactiveUserIdStepResult:
+		step.Keyboard = createUsersKeyboard(data, false)
+	default:
+		log.Error("unknown step result for keyboard population")
 	}
 }

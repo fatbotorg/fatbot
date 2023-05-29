@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/log"
+	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -19,6 +20,7 @@ func handleUpdates(fatBotUpdate FatBotUpdate) error {
 		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID,
 			fmt.Sprintf("Group %s not activated, send this to the admin: `%d`", update.Message.Chat.Title, update.FromChat().ID),
 		))
+		sentry.CaptureMessage(fmt.Sprintf("non activated group: %d, title: %s", update.FromChat().ID, update.FromChat().Title))
 		return nil
 	}
 	if users.BlackListed(update.SentFrom().ID) {

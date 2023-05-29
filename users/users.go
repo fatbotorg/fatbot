@@ -66,6 +66,19 @@ func GetUsers(chatId int64) []User {
 	return users
 }
 
+func GetInactiveUsers(chatId int64) []User {
+	db := db.GetDB()
+	var users []User
+	if chatId == -1 {
+		db.Find(&users)
+	} else if chatId == 0 {
+		db.Where("active = ?", false).Find(&users)
+	} else {
+		users = GetGroupWithInactiveUsers(chatId).Users
+	}
+	return users
+}
+
 func GetAdminUsers() []User {
 	db := db.GetDB()
 	var users []User
@@ -372,4 +385,33 @@ func (user User) GetLastBanDate() (time.Time, error) {
 		}
 	}
 	return banEvents[len(banEvents)-1].CreatedAt, nil
+}
+
+func (user User) Rejoin(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
+	msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "")
+	adminMsg := tgbotapi.NewMessage(0, "")
+	if err := user.UnBan(bot); err != nil {
+		return fmt.Errorf("Issue with unbanning %s: %s", user.GetName(), err)
+	}
+	if err := user.InviteExistingUser(bot); err != nil {
+		return fmt.Errorf("Issue with inviting %s: %s", user.GetName(), err)
+	}
+	if err := user.UpdateActive(true); err != nil {
+		return fmt.Errorf("Issue updating active %s: %s", user.GetName(), err)
+	}
+	if err := user.UpdateOnProbation(true); err != nil {
+		return fmt.Errorf("Issue updating probation %s: %s", user.GetName(), err)
+	}
+	msg.Text = "Ok, approved"
+	if adminUser, err := GetUserById(update.SentFrom().ID); err != nil {
+		return err
+	} else {
+		adminMsg.Text = fmt.Sprintf("Approved by %s", adminUser.GetName())
+		SendMessageToAdmins(bot, adminMsg)
+	}
+	_, err := bot.Send(msg)
+	if err != nil {
+		return err
+	}
+	return nil
 }
