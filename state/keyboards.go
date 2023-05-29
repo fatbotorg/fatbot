@@ -33,11 +33,17 @@ func createGroupsKeyboard() tgbotapi.InlineKeyboardMarkup {
 	return keyboard
 }
 
-func createUsersKeyboard(chatId int64) tgbotapi.InlineKeyboardMarkup {
-	users := users.GetUsers(chatId)
+func createUsersKeyboard(chatId int64, active bool) tgbotapi.InlineKeyboardMarkup {
+	var usersList []users.User
+	if active {
+		usersList = users.GetUsers(chatId)
+	} else {
+		usersList = users.GetInactiveUsers(chatId)
+
+	}
 	row := []tgbotapi.InlineKeyboardButton{}
 	rows := [][]tgbotapi.InlineKeyboardButton{}
-	for _, user := range users {
+	for _, user := range usersList {
 		userLabel := fmt.Sprintf("%s", user.GetName())
 		row = append(row, tgbotapi.NewInlineKeyboardButtonData(userLabel, fmt.Sprint(user.TelegramUserID)))
 		if len(row) == 3 {

@@ -66,6 +66,19 @@ func GetUsers(chatId int64) []User {
 	return users
 }
 
+func GetInactiveUsers(chatId int64) []User {
+	db := db.GetDB()
+	var users []User
+	if chatId == -1 {
+		db.Find(&users)
+	} else if chatId == 0 {
+		db.Where("active = ?", false).Find(&users)
+	} else {
+		users = GetGroupWithInactiveUsers(chatId).Users
+	}
+	return users
+}
+
 func GetAdminUsers() []User {
 	db := db.GetDB()
 	var users []User

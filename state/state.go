@@ -66,7 +66,8 @@ func (state *State) GetStateMenu() (menu Menu, err error) {
 
 func (state *State) getTelegramUserId() (userId int64, err error) {
 	for stepIndex, step := range state.Menu.CreateMenu().Steps {
-		if step.Result == TelegramUserIdStepResult {
+		switch step.Result {
+		case TelegramUserIdStepResult, TelegramInactiveUserIdStepResult:
 			stateSlice := state.getValueSplit()
 			userId, err := strconv.ParseInt(stateSlice[stepIndex+1], 10, 64)
 			if err != nil {
@@ -75,7 +76,7 @@ func (state *State) getTelegramUserId() (userId int64, err error) {
 			return userId, nil
 		}
 	}
-	return 0, fmt.Errorf("Could not find telegramuserid step")
+	return 0, fmt.Errorf("could not find telegramuserid step")
 }
 
 func (state *State) getGroupChatId() (userId int64, err error) {
@@ -89,7 +90,7 @@ func (state *State) getGroupChatId() (userId int64, err error) {
 			return groupId, nil
 		}
 	}
-	return 0, fmt.Errorf("Could not find telegramuserid step")
+	return 0, fmt.Errorf("could not find groupchatid step")
 }
 
 func (state *State) ExtractData() (data int64, err error) {
