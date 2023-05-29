@@ -45,9 +45,6 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 		return nil
 	}
 	menuState.Menu = menu
-	// if menu == nil {
-	// 	return fmt.Errorf("menu is nil!")
-	// }
 	value := menuState.Value + state.Delimiter + data
 	if menuState.IsLastStep() {
 		return handleAdminMenuLastStep(fatBotUpdate, menuState)
