@@ -8,9 +8,8 @@ import (
 )
 
 type FatBotUpdate struct {
-	Bot        *tgbotapi.BotAPI
-	Update     tgbotapi.Update
-	UpdateType UpdateType
+	Bot    *tgbotapi.BotAPI
+	Update tgbotapi.Update
 }
 
 type UpdateType interface {
@@ -36,28 +35,27 @@ type PrivateUpdate struct {
 	FatBotUpdate
 }
 
-func (fatBotUpdate *FatBotUpdate) classify() error {
+func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 	switch true {
 	case fatBotUpdate.isUnknownGroupUpdate():
-		fatBotUpdate.UpdateType = UnknownGroupUpdate{}
+		return UnknownGroupUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isBlacklistUpdate():
-		fatBotUpdate.UpdateType = BlackListUpdate{}
+		return BlackListUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isCallbackUpdate():
-		fatBotUpdate.UpdateType = CallbackUpdate{}
+		return CallbackUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isCommandUpdate():
-		fatBotUpdate.UpdateType = CommandUpdate{}
+		return CommandUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isCommandUpdate():
-		fatBotUpdate.UpdateType = CommandUpdate{}
+		return CommandUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isMediaUpdate():
-		fatBotUpdate.UpdateType = MediaUpdate{}
+		return MediaUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isPrivateUpdate():
-		fatBotUpdate.UpdateType = PrivateUpdate{}
+		return PrivateUpdate{FatBotUpdate: fatBotUpdate}, nil
 	default:
 		err := fmt.Errorf("cannot classify update")
 		sentry.CaptureException(err)
-		return err
+		return nil, err
 	}
-	return nil
 }
 
 func HandleUpdates(fatBotUpdate FatBotUpdate) error {
@@ -67,12 +65,13 @@ func HandleUpdates(fatBotUpdate FatBotUpdate) error {
 		sentry.CaptureException(err)
 		return err
 	}
-	if err := fatBotUpdate.classify(); err != nil {
+	if updateType, err := fatBotUpdate.classify(); err != nil {
 		return err
-	}
-	err := fatBotUpdate.UpdateType.handle()
-	if err != nil {
-		return err
+	} else {
+		err := updateType.handle()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
