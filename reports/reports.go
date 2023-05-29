@@ -45,7 +45,7 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 				leader.User.GetName(),
 				leader.Workouts,
 			)
-			if err := leader.User.RegisterWeeklyLeaderEvent(); err != nil {
+			if err := leader.User.RegisterWeeklyLeaderEvent(group.ID); err != nil {
 				log.Errorf("Error while registering weekly leader event: %s", err)
 				sentry.CaptureException(err)
 			}

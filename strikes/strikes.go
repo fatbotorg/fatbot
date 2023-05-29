@@ -34,7 +34,7 @@ func ScanUsers(bot *tgbotapi.BotAPI) error {
 					user.TelegramUserID))
 				msg.ParseMode = "MarkdownV2"
 				bot.Send(msg)
-				if err := user.RegisterLastDayNotificationEvent(); err != nil {
+				if err := user.RegisterLastDayNotificationEvent(group.ID); err != nil {
 					log.Errorf("Error while registering ban event: %s", err)
 					sentry.CaptureException(err)
 				}
