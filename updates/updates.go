@@ -20,9 +20,7 @@ type UpdateType interface {
 type UnknownGroupUpdate struct {
 	FatBotUpdate
 }
-type PrivateUpdate struct {
-	FatBotUpdate
-}
+
 type BlackListUpdate struct {
 	FatBotUpdate
 }
