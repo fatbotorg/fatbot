@@ -2,7 +2,6 @@ package schedule
 
 import (
 	"fatbot/reports"
-	"fatbot/strikes"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -16,7 +15,7 @@ func Init(bot *tgbotapi.BotAPI) {
 		log.Fatalf("Bad timezone: %s", err)
 	}
 	scheduler := gocron.NewScheduler(loc)
-	if _, err := scheduler.Every(1).Hours().Do(func() { strikes.ScanUsers(bot) }); err != nil {
+	if _, err := scheduler.Every(1).Hours().Do(func() { scanUsers(bot) }); err != nil {
 		log.Errorf("Strikes scheduler err: %s", err)
 	}
 	if _, err := scheduler.Every(1).Day().Saturday().At("18:00").Do(func() { reports.CreateChart(bot) }); err != nil {
