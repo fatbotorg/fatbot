@@ -59,3 +59,20 @@ func (fatBotUpdate *FatBotUpdate) classify() error {
 	}
 	return nil
 }
+
+func HandleUpdates(fatBotUpdate FatBotUpdate) error {
+	update := fatBotUpdate.Update
+	if update.SentFrom() == nil {
+		err := fmt.Errorf("can't handle update with no SentFrom details...")
+		sentry.CaptureException(err)
+		return err
+	}
+	if err := fatBotUpdate.classify(); err != nil {
+		return err
+	}
+	err := fatBotUpdate.UpdateType.handle()
+	if err != nil {
+		return err
+	}
+	return nil
+}
