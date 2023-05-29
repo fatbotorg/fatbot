@@ -2,6 +2,7 @@ package main
 
 import (
 	"fatbot/schedule"
+	"fatbot/updates"
 	"fatbot/users"
 	"os"
 	"time"
@@ -11,15 +12,10 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-type FatBotUpdate struct {
-	Bot    *tgbotapi.BotAPI
-	Update tgbotapi.Update
-}
-
 func main() {
 	var bot *tgbotapi.BotAPI
 	var err error
-	var updates tgbotapi.UpdatesChannel
+	var updatesChannel tgbotapi.UpdatesChannel
 	if os.Getenv("ENVIRONMENT") != "production" {
 		log.SetLevel(log.DebugLevel)
 	} else {
@@ -43,12 +39,12 @@ func main() {
 		log.Infof("Authorized on account %s", bot.Self.UserName)
 		u := tgbotapi.NewUpdate(0)
 		u.Timeout = 60
-		updates = bot.GetUpdatesChan(u)
+		updatesChannel = bot.GetUpdatesChan(u)
 	}
-	fatBotUpdate := FatBotUpdate{Bot: bot}
-	for update := range updates {
+	fatBotUpdate := updates.FatBotUpdate{Bot: bot}
+	for update := range updatesChannel {
 		fatBotUpdate.Update = update
-		if err := handleUpdates(fatBotUpdate); err != nil {
+		if err := updates.HandleUpdates(fatBotUpdate); err != nil {
 			log.Error(err)
 			sentry.CaptureException(err)
 		}
