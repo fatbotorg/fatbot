@@ -63,12 +63,18 @@ func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConf
 	} else {
 		currentTime := time.Now()
 		diff := currentTime.Sub(lastWorkout.CreatedAt)
-		days := int(5 - diff.Hours()/24)
-		msg.Text = fmt.Sprintf("%s, your last workout was on %s\nYou have %d days and %d hours left.",
+		timeLeftMessage := ""
+		if diff.Hours() < 120 {
+			days := int(5 - diff.Hours()/24)
+			hours := 120-int(diff.Hours())-24*days-1
+			timeLeftMessage = fmt.Sprintf("You have %d days and %d hours left.", days, hours)
+		} else {
+			timeLeftMessage = "You are already out.."
+		}
+		msg.Text = fmt.Sprintf("%s, your last workout was on %s.\n %s",
 			user.GetName(),
 			lastWorkout.CreatedAt.Weekday(),
-			days,
-			120-int(diff.Hours())-24*days-1,
+	       		timeLeftMessage
 		)
 	}
 	return msg
