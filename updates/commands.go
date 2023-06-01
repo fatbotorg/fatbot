@@ -1,6 +1,8 @@
-package main
+package updates
 
 import (
+	"fatbot/schedule"
+	"fatbot/state"
 	"fatbot/users"
 	"fmt"
 	"time"
@@ -9,6 +11,38 @@ import (
 	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
+
+func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
+	update := fatBotUpdate.Update
+	bot := fatBotUpdate.Bot
+	if !update.FromChat().IsPrivate() {
+		return nil
+	}
+	if isAdminCommand(update.Message.Command()) {
+		return handleAdminCommandUpdate(fatBotUpdate)
+	}
+	var err error
+	var msg tgbotapi.MessageConfig
+	msg.Text = "Unknown command"
+	switch update.Message.Command() {
+	case "join":
+		msg, err = handleJoinCommand(fatBotUpdate)
+		if err != nil {
+			return err
+		}
+	case "status":
+		msg = handleStatusCommand(update)
+	case "help":
+		msg.ChatID = update.FromChat().ID
+		msg.Text = "/status\n/join"
+	default:
+		msg.ChatID = update.FromChat().ID
+	}
+	if _, err := bot.Send(msg); err != nil {
+		return err
+	}
+	return nil
+}
 
 func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	var user users.User
@@ -74,85 +108,6 @@ func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConf
 	return msg
 }
 
-func handleWorkoutUpload(update tgbotapi.Update) (tgbotapi.MessageConfig, error) {
-	var message string
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	user, err := users.GetUserById(update.SentFrom().ID)
-	if err != nil {
-		return msg, err
-	}
-	chatId := update.FromChat().ID
-	if !user.IsInGroup(chatId) {
-		if err := user.RegisterInGroup(chatId); err != nil {
-			log.Errorf("Error registering user %s in new group %d", user.GetName(), chatId)
-			sentry.CaptureException(err)
-		}
-	}
-	lastWorkout, err := user.GetLastXWorkout(1, update.FromChat().ID)
-	if err != nil {
-		log.Warn(err)
-
-	}
-	if !lastWorkout.IsOlderThan(30) && !user.OnProbation {
-		log.Warn("Workout not older than 30 minutes: %s", user.GetName())
-		return msg, nil
-	}
-	if err := user.UpdateWorkout(update); err != nil {
-		return msg, err
-	}
-	if lastWorkout.CreatedAt.IsZero() {
-		message = fmt.Sprintf("%s nice work!\nThis is your first workout",
-			user.GetName(),
-		)
-	} else {
-		hours := time.Now().Sub(lastWorkout.CreatedAt).Hours()
-		timeAgo := ""
-		if int(hours/24) == 0 {
-			timeAgo = fmt.Sprintf("%d hours ago", int(hours))
-		} else {
-			days := int(hours / 24)
-			timeAgo = fmt.Sprintf("%d days and %d hours ago", days, int(hours)-days*24)
-		}
-		message = fmt.Sprintf("%s %s\nYour last workout was on %s (%s)",
-			user.GetName(),
-			users.GetRandomWorkoutMessage(),
-			lastWorkout.CreatedAt.Weekday(),
-			timeAgo,
-		)
-	}
-
-	msg.Text = message
-	msg.ReplyToMessageID = update.Message.MessageID
-	return msg, nil
-}
-
-func createNewUserGroupsKeyboard(userId int64, name, username string) tgbotapi.InlineKeyboardMarkup {
-	groups := users.GetGroupsWithUsers()
-	row := []tgbotapi.InlineKeyboardButton{}
-	rows := [][]tgbotapi.InlineKeyboardButton{}
-	for _, group := range groups {
-		groupLabel := fmt.Sprintf("%s", group.Title)
-		row = append(row, tgbotapi.NewInlineKeyboardButtonData(
-			groupLabel,
-			fmt.Sprintf("%d %d %s %s", group.ChatID, userId, name, username),
-		))
-		if len(row) == 3 {
-			rows = append(rows, row)
-			row = []tgbotapi.InlineKeyboardButton{}
-		}
-	}
-	if len(row) > 0 && len(row) < 3 {
-		rows = append(rows, row)
-	}
-	blockRow := []tgbotapi.InlineKeyboardButton{}
-	blockButton := tgbotapi.NewInlineKeyboardButtonData("Block", fmt.Sprintf("%s %d", "block", userId))
-	blockRow = append(blockRow, blockButton)
-	rows = append(rows, blockRow)
-
-	var keyboard = tgbotapi.NewInlineKeyboardMarkup(rows...)
-	return keyboard
-}
-
 func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, err error) {
 	msg.ChatID = fatBotUpdate.Update.FromChat().ID
 	if user, err := users.GetUserById(fatBotUpdate.Update.SentFrom().ID); err != nil {
@@ -195,4 +150,34 @@ func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, e
 		}
 	}
 	return
+}
+
+func handleAdminCommandUpdate(fatBotUpdate FatBotUpdate) error {
+	var msg tgbotapi.MessageConfig
+	update := fatBotUpdate.Update
+	bot := fatBotUpdate.Bot
+	msg.ChatID = update.FromChat().ID
+
+	user, err := users.GetUserById(update.Message.From.ID)
+	if err != nil {
+		return err
+	}
+	if !user.IsAdmin {
+		return nil
+	}
+	switch update.Message.Command() {
+	case "admin":
+		msg = state.HandleAdminCommand(update)
+	case "admin_send_report":
+		schedule.CreateChart(bot)
+	default:
+		msg.Text = "Unknown command"
+	}
+	if msg.Text == "" {
+		return nil
+	}
+	if _, err := bot.Send(msg); err != nil {
+		return err
+	}
+	return nil
 }

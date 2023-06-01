@@ -1,4 +1,4 @@
-package reports
+package schedule
 
 import (
 	"fatbot/users"

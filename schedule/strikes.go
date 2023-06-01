@@ -1,4 +1,4 @@
-package strikes
+package schedule
 
 import (
 	"fatbot/users"
@@ -10,7 +10,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func ScanUsers(bot *tgbotapi.BotAPI) error {
+func scanUsers(bot *tgbotapi.BotAPI) error {
 	groups := users.GetGroupsWithUsers()
 	const totalDays = 5.0
 	for _, group := range groups {
