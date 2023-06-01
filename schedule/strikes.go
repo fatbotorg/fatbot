@@ -38,7 +38,7 @@ func scanUsers(bot *tgbotapi.BotAPI) error {
 					log.Errorf("Error while registering ban event: %s", err)
 					sentry.CaptureException(err)
 				}
-			} else if diffHours <= 0 {
+			} else if diffHours < 0 {
 				if err := user.Ban(bot, group.ChatID); err != nil {
 					log.Errorf("Issue banning %s from %d: %s", user.GetName(), group.ChatID, err)
 					continue
