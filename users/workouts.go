@@ -20,6 +20,25 @@ type Workout struct {
 	Flagged        bool
 }
 
+func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
+	db := db.GetDB()
+	minusDaysSinceCycleStart := int(time.Now().Weekday()) + 1
+	lastCycleStartDate := time.Now().AddDate(0, 0, int(minusDaysSinceCycleStart))
+	log.Debug(minusDaysSinceCycleStart)
+	group, err := GetGroup(chatId)
+	if err != nil {
+		return err
+	}
+	if err := db.Model(&User{}).
+		Preload("Workouts", "created_at > ? AND group_id = ? AND flagged = ?", lastCycleStartDate, group.ID, false).
+		Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
+	}
+	for _, wo := range user.Workouts {
+		log.Debug(wo.CreatedAt.Date())
+	}
+	return nil
+}
+
 func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
 	db := db.GetDB()
 	lastWeek := time.Now().Add(time.Duration(-7) * time.Hour * 24)

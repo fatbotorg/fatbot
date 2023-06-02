@@ -184,7 +184,6 @@ func (user *User) Ban(bot *tgbotapi.BotAPI, chatId int64) (errors []error) {
 	if chatMemeber, err := bot.GetChatMember(getChatMemberConfig); err != nil {
 		errors = append(errors, err)
 	} else if chatMemeber.WasKicked() {
-		log.Debug("Func Ban", "wasKicked", chatMemeber.WasKicked())
 		return nil
 	}
 	_, err := bot.Request(banChatMemberConfig)

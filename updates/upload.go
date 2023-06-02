@@ -73,11 +73,16 @@ func handleWorkoutUpload(update tgbotapi.Update) (tgbotapi.MessageConfig, error)
 			days := int(hours / 24)
 			timeAgo = fmt.Sprintf("%d days and %d hours ago", days, int(hours)-days*24)
 		}
-		message = fmt.Sprintf("%s %s\nYour last workout was on %s (%s)",
+		if err := user.LoadWorkoutsThisCycle(chatId); err != nil {
+			return msg, err
+		}
+
+		message = fmt.Sprintf("%s %s\nYour last workout was on %s (%s)\nWorkouts this week: %d",
 			user.GetName(),
 			users.GetRandomWorkoutMessage(),
 			lastWorkout.CreatedAt.Weekday(),
 			timeAgo,
+			len(user.Workouts),
 		)
 	}
 
