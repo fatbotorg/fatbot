@@ -2,11 +2,7 @@ package updates
 
 import (
 	"fatbot/users"
-	"fmt"
 	"strings"
-
-	"github.com/charmbracelet/log"
-	"github.com/getsentry/sentry-go"
 )
 
 func (fatBotUpdate FatBotUpdate) isCommandUpdate() bool {
@@ -27,10 +23,6 @@ func (fatBotUpdate FatBotUpdate) isCallbackUpdate() bool {
 		if fatBotUpdate.Update.CallbackQuery != nil {
 			return true
 		}
-	} else {
-		err := fmt.Errorf("cant read message, maybe I don't have access?")
-		sentry.CaptureException(err)
-		log.Error(err)
 	}
 	return false
 }
