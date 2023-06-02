@@ -10,6 +10,18 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+func handleProbationUploadMessage(update tgbotapi.Update, user users.User) (tgbotapi.MessageConfig, error) {
+	msg := tgbotapi.NewMessage(update.FromChat().ID, "")
+	completedUploads, err := user.LastTwoWorkoutsInPastHour()
+	if err != nil {
+		return msg, nil
+	}
+	if completedUploads {
+		msg.Text = "Welcome back!"
+	}
+	return msg, nil
+}
+
 func handleWorkoutUpload(update tgbotapi.Update) (tgbotapi.MessageConfig, error) {
 	var message string
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
@@ -36,6 +48,18 @@ func handleWorkoutUpload(update tgbotapi.Update) (tgbotapi.MessageConfig, error)
 	if err := user.UpdateWorkout(update); err != nil {
 		return msg, err
 	}
+
+	if user.OnProbation {
+		chatId, err := user.GetSingleChatId()
+		if err != nil {
+			return msg, err
+		}
+		if err := user.FlagLastWorkout(chatId); err != nil {
+			return msg, err
+		}
+		return handleProbationUploadMessage(update, user)
+	}
+
 	if lastWorkout.CreatedAt.IsZero() {
 		message = fmt.Sprintf("%s nice work!\nThis is your first workout",
 			user.GetName(),

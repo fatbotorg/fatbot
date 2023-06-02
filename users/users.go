@@ -228,6 +228,22 @@ will have 60 minutes to send 2 workouts
 	return
 }
 
+func (user User) GetSingleChatId() (int64, error) {
+	chatIds, err := user.GetChatIds()
+	if err != nil {
+		return 0, err
+	}
+	switch len(chatIds) {
+	case 0:
+		return 0, fmt.Errorf("cant find chatids")
+	case 1:
+		return chatIds[0], nil
+	default:
+		return 0, fmt.Errorf("too many groups cant infer")
+
+	}
+}
+
 func (user *User) GetChatIds() (chatIds []int64, err error) {
 	user.LoadGroups()
 	if user.Groups == nil {
