@@ -24,7 +24,6 @@ func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
 	db := db.GetDB()
 	daysSinceCycleStart := int(time.Now().Weekday()) + 1
 	lastCycleStartDate := time.Now().AddDate(0, 0, -int(daysSinceCycleStart))
-	log.Debug(daysSinceCycleStart)
 	group, err := GetGroup(chatId)
 	if err != nil {
 		return err
@@ -32,9 +31,6 @@ func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
 	if err := db.Model(&User{}).
 		Preload("Workouts", "created_at > ? AND group_id = ? AND flagged = ?", lastCycleStartDate, group.ID, false).
 		Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
-	}
-	for _, wo := range user.Workouts {
-		log.Debug(wo.CreatedAt.Date())
 	}
 	return nil
 }

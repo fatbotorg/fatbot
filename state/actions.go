@@ -66,7 +66,6 @@ func (menu ShowEventsMenu) PerformAction(params ActionData) error {
 		var message string
 		msg := tgbotapi.NewMessage(params.Update.FromChat().ID, "")
 		events := user.GetEvents()
-		log.Debug(events)
 		for _, event := range events {
 			message = message + "On: " + event.CreatedAt.String() + " -> event: " + string(event.Event) + "\n"
 		}
