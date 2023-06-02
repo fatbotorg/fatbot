@@ -15,8 +15,9 @@ import (
 type Workout struct {
 	gorm.Model
 	UserID         uint
-	PhotoMessageID int
 	GroupID        uint
+	PhotoMessageID int
+	Flagged        bool
 }
 
 func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
@@ -29,10 +30,23 @@ func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
 		return []Workout{}
 	}
 	if err := db.Model(&User{}).
-		Preload("Workouts", "created_at > ? AND group_id = ?", lastWeek, group.ID).
+		Preload("Workouts", "created_at > ? AND group_id = ? AND flagged = ?", lastWeek, group.ID, false).
 		Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
 	}
 	return user.Workouts
+}
+
+func (user *User) FlagLastWorkout(chatId int64) error {
+	db := db.GetDB()
+	workout, err := user.GetLastXWorkout(1, chatId)
+	if err != nil {
+		return err
+	}
+	err = db.Model(&workout).Update("flagged", 1).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (user *User) RollbackLastWorkout(chatId int64) (Workout, error) {
@@ -98,4 +112,13 @@ func (user *User) GetLastXWorkout(lastx int, chatId int64) (Workout, error) {
 		return Workout{}, fmt.Errorf("No workouts, or not enough: %s", user.GetName())
 	}
 	return user.Workouts[len(user.Workouts)-lastx], nil
+}
+
+func (user *User) LastTwoWorkoutsInPastHour() (bool, error) {
+	chatId, err := user.GetSingleChatId()
+	lastWorkout, err := user.GetLastXWorkout(2, chatId)
+	if err != nil {
+		return false, err
+	}
+	return time.Now().Sub(lastWorkout.CreatedAt).Minutes() <= 60, nil
 }
