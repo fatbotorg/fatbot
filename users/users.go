@@ -406,7 +406,12 @@ func (user User) Rejoin(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "")
 	adminMsg := tgbotapi.NewMessage(0, "")
 	if err := user.UnBan(bot); err != nil {
-		return fmt.Errorf("Issue with unbanning %s: %s", user.GetName(), err)
+		banErr := fmt.Errorf("Issue with unbanning %s: %s", user.GetName(), err)
+		if !update.FromChat().IsSuperGroup() {
+			log.Error(banErr)
+		} else {
+			return banErr
+		}
 	}
 	if err := user.InviteExistingUser(bot); err != nil {
 		return fmt.Errorf("Issue with inviting %s: %s", user.GetName(), err)

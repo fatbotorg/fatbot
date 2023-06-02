@@ -58,6 +58,8 @@ func (state *State) GetStateMenu() (menu Menu, err error) {
 		menu = &ShowEventsMenu{}
 	case "rejoinuser":
 		menu = &RejoinUserMenu{}
+	case "banuser":
+		menu = &BanUserMenu{}
 	default:
 		return menu, fmt.Errorf("unknown menu: %s", rawMenu)
 	}

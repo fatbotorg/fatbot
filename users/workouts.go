@@ -22,9 +22,9 @@ type Workout struct {
 
 func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
 	db := db.GetDB()
-	minusDaysSinceCycleStart := int(time.Now().Weekday()) + 1
-	lastCycleStartDate := time.Now().AddDate(0, 0, int(minusDaysSinceCycleStart))
-	log.Debug(minusDaysSinceCycleStart)
+	daysSinceCycleStart := int(time.Now().Weekday()) + 1
+	lastCycleStartDate := time.Now().AddDate(0, 0, -int(daysSinceCycleStart))
+	log.Debug(daysSinceCycleStart)
 	group, err := GetGroup(chatId)
 	if err != nil {
 		return err
