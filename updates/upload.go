@@ -17,7 +17,8 @@ func handleProbationUploadMessage(update tgbotapi.Update, user users.User) (tgbo
 		return msg, nil
 	}
 	if completedUploads {
-		msg.Text = "Welcome back!"
+		msg.Text = fmt.Sprintf("Welcome back %s!", user.GetName())
+		msg.ReplyToMessageID = update.Message.MessageID
 	}
 	return msg, nil
 }
