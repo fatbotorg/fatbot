@@ -7,6 +7,6 @@ RUN CGO_ENABLED=1 GOOS=linux go build -o fatbot
 
 FROM alpine:edge
 WORKDIR /app
-RUN apk add --no-cache sqlite tzdata
+RUN apk add --no-cache sqlite tzdata redis
 COPY --from=build /app/fatbot /app/fatbot
-ENTRYPOINT /app/fatbot
+ENTRYPOINT redis-server --daemonize yes && /app/fatbot

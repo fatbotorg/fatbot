@@ -2,7 +2,6 @@ package state
 
 import (
 	"os"
-	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/gomodule/redigo/redis"
@@ -16,8 +15,6 @@ func dial() (redis.Conn, error) {
 	} else {
 		connection, err = redis.DialURL(
 			os.Getenv("REDIS_ADDR"),
-			redis.DialReadTimeout(2*time.Second),
-			redis.DialWriteTimeout(2*time.Second),
 		)
 	}
 	if err != nil {

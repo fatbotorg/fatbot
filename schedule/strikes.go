@@ -50,14 +50,12 @@ func scanUsers(bot *tgbotapi.BotAPI) error {
 }
 
 func handleProbation(bot *tgbotapi.BotAPI, user users.User, group users.Group, totalDays float64) {
-	log.Debug("Probation", "user.OnProbation", user.OnProbation)
 	lastWorkout, err := user.GetLastXWorkout(2, group.ChatID)
 	if err != nil {
 		log.Errorf("Err getting last 2 workout for user %s: %s", user.GetName(), err)
 		sentry.CaptureException(err)
 	}
 	diffHours := int(totalDays*24 - time.Now().Sub(lastWorkout.CreatedAt).Hours())
-	log.Debug("Probation", "diffHours", diffHours)
 	rejoinedLastHour := time.Now().Sub(user.UpdatedAt).Minutes() <= 60
 	lastTwoWorkoutsOk := diffHours > 0
 	if !lastTwoWorkoutsOk && !rejoinedLastHour {
@@ -66,7 +64,6 @@ func handleProbation(bot *tgbotapi.BotAPI, user users.User, group users.Group, t
 			sentry.CaptureException(err)
 		}
 	} else if lastTwoWorkoutsOk {
-		log.Debug("Probation", "lastTwoWorkoutsOk", lastTwoWorkoutsOk)
 		if err := user.UpdateOnProbation(false); err != nil {
 			log.Errorf("Issue updating unprobation %s from %d: %s", user.GetName(), group.ChatID, err)
 			sentry.CaptureException(err)

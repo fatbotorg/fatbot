@@ -184,7 +184,6 @@ func (user *User) Ban(bot *tgbotapi.BotAPI, chatId int64) (errors []error) {
 	if chatMemeber, err := bot.GetChatMember(getChatMemberConfig); err != nil {
 		errors = append(errors, err)
 	} else if chatMemeber.WasKicked() {
-		log.Debug("Func Ban", "wasKicked", chatMemeber.WasKicked())
 		return nil
 	}
 	_, err := bot.Request(banChatMemberConfig)
@@ -226,6 +225,22 @@ will have 60 minutes to send 2 workouts
 		}
 	}
 	return
+}
+
+func (user User) GetSingleChatId() (int64, error) {
+	chatIds, err := user.GetChatIds()
+	if err != nil {
+		return 0, err
+	}
+	switch len(chatIds) {
+	case 0:
+		return 0, fmt.Errorf("cant find chatids")
+	case 1:
+		return chatIds[0], nil
+	default:
+		return 0, fmt.Errorf("too many groups cant infer")
+
+	}
 }
 
 func (user *User) GetChatIds() (chatIds []int64, err error) {
@@ -391,7 +406,12 @@ func (user User) Rejoin(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "")
 	adminMsg := tgbotapi.NewMessage(0, "")
 	if err := user.UnBan(bot); err != nil {
-		return fmt.Errorf("Issue with unbanning %s: %s", user.GetName(), err)
+		banErr := fmt.Errorf("Issue with unbanning %s: %s", user.GetName(), err)
+		if !update.FromChat().IsSuperGroup() {
+			log.Error(banErr)
+		} else {
+			return banErr
+		}
 	}
 	if err := user.InviteExistingUser(bot); err != nil {
 		return fmt.Errorf("Issue with inviting %s: %s", user.GetName(), err)

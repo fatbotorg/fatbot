@@ -50,10 +50,35 @@ type ShowEventsMenu struct {
 type RejoinUserMenu struct {
 	MenuBase
 }
+type BanUserMenu struct {
+	MenuBase
+}
 
 type Menu interface {
 	CreateMenu() MenuBase
 	PerformAction(ActionData) error
+}
+
+func (menu BanUserMenu) CreateMenu() MenuBase {
+	chooseGroup := Step{
+		Name:     "choosegroup",
+		Kind:     KeyboardStepKind,
+		Message:  "Choose Group",
+		Keyboard: createGroupsKeyboard(),
+		Result:   GroupIdStepResult,
+	}
+	chooseUser := Step{
+		Name:     "chooseuser",
+		Kind:     KeyboardStepKind,
+		Message:  "Choose User",
+		Keyboard: tgbotapi.InlineKeyboardMarkup{},
+		Result:   TelegramUserIdStepResult,
+	}
+	themenu := MenuBase{
+		Name:  "banuser",
+		Steps: []Step{chooseGroup, chooseUser},
+	}
+	return themenu
 }
 
 func (menu RejoinUserMenu) CreateMenu() MenuBase {
