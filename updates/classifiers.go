@@ -11,7 +11,7 @@ func (fatBotUpdate FatBotUpdate) isCommandUpdate() bool {
 
 func (fatBotUpdate FatBotUpdate) isMediaUpdate() bool {
 	update := fatBotUpdate.Update
-	return len(update.Message.Photo) > 0 || update.Message.Video != nil
+	return (update.Message != nil) && (len(update.Message.Photo) > 0 || update.Message.Video != nil)
 }
 
 func (fatBotUpdate FatBotUpdate) isPrivateUpdate() bool {
