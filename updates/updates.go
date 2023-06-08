@@ -52,14 +52,7 @@ func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 	case fatBotUpdate.isPrivateUpdate():
 		return PrivateUpdate{FatBotUpdate: fatBotUpdate}, nil
 	default:
-		var err error
-		if fatBotUpdate.Update.Message != nil {
-			err = fmt.Errorf("cannot classify update, message: %+v", fatBotUpdate.Update.Message)
-		} else {
-			err = fmt.Errorf("cannot classify update %+v", fatBotUpdate.Update)
-		}
-		sentry.CaptureException(err)
-		return nil, err
+		return nil, nil
 	}
 }
 
