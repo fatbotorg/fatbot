@@ -22,6 +22,12 @@ func GetGroupsWithUsers() (groups []Group) {
 	return
 }
 
+func GetGroups() (groups []Group) {
+	db := db.DBCon
+	db.Find(&groups)
+	return
+}
+
 func GetGroupWithUsers(chatId int64) (group Group) {
 	db := db.DBCon
 	db.Preload("Users", "active = ?", true).Where("chat_id = ?", chatId).Find(&group)
