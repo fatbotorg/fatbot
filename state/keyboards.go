@@ -8,7 +8,7 @@ import (
 )
 
 func createGroupsKeyboard() tgbotapi.InlineKeyboardMarkup {
-	groups := users.GetGroupsWithUsers()
+	groups := users.GetGroups()
 	row := []tgbotapi.InlineKeyboardButton{}
 	rows := [][]tgbotapi.InlineKeyboardButton{}
 	for _, group := range groups {
