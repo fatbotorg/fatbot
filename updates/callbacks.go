@@ -12,6 +12,16 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+func answerCallback(fatBotUpdate FatBotUpdate) error {
+	update := fatBotUpdate.Update
+	bot := fatBotUpdate.Bot
+	callback := tgbotapi.NewCallback(update.CallbackQuery.ID, update.CallbackQuery.Data)
+	if _, err := bot.Request(callback); err != nil {
+		return err
+	}
+	return nil
+}
+
 func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 	var data string
 	var init bool
@@ -22,6 +32,11 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 		msg.Text = data
 	} else {
 		data = fatBotUpdate.Update.CallbackData()
+		if err := answerCallback(fatBotUpdate); err != nil {
+			fullErr := fmt.Errorf("cannot respond to callback with data: %s", err)
+			log.Error(fullErr)
+			sentry.CaptureException(fullErr)
+		}
 	}
 	if !state.HasState(chatId) {
 		state.CreateStateEntry(chatId, data)
