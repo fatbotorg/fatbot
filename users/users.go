@@ -32,21 +32,23 @@ type Blacklist struct {
 }
 
 func InitDB() error {
-	db := db.GetDB()
+	db := db.DBCon
 	db.AutoMigrate(&User{}, &Group{}, &Workout{}, &Event{}, &Blacklist{})
 	return nil
 }
 
 func (user *User) LoadGroups() error {
-	return db.GetDB().Preload("Groups").Find(&user).Error
+	db := db.DBCon
+	return db.Preload("Groups").Find(&user).Error
 }
 
 func (user *User) LoadEvents() error {
-	return db.GetDB().Preload("Events").Find(&user).Error
+	db := db.DBCon
+	return db.Preload("Events").Find(&user).Error
 }
 
 func GetUser(id uint) (user User, err error) {
-	db := db.GetDB()
+	db := db.DBCon
 	if err := db.Find(&user, id).Error; err != nil {
 		return user, err
 	}
@@ -54,7 +56,7 @@ func GetUser(id uint) (user User, err error) {
 }
 
 func GetUsers(chatId int64) []User {
-	db := db.GetDB()
+	db := db.DBCon
 	var users []User
 	if chatId == -1 {
 		db.Find(&users)
@@ -67,7 +69,7 @@ func GetUsers(chatId int64) []User {
 }
 
 func GetInactiveUsers(chatId int64) []User {
-	db := db.GetDB()
+	db := db.DBCon
 	var users []User
 	if chatId == -1 {
 		db.Find(&users)
@@ -80,7 +82,7 @@ func GetInactiveUsers(chatId int64) []User {
 }
 
 func GetAdminUsers() []User {
-	db := db.GetDB()
+	db := db.DBCon
 	var users []User
 	db.Where("is_admin = ?", true).Find(&users)
 	return users
@@ -104,7 +106,7 @@ func (user *User) GetName() (name string) {
 }
 
 func GetUserById(userId int64) (user User, err error) {
-	db := db.GetDB()
+	db := db.DBCon
 	if err := db.Model(&user).
 		Preload("Groups").
 		Where("telegram_user_id = ?", userId).
@@ -115,12 +117,12 @@ func GetUserById(userId int64) (user User, err error) {
 }
 
 func (user *User) create() error {
-	db := db.GetDB()
+	db := db.DBCon
 	return db.Create(&user).Error
 }
 
 func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
-	db := db.GetDB()
+	db := db.DBCon
 	var user User
 	if err := db.Where(User{
 		Username:       message.From.UserName,
@@ -133,7 +135,7 @@ func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
 }
 
 func (user *User) UpdateActive(should bool) error {
-	db := db.GetDB()
+	db := db.DBCon
 	if err := db.Model(&user).Update("active", should).Error; err != nil {
 		return err
 	}
@@ -141,7 +143,7 @@ func (user *User) UpdateActive(should bool) error {
 }
 
 func (user *User) UpdateOnProbation(probation bool) error {
-	db := db.GetDB()
+	db := db.DBCon
 	if err := db.Model(&user).
 		Update("on_probation", probation).Error; err != nil {
 		return err
@@ -150,7 +152,7 @@ func (user *User) UpdateOnProbation(probation bool) error {
 }
 
 func (user *User) Rename(name string) error {
-	db := db.GetDB()
+	db := db.DBCon
 	if err := db.Model(&user).
 		Update("nick_name", name).Error; err != nil {
 		return err
@@ -369,7 +371,7 @@ func extractInviteLinkFromResponse(response *tgbotapi.APIResponse) (string, erro
 }
 
 func BlockUserId(userId int64) error {
-	db := db.GetDB()
+	db := db.DBCon
 	blackListed := Blacklist{
 		TelegramUserID: userId,
 	}
@@ -380,7 +382,7 @@ func BlockUserId(userId int64) error {
 }
 
 func BlackListed(id int64) bool {
-	db := db.GetDB()
+	db := db.DBCon
 	var black Blacklist
 	db.Where(Blacklist{TelegramUserID: id}).Find(&black)
 	if black.TelegramUserID == 0 {
@@ -390,7 +392,8 @@ func BlackListed(id int64) bool {
 }
 
 func (user User) GetLastBanDate() (time.Time, error) {
-	if err := db.GetDB().Preload("Events").Find(&user).Error; err != nil {
+	db := db.DBCon
+	if err := db.Preload("Events").Find(&user).Error; err != nil {
 		return time.Time{}, err
 	}
 	var banEvents []Event

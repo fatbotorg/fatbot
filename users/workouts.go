@@ -21,7 +21,7 @@ type Workout struct {
 }
 
 func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
-	db := db.GetDB()
+	db := db.DBCon
 	daysSinceCycleStart := int(time.Now().Weekday()) + 1
 	lastCycleStartDate := time.Now().AddDate(0, 0, -int(daysSinceCycleStart))
 	group, err := GetGroup(chatId)
@@ -36,7 +36,7 @@ func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
 }
 
 func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
-	db := db.GetDB()
+	db := db.DBCon
 	lastWeek := time.Now().Add(time.Duration(-7) * time.Hour * 24)
 	group, err := GetGroup(chatId)
 	if err != nil {
@@ -52,7 +52,7 @@ func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
 }
 
 func (user *User) FlagLastWorkout(chatId int64) error {
-	db := db.GetDB()
+	db := db.DBCon
 	workout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func (user *User) FlagLastWorkout(chatId int64) error {
 }
 
 func (user *User) RollbackLastWorkout(chatId int64) (Workout, error) {
-	db := db.GetDB()
+	db := db.DBCon
 	lastWorkout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
 		return Workout{}, err
@@ -79,7 +79,7 @@ func (user *User) RollbackLastWorkout(chatId int64) (Workout, error) {
 }
 
 func (user *User) PushWorkout(days, chatId int64) error {
-	db := db.GetDB()
+	db := db.DBCon
 	workout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func (user *User) PushWorkout(days, chatId int64) error {
 }
 
 func (user *User) UpdateWorkout(update tgbotapi.Update) error {
-	db := db.GetDB()
+	db := db.DBCon
 	messageId := update.Message.MessageID
 	db.Where("telegram_user_id = ?", user.TelegramUserID).Find(&user)
 	group, err := GetGroup(update.FromChat().ID)
@@ -112,7 +112,7 @@ func (workout *Workout) IsOlderThan(minutes int) bool {
 }
 
 func (user *User) GetLastXWorkout(lastx int, chatId int64) (Workout, error) {
-	db := db.GetDB()
+	db := db.DBCon
 	group, err := GetGroup(chatId)
 	if err != nil {
 		return Workout{}, err

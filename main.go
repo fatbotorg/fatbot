@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fatbot/db"
 	"fatbot/schedule"
 	"fatbot/updates"
 	"fatbot/users"
@@ -16,6 +17,8 @@ func main() {
 	var bot *tgbotapi.BotAPI
 	var err error
 	var updatesChannel tgbotapi.UpdatesChannel
+	// Init DB
+	db.DBCon = db.GetDB()
 	if os.Getenv("ENVIRONMENT") != "production" {
 		log.SetLevel(log.DebugLevel)
 	} else {

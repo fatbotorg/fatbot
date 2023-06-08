@@ -21,7 +21,7 @@ type Event struct {
 }
 
 func (user *User) registerEvent(kind eventType) error {
-	db := db.GetDB()
+	db := db.DBCon
 	event := Event{
 		UserID: user.ID,
 		Event:  kind,
@@ -30,7 +30,8 @@ func (user *User) registerEvent(kind eventType) error {
 }
 
 func (user *User) GetEvents() (events []Event) {
-	db.GetDB().Where("user_id = ?", user.ID).Find(&events)
+	db := db.DBCon
+	db.Where("user_id = ?", user.ID).Find(&events)
 	return
 }
 

@@ -8,6 +8,10 @@ import (
 	"gorm.io/gorm"
 )
 
+var (
+	DBCon *gorm.DB
+)
+
 func GetDB() *gorm.DB {
 	path := os.Getenv("DBPATH")
 	if path == "" {
