@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/log"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -15,14 +16,18 @@ type State struct {
 	Menu   Menu
 }
 
-func New(chatId int64) *State {
+func New(chatId int64) (*State, error) {
 	var state State
 	var err error
 	state.ChatId = chatId
 	if state.Value, err = getState(chatId); err != nil {
-		return nil
+		time.Sleep(1 * time.Second)
+		if state.Value, err = getState(chatId); err != nil {
+			log.Warn("retrying to get state")
+			return nil, err
+		}
 	}
-	return &state
+	return &state, nil
 }
 
 func (state *State) getValueSplit() []string {
