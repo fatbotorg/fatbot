@@ -52,7 +52,7 @@ func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 	case fatBotUpdate.isPrivateUpdate():
 		return PrivateUpdate{FatBotUpdate: fatBotUpdate}, nil
 	default:
-		return nil, nil
+		return nil, fmt.Errorf("cannot classify update")
 	}
 }
 
