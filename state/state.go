@@ -15,14 +15,14 @@ type State struct {
 	Menu   Menu
 }
 
-func New(chatId int64) (*State, error) {
+func New(chatId int64) *State {
 	var state State
 	var err error
 	state.ChatId = chatId
 	if state.Value, err = getState(chatId); err != nil {
-		return nil, err
+		return nil
 	}
-	return &state, nil
+	return &state
 }
 
 func (state *State) getValueSplit() []string {
