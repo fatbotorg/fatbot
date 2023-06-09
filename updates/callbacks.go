@@ -39,7 +39,11 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 		}
 	}
 	if !state.HasState(chatId) {
-		state.CreateStateEntry(chatId, data)
+		if err := state.CreateStateEntry(chatId, data); err != nil {
+			logErr := fmt.Errorf("problem with creating state entry: %d", chatId)
+			log.Error(logErr)
+			return err
+		}
 		init = true
 	}
 	menuState := state.New(chatId)
