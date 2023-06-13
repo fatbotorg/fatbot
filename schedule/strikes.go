@@ -22,6 +22,11 @@ func scanUsers(bot *tgbotapi.BotAPI) error {
 				handleProbation(bot, user, group, totalDays)
 				continue
 			}
+			if isNew, err := user.IsNewToday(group.ChatID); err != nil {
+				return err
+			} else if isNew {
+				continue
+			}
 			lastWorkout, err := user.GetLastXWorkout(1, group.ChatID)
 			if err != nil {
 				log.Errorf("Err getting last workout for user %s: %s", user.GetName(), err)
