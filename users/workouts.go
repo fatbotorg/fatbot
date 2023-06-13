@@ -12,6 +12,14 @@ import (
 	"gorm.io/gorm"
 )
 
+type NoWorkoutsError struct {
+	Name string
+}
+
+func (e *NoWorkoutsError) Error() string {
+	return fmt.Sprintf("%s has no workouts", e.Name)
+}
+
 type Workout struct {
 	gorm.Model
 	UserID         uint
@@ -124,7 +132,7 @@ func (user *User) GetLastXWorkout(lastx int, chatId int64) (Workout, error) {
 		return Workout{}, err
 	}
 	if len(user.Workouts) == 0 || lastx > len(user.Workouts) {
-		return Workout{}, fmt.Errorf("No workouts, or not enough: %s", user.GetName())
+		return Workout{}, &NoWorkoutsError{Name: user.GetName()}
 	}
 	return user.Workouts[len(user.Workouts)-lastx], nil
 }
