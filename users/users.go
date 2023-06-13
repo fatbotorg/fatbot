@@ -438,3 +438,17 @@ func (user User) Rejoin(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	}
 	return nil
 }
+
+func (user User) IsNewToday(chatId int64) (bool, error) {
+	var noWorkouts bool
+	_, err := user.GetLastXWorkout(1, chatId)
+	if err != nil {
+		if _, noWorkouts = err.(*NoWorkoutsError); noWorkouts {
+			noWorkouts = true
+		} else {
+			return false, err
+		}
+	}
+	return noWorkouts &&
+		user.CreatedAt.Day() == time.Now().Day(), nil
+}
