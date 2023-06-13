@@ -32,9 +32,9 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 		}
 	case "status":
 		msg = handleStatusCommand(update)
-	case "help":
+	case "help", "start":
 		msg.ChatID = update.FromChat().ID
-		msg.Text = "/status\n/join"
+		msg.Text = "Join the group using: /join\nCheck your status using: /status"
 	default:
 		msg.ChatID = update.FromChat().ID
 	}
