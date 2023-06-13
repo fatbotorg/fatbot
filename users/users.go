@@ -439,7 +439,7 @@ func (user User) Rejoin(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	return nil
 }
 
-func (user User) IsNewToday(chatId int64) (bool, error) {
+func (user User) IsNew(chatId int64) (bool, error) {
 	var noWorkouts bool
 	_, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {

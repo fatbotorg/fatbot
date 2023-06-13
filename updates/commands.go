@@ -122,7 +122,13 @@ func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, e
 		)
 		adminMessage.ReplyMarkup = createNewUserGroupsKeyboard(from.ID, from.FirstName, from.UserName)
 		users.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
-		msg.Text = "Welcome! I've sent your request to the admins"
+
+		text := `Hello and welcome to the group!
+You will soon get a link to join 🎉.
+Once you click the link, please send a picture of your workout *in the group chat*
+‼️ NOTE ‼️: if you don’t send a picture in the same day you get the link you will be BANNED from the group!`
+
+		msg.Text = text
 		return msg, nil
 	} else {
 		if user.Active {

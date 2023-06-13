@@ -22,7 +22,7 @@ func scanUsers(bot *tgbotapi.BotAPI) error {
 				handleProbation(bot, user, group, totalDays)
 				continue
 			}
-			if isNew, err := user.IsNewToday(group.ChatID); err != nil {
+			if isNew, err := user.IsNew(group.ChatID); err != nil {
 				return err
 			} else if isNew {
 				continue

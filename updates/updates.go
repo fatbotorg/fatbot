@@ -7,6 +7,14 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+type NoSuchUpdateError struct {
+	Update tgbotapi.Update
+}
+
+func (e *NoSuchUpdateError) Error() string {
+	return fmt.Sprintf("cannot classify update: %+v", e.Update)
+}
+
 type FatBotUpdate struct {
 	Bot    *tgbotapi.BotAPI
 	Update tgbotapi.Update
@@ -52,7 +60,7 @@ func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 	case fatBotUpdate.isPrivateUpdate():
 		return PrivateUpdate{FatBotUpdate: fatBotUpdate}, nil
 	default:
-		return nil, fmt.Errorf("cannot classify update")
+		return nil, &NoSuchUpdateError{Update: fatBotUpdate.Update}
 	}
 }
 
@@ -64,6 +72,9 @@ func HandleUpdates(fatBotUpdate FatBotUpdate) error {
 		return err
 	}
 	if updateType, err := fatBotUpdate.classify(); err != nil {
+		if _, classificationErr := err.(*NoSuchUpdateError); classificationErr {
+			return nil
+		}
 		return err
 	} else {
 		err := updateType.handle()
