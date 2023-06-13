@@ -124,7 +124,7 @@ func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, e
 		users.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
 
 		text := `Hello and welcome!
-You will soon get a link to join 🎉.
+You will soon get a link to join the group 🎉.
 Once you click the link, please send a picture of your workout *in the group chat*
 ‼️ NOTE ‼️: if you don’t send a picture in the same day you get the link you will be BANNED from the group!`
 
