@@ -450,5 +450,5 @@ func (user User) IsNew(chatId int64) (bool, error) {
 		}
 	}
 	return noWorkouts &&
-		user.CreatedAt.Day() == time.Now().Day(), nil
+		time.Now().Sub(user.CreatedAt).Hours() <= 24, nil
 }
