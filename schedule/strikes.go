@@ -23,7 +23,8 @@ func scanUsers(bot *tgbotapi.BotAPI) error {
 				continue
 			}
 			if isNew, err := user.IsNew(group.ChatID); err != nil {
-				return err
+				log.Error(err)
+				sentry.CaptureException(err)
 			} else if isNew {
 				continue
 			}
