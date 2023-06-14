@@ -47,7 +47,9 @@ func scanUsers(bot *tgbotapi.BotAPI) error {
 				}
 			} else if diffHours < 0 {
 				if err := user.Ban(bot, group.ChatID); err != nil {
-					log.Errorf("Issue banning %s from %d: %s", user.GetName(), group.ChatID, err)
+					err := fmt.Errorf("Issue banning %s from %d: %s", user.GetName(), group.ChatID, err)
+					log.Error(err)
+					sentry.CaptureException(err)
 					continue
 				}
 			}
