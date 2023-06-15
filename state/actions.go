@@ -16,7 +16,7 @@ type ActionData struct {
 	State  *State
 }
 
-func (menu GrouopLinkMenu) PerformAction(params ActionData) error {
+func (menu GroupLinkMenu) PerformAction(params ActionData) error {
 	defer DeleteStateEntry(params.State.ChatId)
 	groupChatId, err := params.State.getGroupChatId()
 	if err != nil {

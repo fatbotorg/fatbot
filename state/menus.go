@@ -53,7 +53,7 @@ type RejoinUserMenu struct {
 type BanUserMenu struct {
 	MenuBase
 }
-type GrouopLinkMenu struct {
+type GroupLinkMenu struct {
 	MenuBase
 }
 
@@ -62,7 +62,7 @@ type Menu interface {
 	PerformAction(ActionData) error
 }
 
-func (menu GrouopLinkMenu) CreateMenu() MenuBase {
+func (menu GroupLinkMenu) CreateMenu() MenuBase {
 	chooseGroup := Step{
 		Name:     "choosegroup",
 		Kind:     KeyboardStepKind,
