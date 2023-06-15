@@ -45,6 +45,25 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 	return nil
 }
 
+func handleNewGroupCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
+	groupChatId := update.Message.Chat.ID
+	groupChatTitle := update.Message.Chat.Title
+	msg := tgbotapi.NewMessage(groupChatId, "")
+	switch update.FromChat().Type {
+	case "private":
+		return msg
+	case "group":
+		msg.Text = "not a supergroup, try creating an anonymous admin"
+	case "supergroup":
+		if err := users.CreateGroup(groupChatId, groupChatTitle); err != nil {
+			log.Error("could not create group %s, id: %d", groupChatTitle, groupChatId)
+			msg.Text = ""
+		}
+		msg.Text = fmt.Sprintf("group %s ready to start🏋️", groupChatTitle)
+	}
+	return msg
+}
+
 func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	var user users.User
 	var err error

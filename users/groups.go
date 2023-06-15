@@ -17,6 +17,16 @@ type Group struct {
 	Workouts []Workout
 }
 
+func CreateGroup(chatId int64, title string) error {
+	db := db.DBCon
+	group := Group{
+		ChatID:   chatId,
+		Approved: true,
+		Title:    title,
+	}
+	return db.Create(&group).Error
+}
+
 func GetGroupsWithUsers() (groups []Group) {
 	db := db.DBCon
 	db.Preload("Users", "active = ?", true).Find(&groups)
