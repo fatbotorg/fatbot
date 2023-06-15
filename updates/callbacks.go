@@ -209,18 +209,23 @@ func initAdminMenuFlow(fatBotUpdate FatBotUpdate, menu state.Menu) error {
 }
 
 func handleCallbacks(fatBotUpdate FatBotUpdate) error {
-	err := handleStatefulCallback(fatBotUpdate)
-	if err != nil {
-		sentry.CaptureException(err)
-		log.Error(err)
-	}
-	if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "rejoin his group do you approve") {
+	if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "rejoin his group") {
 		if err := handleRejoinCallback(fatBotUpdate); err != nil {
 			return err
 		}
-	} else if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "new and wants to join a group") {
+	} else if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "New join request") {
 		if err := handleNewJoinCallback(fatBotUpdate); err != nil {
 			return err
+		}
+	} else if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "wants to join using a link") {
+		if err := handleNewJoinWithLinkCallback(fatBotUpdate); err != nil {
+			return err
+		}
+	} else {
+		err := handleStatefulCallback(fatBotUpdate)
+		if err != nil {
+			sentry.CaptureException(err)
+			log.Error(err)
 		}
 	}
 	return nil
@@ -243,6 +248,43 @@ func handleRejoinCallback(fatBotUpdate FatBotUpdate) error {
 		}
 	}
 	return nil
+}
+
+func handleNewJoinWithLinkCallback(fatBotUpdate FatBotUpdate) error {
+	msg := tgbotapi.NewMessage(fatBotUpdate.Update.CallbackQuery.Message.Chat.ID, "")
+	dataSlice := strings.Split(fatBotUpdate.Update.CallbackData(), " ")
+	userId, _ := strconv.ParseInt(dataSlice[1], 10, 64)
+	if dataSlice[0] == "block" {
+		msg.Text = "Blocked"
+		if err := users.BlockUserId(userId); err != nil {
+			log.Error(err)
+			sentry.CaptureException(err)
+		}
+	} else {
+		chatId, _ := strconv.ParseInt(dataSlice[0], 10, 64)
+		name := dataSlice[2]
+		username := dataSlice[3]
+		group, err := users.GetGroup(chatId)
+		if err != nil {
+			return err
+		}
+		user := users.User{
+			Username:       username,
+			Name:           name,
+			TelegramUserID: userId,
+			Active:         true,
+			Groups: []*users.Group{
+				&group,
+			},
+		}
+		if err := user.InviteNewUser(fatBotUpdate.Bot, chatId); err != nil {
+			log.Error(fmt.Errorf("Issue with inviting: %s", err))
+			sentry.CaptureException(err)
+		}
+		msg.Text = "Invitation sent"
+	}
+	_, err := fatBotUpdate.Bot.Send(msg)
+	return err
 }
 
 func handleNewJoinCallback(fatBotUpdate FatBotUpdate) error {
