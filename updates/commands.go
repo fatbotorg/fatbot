@@ -150,6 +150,7 @@ Once you click the link, please send a picture of your workout *in the group cha
 }
 
 func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, err error) {
+	msg.ChatID = fatBotUpdate.Update.FromChat().ID
 	if user, err := users.GetUserById(fatBotUpdate.Update.SentFrom().ID); err != nil {
 		return msg, err
 	} else if user.ID == 0 {
