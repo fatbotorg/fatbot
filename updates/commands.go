@@ -25,14 +25,14 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 	var msg tgbotapi.MessageConfig
 	msg.Text = "Unknown command"
 	switch update.Message.Command() {
-	case "join":
+	case "join", "start":
 		msg, err = handleJoinCommand(fatBotUpdate)
 		if err != nil {
 			return err
 		}
 	case "status":
 		msg = handleStatusCommand(update)
-	case "help", "start":
+	case "help":
 		msg.ChatID = update.FromChat().ID
 		msg.Text = "Join the group using: /join\nCheck your status using: /status"
 	default:
