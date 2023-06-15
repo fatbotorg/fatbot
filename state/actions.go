@@ -16,6 +16,25 @@ type ActionData struct {
 	State  *State
 }
 
+func (menu GrouopLinkMenu) PerformAction(params ActionData) error {
+	defer DeleteStateEntry(params.State.ChatId)
+	groupChatId, err := params.State.getGroupChatId()
+	if err != nil {
+		return err
+	}
+	if group, err := users.GetGroup(groupChatId); err != nil {
+		return err
+	} else {
+		chatId := params.Update.FromChat().ID
+		msg := tgbotapi.NewMessage(chatId, "")
+		msg.Text = fmt.Sprintf("https://t.me/%s?start=%s", params.Bot.Self.UserName, group.Title)
+		if _, err := params.Bot.Send(msg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (menu BanUserMenu) PerformAction(params ActionData) error {
 	defer DeleteStateEntry(params.State.ChatId)
 	telegramUserId, err := params.State.getTelegramUserId()

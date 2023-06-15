@@ -78,6 +78,7 @@ func CreateAdminKeyboard() tgbotapi.InlineKeyboardMarkup {
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Ban User", "banuser"),
+			tgbotapi.NewInlineKeyboardButtonData("Group link", "grouplink"),
 		),
 	)
 	return adminKeyboard
