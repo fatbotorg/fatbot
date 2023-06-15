@@ -3,7 +3,6 @@ package updates
 import (
 	"fmt"
 
-	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
