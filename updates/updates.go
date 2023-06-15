@@ -53,8 +53,6 @@ func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 		return CallbackUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isCommandUpdate():
 		return CommandUpdate{FatBotUpdate: fatBotUpdate}, nil
-	case fatBotUpdate.isCommandUpdate():
-		return CommandUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isMediaUpdate():
 		return MediaUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isPrivateUpdate():
