@@ -113,6 +113,9 @@ func GetUserById(userId int64) (user User, err error) {
 		Find(&user).Error; err != nil {
 		return user, err
 	}
+	if user.ID == 0 {
+		return user, fmt.Errorf("unknown user with id %d", userId)
+	}
 	return user, nil
 }
 
