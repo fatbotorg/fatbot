@@ -30,6 +30,7 @@ type Workout struct {
 
 func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
 	db := db.DBCon
+	// TODO: Fix to the time of the cycle rather than 24 hour periods
 	daysSinceCycleStart := int(time.Now().Weekday()) + 1
 	lastCycleStartDate := time.Now().AddDate(0, 0, -int(daysSinceCycleStart))
 	group, err := GetGroup(chatId)
