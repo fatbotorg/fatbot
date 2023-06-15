@@ -30,16 +30,27 @@ type Workout struct {
 
 func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
 	db := db.DBCon
-	// TODO: Fix to the time of the cycle rather than 24 hour periods
 	daysSinceCycleStart := int(time.Now().Weekday()) + 1
 	lastCycleStartDate := time.Now().AddDate(0, 0, -int(daysSinceCycleStart))
+	lastCycleExactTime := time.Date(
+		lastCycleStartDate.Year(),
+		lastCycleStartDate.Month(),
+		lastCycleStartDate.Day(),
+		18, 0, 0, 0,
+		lastCycleStartDate.Location())
+
 	group, err := GetGroup(chatId)
 	if err != nil {
 		return err
 	}
 	if err := db.Model(&User{}).
-		Preload("Workouts", "created_at > ? AND group_id = ? AND flagged = ?", lastCycleStartDate, group.ID, false).
-		Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
+		Preload(
+			"Workouts",
+			"created_at > ? AND group_id = ? AND flagged = ?",
+			lastCycleExactTime,
+			group.ID,
+			false,
+		).Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
 	}
 	return nil
 }
