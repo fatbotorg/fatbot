@@ -213,12 +213,9 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 		if err := handleRejoinCallback(fatBotUpdate); err != nil {
 			return err
 		}
-	} else if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "New join request") {
+	} else if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "New join request") ||
+		strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "wants to join using a link") {
 		if err := handleNewJoinCallback(fatBotUpdate); err != nil {
-			return err
-		}
-	} else if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "wants to join using a link") {
-		if err := handleNewJoinWithLinkCallback(fatBotUpdate); err != nil {
 			return err
 		}
 	} else {
