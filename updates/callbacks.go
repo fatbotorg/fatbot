@@ -209,18 +209,20 @@ func initAdminMenuFlow(fatBotUpdate FatBotUpdate, menu state.Menu) error {
 }
 
 func handleCallbacks(fatBotUpdate FatBotUpdate) error {
-	err := handleStatefulCallback(fatBotUpdate)
-	if err != nil {
-		sentry.CaptureException(err)
-		log.Error(err)
-	}
-	if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "rejoin his group do you approve") {
+	if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "rejoin his group") {
 		if err := handleRejoinCallback(fatBotUpdate); err != nil {
 			return err
 		}
-	} else if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "new and wants to join a group") {
+	} else if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "New join request") ||
+		strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "wants to join using a link") {
 		if err := handleNewJoinCallback(fatBotUpdate); err != nil {
 			return err
+		}
+	} else {
+		err := handleStatefulCallback(fatBotUpdate)
+		if err != nil {
+			sentry.CaptureException(err)
+			log.Error(err)
 		}
 	}
 	return nil
@@ -256,28 +258,54 @@ func handleNewJoinCallback(fatBotUpdate FatBotUpdate) error {
 			sentry.CaptureException(err)
 		}
 	} else {
-		chatId, _ := strconv.ParseInt(dataSlice[0], 10, 64)
-		name := dataSlice[2]
-		username := dataSlice[3]
-		group, err := users.GetGroup(chatId)
+		message, err := handleAdminJoinApproval(fatBotUpdate.Bot, dataSlice, userId)
 		if err != nil {
 			return err
 		}
-		user := users.User{
-			Username:       username,
-			Name:           name,
-			TelegramUserID: userId,
-			Active:         true,
-			Groups: []*users.Group{
-				&group,
-			},
-		}
-		if err := user.InviteNewUser(fatBotUpdate.Bot, chatId); err != nil {
-			log.Error(fmt.Errorf("Issue with inviting: %s", err))
-			sentry.CaptureException(err)
-		}
-		msg.Text = "Invitation sent"
+		msg.Text = message
 	}
 	_, err := fatBotUpdate.Bot.Send(msg)
 	return err
+}
+
+func handleAdminJoinApproval(bot *tgbotapi.BotAPI, dataSlice []string, userId int64) (messageText string, err error) {
+	candidate, err := users.GetUserById(userId)
+	if err != nil {
+		if _, noSuchUserError := err.(*users.NoSuchUserError); noSuchUserError {
+			return handleAdminJoinApprovalCreation(bot, dataSlice, userId)
+		} else {
+			return "", err
+		}
+	}
+	chatId, _ := strconv.ParseInt(dataSlice[0], 10, 64)
+	if candidate.IsInGroup(chatId) {
+		messageText = "user already exists in this group"
+		return messageText, nil
+	}
+	return handleAdminJoinApprovalCreation(bot, dataSlice, userId)
+}
+
+func handleAdminJoinApprovalCreation(bot *tgbotapi.BotAPI, dataSlice []string, userId int64) (messageText string, err error) {
+	name := dataSlice[2]
+	username := dataSlice[3]
+	chatId, _ := strconv.ParseInt(dataSlice[0], 10, 64)
+	group, err := users.GetGroup(chatId)
+	if err != nil {
+		return "", err
+	}
+	user := users.User{
+		Username:       username,
+		Name:           name,
+		TelegramUserID: userId,
+		Active:         true,
+		Groups: []*users.Group{
+			&group,
+		},
+	}
+	if err := user.InviteNewUser(bot, chatId); err != nil {
+		log.Error(fmt.Errorf("Issue with inviting: %s", err))
+		sentry.CaptureException(err)
+	}
+	messageText = "Invitation sent"
+	return
 }

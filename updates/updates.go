@@ -3,7 +3,6 @@ package updates
 import (
 	"fmt"
 
-	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -53,8 +52,6 @@ func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 		return CallbackUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isCommandUpdate():
 		return CommandUpdate{FatBotUpdate: fatBotUpdate}, nil
-	case fatBotUpdate.isCommandUpdate():
-		return CommandUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isMediaUpdate():
 		return MediaUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isPrivateUpdate():
@@ -67,9 +64,7 @@ func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 func HandleUpdates(fatBotUpdate FatBotUpdate) error {
 	update := fatBotUpdate.Update
 	if update.SentFrom() == nil {
-		err := fmt.Errorf("can't handle update with no SentFrom details...")
-		sentry.CaptureException(err)
-		return err
+		return nil
 	}
 	if updateType, err := fatBotUpdate.classify(); err != nil {
 		if _, classificationErr := err.(*NoSuchUpdateError); classificationErr {

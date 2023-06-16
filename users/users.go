@@ -31,6 +31,14 @@ type Blacklist struct {
 	TelegramUserID int64
 }
 
+type NoSuchUserError struct {
+	userId int64
+}
+
+func (e *NoSuchUserError) Error() string {
+	return fmt.Sprintf("unknown user with id %d", e.userId)
+}
+
 func InitDB() error {
 	db := db.DBCon
 	db.AutoMigrate(&User{}, &Group{}, &Workout{}, &Event{}, &Blacklist{})
@@ -112,6 +120,9 @@ func GetUserById(userId int64) (user User, err error) {
 		Where("telegram_user_id = ?", userId).
 		Find(&user).Error; err != nil {
 		return user, err
+	}
+	if user.ID == 0 {
+		return user, &NoSuchUserError{userId: userId}
 	}
 	return user, nil
 }

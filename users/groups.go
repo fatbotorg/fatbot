@@ -2,6 +2,7 @@ package users
 
 import (
 	"fatbot/db"
+	"fmt"
 
 	"github.com/charmbracelet/log"
 	"gorm.io/gorm"
@@ -16,6 +17,16 @@ type Group struct {
 	Workouts []Workout
 }
 
+func CreateGroup(chatId int64, title string) error {
+	db := db.DBCon
+	group := Group{
+		ChatID:   chatId,
+		Approved: true,
+		Title:    title,
+	}
+	return db.Create(&group).Error
+}
+
 func GetGroupsWithUsers() (groups []Group) {
 	db := db.DBCon
 	db.Preload("Users", "active = ?", true).Find(&groups)
@@ -25,6 +36,17 @@ func GetGroupsWithUsers() (groups []Group) {
 func GetGroups() (groups []Group) {
 	db := db.DBCon
 	db.Find(&groups)
+	return
+}
+
+func GetGroupByTitle(title string) (group Group, err error) {
+	db := db.DBCon
+	if err = db.Where("title = ?", title).Find(&group).Error; err != nil {
+		return
+	}
+	if group.Title == "" {
+		err = fmt.Errorf("could not find group %s", title)
+	}
 	return
 }
 

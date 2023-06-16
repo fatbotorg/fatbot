@@ -53,10 +53,28 @@ type RejoinUserMenu struct {
 type BanUserMenu struct {
 	MenuBase
 }
+type GroupLinkMenu struct {
+	MenuBase
+}
 
 type Menu interface {
 	CreateMenu() MenuBase
 	PerformAction(ActionData) error
+}
+
+func (menu GroupLinkMenu) CreateMenu() MenuBase {
+	chooseGroup := Step{
+		Name:     "choosegroup",
+		Kind:     KeyboardStepKind,
+		Message:  "Choose Group",
+		Keyboard: createGroupsKeyboard(),
+		Result:   GroupIdStepResult,
+	}
+	themenu := MenuBase{
+		Name:  "banuser",
+		Steps: []Step{chooseGroup},
+	}
+	return themenu
 }
 
 func (menu BanUserMenu) CreateMenu() MenuBase {

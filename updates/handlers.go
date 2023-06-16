@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"fatbot/users"
 	"fmt"
 
 	"github.com/charmbracelet/log"
@@ -18,6 +19,21 @@ func (update CommandUpdate) handle() error {
 func (update UnknownGroupUpdate) handle() error {
 	bot := update.Bot
 	chatId := update.Update.FromChat().ID
+	userId := update.Update.SentFrom().ID
+	user, err := users.GetUserById(userId)
+	if err != nil {
+		return err
+	}
+	if user.IsAdmin &&
+		update.Update.Message != nil &&
+		update.Update.Message.IsCommand() &&
+		update.Update.Message.Command() == "newgroup" {
+		msg := handleNewGroupCommand(update.Update)
+		if _, err := bot.Request(msg); err != nil {
+			return err
+		}
+		return nil
+	}
 	bot.Send(tgbotapi.NewMessage(update.Update.Message.Chat.ID,
 		fmt.Sprintf("Group %s not activated, send this to the admin: `%d`", update.Update.Message.Chat.Title, chatId),
 	))
