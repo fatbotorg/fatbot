@@ -169,53 +169,63 @@ Once you click the link, please send a picture of your workout *in the group cha
 }
 
 func handleJoinCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, err error) {
-	msg.ChatID = fatBotUpdate.Update.FromChat().ID
 	if user, err := users.GetUserById(fatBotUpdate.Update.SentFrom().ID); err != nil {
-		return msg, err
-	} else if user.ID == 0 {
-		args := fatBotUpdate.Update.Message.CommandArguments()
-		if hasValidGroup, group := hasValidGroupCommandArgument(args); hasValidGroup {
-			return sendLinkJoinForAdminApproval(fatBotUpdate, group)
+		if _, classificationErr := err.(*users.NoSuchUserError); classificationErr {
+			return handleJoinCommandNewUser(fatBotUpdate)
 		}
-		from := fatBotUpdate.Update.Message.From
-		adminMessage := tgbotapi.NewMessage(0,
-			fmt.Sprintf(
-				"New join request: %s %s %s, choose a group",
-				from.FirstName, from.LastName, from.UserName,
-			),
-		)
-		adminMessage.ReplyMarkup = createNewUserGroupsKeyboard(from.ID, from.FirstName, from.UserName)
-		users.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
-		text := `Hello and welcome!
+		return msg, err
+	} else {
+		return handleJoinCommandExistingUser(fatBotUpdate, user)
+	}
+}
+
+func handleJoinCommandNewUser(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, err error) {
+	msg.ChatID = fatBotUpdate.Update.FromChat().ID
+	args := fatBotUpdate.Update.Message.CommandArguments()
+	if hasValidGroup, group := hasValidGroupCommandArgument(args); hasValidGroup {
+		return sendLinkJoinForAdminApproval(fatBotUpdate, group)
+	}
+	from := fatBotUpdate.Update.Message.From
+	adminMessage := tgbotapi.NewMessage(0,
+		fmt.Sprintf(
+			"New join request: %s %s %s, choose a group",
+			from.FirstName, from.LastName, from.UserName,
+		),
+	)
+	adminMessage.ReplyMarkup = createNewUserGroupsKeyboard(from.ID, from.FirstName, from.UserName)
+	users.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
+	text := `Hello and welcome!
 You will soon get a link to join the group 🎉.
 Once you click the link, please send a picture of your workout *in the group chat*
 ‼️ NOTE ‼️: if you don’t send a picture in the same day you get the link you will be BANNED from the group!`
-		msg.Text = text
+	msg.Text = text
+	return msg, nil
+}
+
+func handleJoinCommandExistingUser(fatBotUpdate FatBotUpdate, user users.User) (msg tgbotapi.MessageConfig, err error) {
+	msg.ChatID = fatBotUpdate.Update.FromChat().ID
+	if user.Active {
+		msg.Text = "You are already active"
 		return msg, nil
+	}
+	lastBanDate, err := user.GetLastBanDate()
+	if err != nil {
+		return msg, err
+	}
+	timeSinceBan := int(time.Now().Sub(lastBanDate).Hours())
+	if timeSinceBan < 48 {
+		msg.Text = fmt.Sprintf("%s, it's only been %d hours, you have to wait 48", user.GetName(), timeSinceBan)
 	} else {
-		if user.Active {
-			msg.Text = "You are already active"
-			return msg, nil
-		}
-		lastBanDate, err := user.GetLastBanDate()
-		if err != nil {
-			return msg, err
-		}
-		timeSinceBan := int(time.Now().Sub(lastBanDate).Hours())
-		if timeSinceBan < 48 {
-			msg.Text = fmt.Sprintf("%s, it's only been %d hours, you have to wait 48", user.GetName(), timeSinceBan)
-		} else {
-			msg.Text = fmt.Sprintf("Hi %s, welcome back I'm sending this for admin approval", user.GetName())
-			adminMessage := tgbotapi.NewMessage(0, fmt.Sprintf("%s wants to rejoin his group do you approve?", user.GetName()))
-			var approvalKeyboard = tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Approve", fmt.Sprint(user.ID)),
-					tgbotapi.NewInlineKeyboardButtonData("Decline", "false"),
-				),
-			)
-			adminMessage.ReplyMarkup = approvalKeyboard
-			users.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
-		}
+		msg.Text = fmt.Sprintf("Hi %s, welcome back I'm sending this for admin approval", user.GetName())
+		adminMessage := tgbotapi.NewMessage(0, fmt.Sprintf("%s wants to rejoin his group do you approve?", user.GetName()))
+		var approvalKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("Approve", fmt.Sprint(user.ID)),
+				tgbotapi.NewInlineKeyboardButtonData("Decline", "false"),
+			),
+		)
+		adminMessage.ReplyMarkup = approvalKeyboard
+		users.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
 	}
 	return
 }
