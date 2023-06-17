@@ -32,12 +32,17 @@ func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
 	db := db.DBCon
 	daysSinceCycleStart := int(time.Now().Weekday()) + 1
 	lastCycleStartDate := time.Now().AddDate(0, 0, -int(daysSinceCycleStart))
+	loc, err := time.LoadLocation("Europe/Rome")
+	if err != nil {
+		log.Error("Bad timezone: %s", err)
+		loc = lastCycleStartDate.Location()
+	}
 	lastCycleExactTime := time.Date(
 		lastCycleStartDate.Year(),
 		lastCycleStartDate.Month(),
 		lastCycleStartDate.Day(),
 		18, 0, 0, 0,
-		lastCycleStartDate.Location())
+		loc)
 
 	group, err := GetGroup(chatId)
 	if err != nil {
