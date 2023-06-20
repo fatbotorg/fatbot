@@ -28,26 +28,30 @@ type Workout struct {
 	Flagged        bool
 }
 
-func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
-	db := db.DBCon
-	daysSinceCycleStart := int(time.Now().Weekday()) + 1
-	lastCycleStartDate := time.Now().AddDate(0, 0, -int(daysSinceCycleStart))
-	loc, err := time.LoadLocation("Europe/Rome")
-	if err != nil {
-		log.Error("Bad timezone: %s", err)
-		loc = lastCycleStartDate.Location()
+func getLastCycleExactTime() time.Time {
+	location, _ := time.LoadLocation("Europe/Rome")
+	var lastCycleStartDate time.Time
+	if time.Now().Day() == 6 && time.Now().In(location).Hour() >= 18 {
+		lastCycleStartDate = time.Now()
+	} else {
+		daysSinceCycleStart := int(time.Now().Weekday()) + 1
+		lastCycleStartDate = time.Now().AddDate(0, 0, -int(daysSinceCycleStart))
 	}
-	lastCycleExactTime := time.Date(
+	return time.Date(
 		lastCycleStartDate.Year(),
 		lastCycleStartDate.Month(),
 		lastCycleStartDate.Day(),
 		18, 0, 0, 0,
-		loc)
+		location)
+}
 
+func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
+	lastCycleExactTime := getLastCycleExactTime()
 	group, err := GetGroup(chatId)
 	if err != nil {
 		return err
 	}
+	db := db.DBCon
 	if err := db.Model(&User{}).
 		Preload(
 			"Workouts",
