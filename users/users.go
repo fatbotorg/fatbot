@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/spf13/viper"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"gorm.io/gorm"
@@ -212,6 +213,7 @@ func (user *User) Ban(bot *tgbotapi.BotAPI, chatId int64) (errors []error) {
 		log.Errorf("Error while registering ban event: %s", err)
 	}
 	messagesToSend := []tgbotapi.MessageConfig{}
+	waitHours := viper.GetInt("ban.wait.hours")
 	groupMessage := tgbotapi.NewMessage(chatId, fmt.Sprintf(
 		"%s was not working out. 🦥⛔",
 		user.GetName(),
@@ -219,7 +221,7 @@ func (user *User) Ban(bot *tgbotapi.BotAPI, chatId int64) (errors []error) {
 	userMessage := tgbotapi.NewMessage(user.TelegramUserID, fmt.Sprintf(
 		`%s you were banned from the group
 after not working out.
-You can rejoin after 48 hours:
+You can rejoin after %d hours:
 
 1. Tap this: /join
 2. Wait for approval
@@ -229,6 +231,7 @@ You can rejoin after 48 hours:
 will have 60 minutes to send 2 workouts
 (pictures) in the group chat.`,
 		user.GetName(),
+		waitHours,
 	))
 	messagesToSend = append(messagesToSend, groupMessage)
 	messagesToSend = append(messagesToSend, userMessage)
