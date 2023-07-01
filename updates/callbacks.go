@@ -209,11 +209,7 @@ func initAdminMenuFlow(fatBotUpdate FatBotUpdate, menu state.Menu) error {
 }
 
 func handleCallbacks(fatBotUpdate FatBotUpdate) error {
-	if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "rejoin his group") {
-		if err := handleRejoinCallback(fatBotUpdate); err != nil {
-			return err
-		}
-	} else if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "New join request") ||
+	if strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "New join request") ||
 		strings.Contains(fatBotUpdate.Update.CallbackQuery.Message.Text, "wants to join using a link") {
 		if err := handleNewJoinCallback(fatBotUpdate); err != nil {
 			return err
@@ -223,25 +219,6 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 		if err != nil {
 			sentry.CaptureException(err)
 			log.Error(err)
-		}
-	}
-	return nil
-}
-
-func handleRejoinCallback(fatBotUpdate FatBotUpdate) error {
-	msg := tgbotapi.NewMessage(fatBotUpdate.Update.CallbackQuery.Message.Chat.ID, "")
-	if fatBotUpdate.Update.CallbackQuery.Data == "false" {
-		msg.Text = "Declined the request"
-		fatBotUpdate.Bot.Send(msg)
-	} else {
-		userId, _ := strconv.ParseInt(fatBotUpdate.Update.CallbackData(), 10, 64)
-		user, err := users.GetUser(uint(userId))
-		if err != nil {
-			return err
-		}
-		err = user.Rejoin(fatBotUpdate.Update, fatBotUpdate.Bot)
-		if err != nil {
-			return err
 		}
 	}
 	return nil
