@@ -3,6 +3,8 @@ report:
   hour: 18
 ban:
   wait:
-    hours: 48
+    hours: 24
+workout:
+  period: 60
 
   
