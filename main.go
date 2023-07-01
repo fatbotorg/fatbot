@@ -22,7 +22,6 @@ func initViper() {
 		log.Fatalf("fatal error config file: %w", err)
 	}
 	viper.AutomaticEnv()
-	log.Info(viper.GetString("TIMEZONE"))
 }
 
 func main() {
