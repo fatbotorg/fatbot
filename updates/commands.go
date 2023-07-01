@@ -40,6 +40,9 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 	default:
 		msg.ChatID = update.FromChat().ID
 	}
+	if msg.Text == "" {
+		return nil
+	}
 	if _, err := bot.Send(msg); err != nil {
 		return err
 	}
@@ -218,16 +221,9 @@ func handleJoinCommandExistingUser(fatBotUpdate FatBotUpdate, user users.User) (
 	if timeSinceBan < waitHours {
 		msg.Text = fmt.Sprintf("%s, it's only been %d hours, you have to wait %d", user.GetName(), timeSinceBan, waitHours)
 	} else {
-		msg.Text = fmt.Sprintf("Hi %s, welcome back I'm sending this for admin approval", user.GetName())
-		adminMessage := tgbotapi.NewMessage(0, fmt.Sprintf("%s wants to rejoin his group do you approve?", user.GetName()))
-		var approvalKeyboard = tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("Approve", fmt.Sprint(user.ID)),
-				tgbotapi.NewInlineKeyboardButtonData("Decline", "false"),
-			),
-		)
-		adminMessage.ReplyMarkup = approvalKeyboard
-		users.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
+		if err := user.Rejoin(fatBotUpdate.Update, fatBotUpdate.Bot); err != nil {
+			return msg, err
+		}
 	}
 	return
 }
