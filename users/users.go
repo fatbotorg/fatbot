@@ -420,8 +420,6 @@ func (user User) GetLastBanDate() (time.Time, error) {
 }
 
 func (user User) Rejoin(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	adminMsg := tgbotapi.NewMessage(0, "")
 	if err := user.UnBan(bot); err != nil {
 		banErr := fmt.Errorf("Issue with unbanning %s: %s", user.GetName(), err)
 		if !update.FromChat().IsSuperGroup() {
@@ -438,17 +436,6 @@ func (user User) Rejoin(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	}
 	if err := user.UpdateOnProbation(true); err != nil {
 		return fmt.Errorf("Issue updating probation %s: %s", user.GetName(), err)
-	}
-	msg.Text = "Ok, approved"
-	if adminUser, err := GetUserById(update.SentFrom().ID); err != nil {
-		return err
-	} else {
-		adminMsg.Text = fmt.Sprintf("Approved by %s", adminUser.GetName())
-		SendMessageToAdmins(bot, adminMsg)
-	}
-	_, err := bot.Send(msg)
-	if err != nil {
-		return err
 	}
 	return nil
 }
