@@ -11,7 +11,19 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/spf13/viper"
 )
+
+func initViper() {
+	viper.SetConfigName("config") // name of config file (without extension)
+	viper.AddConfigPath(".")      // optionally look for config in the working directory
+	err := viper.ReadInConfig()   // Find and read the config file
+	if err != nil {               // Handle errors reading the config file
+		log.Fatalf("fatal error config file: %w", err)
+	}
+	viper.AutomaticEnv()
+	log.Info(viper.GetString("TIMEZONE"))
+}
 
 func main() {
 	var bot *tgbotapi.BotAPI
@@ -19,6 +31,8 @@ func main() {
 	var updatesChannel tgbotapi.UpdatesChannel
 	// Init DB
 	db.DBCon = db.GetDB()
+	// Init Config
+	initViper()
 	if os.Getenv("ENVIRONMENT") != "production" {
 		log.SetLevel(log.DebugLevel)
 	} else {
