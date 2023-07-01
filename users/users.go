@@ -420,7 +420,7 @@ func (user User) GetLastBanDate() (time.Time, error) {
 }
 
 func (user User) Rejoin(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
-	msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "")
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	adminMsg := tgbotapi.NewMessage(0, "")
 	if err := user.UnBan(bot); err != nil {
 		banErr := fmt.Errorf("Issue with unbanning %s: %s", user.GetName(), err)
