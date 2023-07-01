@@ -3,6 +3,7 @@ package updates
 import (
 	"fatbot/users"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/log"
 	"github.com/getsentry/sentry-go"
