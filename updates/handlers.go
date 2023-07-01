@@ -58,6 +58,9 @@ func (update MediaUpdate) handle() error {
 	if update.Update.FromChat().IsPrivate() {
 		return nil
 	}
+	if strings.ToLower(update.Update.Message.Caption) == "skip" {
+		return nil
+	}
 	msg, err := handleWorkoutUpload(update.Update)
 	if err != nil {
 		return fmt.Errorf("Error handling last workout: %s", err)
