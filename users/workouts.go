@@ -27,6 +27,7 @@ type Workout struct {
 	GroupID        uint
 	PhotoMessageID int
 	Flagged        bool
+	Streak         int
 }
 
 func getLastCycleExactTime() time.Time {
@@ -120,21 +121,35 @@ func (user *User) PushWorkout(days, chatId int64) error {
 	return nil
 }
 
-func (user *User) UpdateWorkout(update tgbotapi.Update) error {
+func isTodayOrWasYesterday(someDate time.Time) bool {
+	today := time.Now().YearDay()
+	return today-1 == someDate.YearDay() || today == someDate.YearDay()
+}
+
+func (user *User) UpdateWorkout(update tgbotapi.Update, lastWorkout Workout) (Workout, error) {
 	db := db.DBCon
 	messageId := update.Message.MessageID
 	db.Where("telegram_user_id = ?", user.TelegramUserID).Find(&user)
 	group, err := GetGroup(update.FromChat().ID)
 	if err != nil {
-		return err
+		return lastWorkout, err
 	}
+
+	var streak int
+	if lastWorkout.Streak > 0 {
+		streak = lastWorkout.Streak + 1
+	} else if isTodayOrWasYesterday(lastWorkout.CreatedAt) {
+		streak = 2
+	}
+
 	workout := &Workout{
 		UserID:         user.ID,
 		PhotoMessageID: messageId,
 		GroupID:        group.ID,
+		Streak:         streak,
 	}
 	db.Model(&user).Association("Workouts").Append(workout)
-	return nil
+	return *workout, nil
 }
 
 func (workout *Workout) IsOlderThan(minutes int) bool {
