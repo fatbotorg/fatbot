@@ -136,10 +136,12 @@ func (user *User) UpdateWorkout(update tgbotapi.Update, lastWorkout Workout) (Wo
 	}
 
 	var streak int
-	if lastWorkout.Streak > 0 {
-		streak = lastWorkout.Streak + 1
-	} else if isTodayOrWasYesterday(lastWorkout.CreatedAt) {
-		streak = 2
+	if isTodayOrWasYesterday(lastWorkout.CreatedAt) {
+		if lastWorkout.Streak > 0 {
+			streak = lastWorkout.Streak + 1
+		} else {
+			streak = 2
+		}
 	}
 
 	workout := &Workout{
