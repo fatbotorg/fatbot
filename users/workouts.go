@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/spf13/viper"
 
 	"gorm.io/gorm"
 )
@@ -29,7 +30,8 @@ type Workout struct {
 }
 
 func getLastCycleExactTime() time.Time {
-	location, _ := time.LoadLocation("Europe/Rome")
+	timezone := viper.GetString("timezone")
+	location, _ := time.LoadLocation(timezone)
 	var lastCycleStartDate time.Time
 	if time.Now().Day() == 6 && time.Now().In(location).Hour() >= 18 {
 		lastCycleStartDate = time.Now()

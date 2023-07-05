@@ -3,6 +3,7 @@ package updates
 import (
 	"fatbot/users"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/log"
 	"github.com/getsentry/sentry-go"
@@ -56,6 +57,9 @@ func (update CallbackUpdate) handle() error {
 
 func (update MediaUpdate) handle() error {
 	if update.Update.FromChat().IsPrivate() {
+		return nil
+	}
+	if strings.ToLower(update.Update.Message.Caption) == "skip" {
 		return nil
 	}
 	msg, err := handleWorkoutUpload(update.Update)

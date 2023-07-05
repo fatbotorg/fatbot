@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/spf13/viper"
 )
 
 func handleProbationUploadMessage(update tgbotapi.Update, user users.User) (tgbotapi.MessageConfig, error) {
@@ -41,8 +42,8 @@ func handleWorkoutUpload(update tgbotapi.Update) (tgbotapi.MessageConfig, error)
 	if err != nil {
 		log.Warn(err)
 	}
-	if !lastWorkout.IsOlderThan(30) && !user.OnProbation {
-		log.Warn("Workout not older than 30 minutes:", "name", user.GetName())
+	workOutOnceIn := viper.GetInt("workout.period")
+	if !lastWorkout.IsOlderThan(workOutOnceIn) && !user.OnProbation {
 		return msg, nil
 	}
 	if err := user.UpdateWorkout(update); err != nil {

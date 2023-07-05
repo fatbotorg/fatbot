@@ -1,0 +1,10 @@
+timezone: "Europe/Rome"
+report:
+  hour: 18
+ban:
+  wait:
+    hours: 24
+workout:
+  period: 60
+
+  
