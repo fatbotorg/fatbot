@@ -46,7 +46,8 @@ func handleWorkoutUpload(update tgbotapi.Update) (tgbotapi.MessageConfig, error)
 	if !lastWorkout.IsOlderThan(workOutOnceIn) && !user.OnProbation {
 		return msg, nil
 	}
-	if err := user.UpdateWorkout(update); err != nil {
+	var currentWorkout users.Workout
+	if currentWorkout, err = user.UpdateWorkout(update, lastWorkout); err != nil {
 		return msg, err
 	}
 
@@ -77,13 +78,18 @@ func handleWorkoutUpload(update tgbotapi.Update) (tgbotapi.MessageConfig, error)
 		if err := user.LoadWorkoutsThisCycle(chatId); err != nil {
 			return msg, err
 		}
+		var streakMessage string
+		if currentWorkout.Streak > 0 {
+			streakMessage = fmt.Sprintf("%d in a row! 💪👑💪 %s", currentWorkout.Streak, users.GetRandomStreakMessage())
+		}
 
-		message = fmt.Sprintf("%s %s\nYour last workout was on %s (%s)\nWorkouts this week: %d",
+		message = fmt.Sprintf("%s %s\nLast workout: %s (%s)\nThis week: %d\n%s",
 			user.GetName(),
 			users.GetRandomWorkoutMessage(),
 			lastWorkout.CreatedAt.Weekday(),
 			timeAgo,
 			len(user.Workouts),
+			streakMessage,
 		)
 	}
 
