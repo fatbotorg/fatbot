@@ -416,6 +416,9 @@ func (user User) GetLastBanDate() (time.Time, error) {
 			banEvents = append(banEvents, event)
 		}
 	}
+	if len(banEvents) == 0 {
+		return time.Time{}, fmt.Errorf("no ban events to banned user %s", user.GetName())
+	}
 	return banEvents[len(banEvents)-1].CreatedAt, nil
 }
 
