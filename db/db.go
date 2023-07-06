@@ -3,7 +3,9 @@ package db
 import (
 	"log"
 	"os"
+	"time"
 
+	"github.com/spf13/viper"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -13,11 +15,18 @@ var (
 )
 
 func GetDB() *gorm.DB {
+	timezone := viper.GetString("timezone")
+	location, _ := time.LoadLocation(timezone)
 	path := os.Getenv("DBPATH")
 	if path == "" {
 		path = "fat.db"
 	}
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{
+		NowFunc: func() time.Time {
+			return time.Now().In(location)
+
+		},
+	})
 	if err != nil {
 		log.Fatal(err)
 	}

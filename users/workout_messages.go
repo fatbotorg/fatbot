@@ -41,3 +41,30 @@ func GetRandomWorkoutMessage() string {
 	}
 	return workoutMessages[rand.Intn(len(workoutMessages))]
 }
+
+func GetRandomStreakMessage() string {
+	rand.Seed(time.Now().Unix()) // initialize global pseudo random generator
+	streakMessages := []string{
+		"Keep up the streak, superhero!",
+		"You're killing the streak, champ!",
+		"Streaking! Keep pushing yourself!",
+		"Streaking is your new hobby!",
+		"Keep the streak alive, warrior!",
+		"Keep up the streak, rockstar!",
+		"Streaker alert! You're amazing!",
+		"Keep the streak alive, legend!",
+		"Keep up the streak, athlete!",
+		"Streaking! Keep it up, superstar!",
+		"Your streak is inspiring, warrior!",
+		"Keep up the streak, fitness guru!",
+		"Streaking! You got this, champ!",
+		"Keep the streak going, legend!",
+		"Streaking! Never give up, warrior!",
+		"Keep up the streak, fitness freak!",
+		"Streaking is your new lifestyle!",
+		"Keep the streak alive, ironman!",
+		"Streaking! Stay committed, superstar!",
+		"Keep up the streak, fitness queen/king!",
+	}
+	return streakMessages[rand.Intn(len(streakMessages))]
+}
