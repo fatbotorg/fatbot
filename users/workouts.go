@@ -31,10 +31,12 @@ type Workout struct {
 }
 
 func getLastCycleExactTime() time.Time {
+	reportHour := viper.GetInt("report.hour")
+	reportWeekDay := viper.GetString("report.day")
 	timezone := viper.GetString("timezone")
 	location, _ := time.LoadLocation(timezone)
 	var lastCycleStartDate time.Time
-	if time.Now().Day() == 6 && time.Now().In(location).Hour() >= 18 {
+	if time.Now().Weekday().String() == reportWeekDay && time.Now().In(location).Hour() >= reportHour {
 		lastCycleStartDate = time.Now()
 	} else {
 		daysSinceCycleStart := int(time.Now().Weekday()) + 1
@@ -44,7 +46,7 @@ func getLastCycleExactTime() time.Time {
 		lastCycleStartDate.Year(),
 		lastCycleStartDate.Month(),
 		lastCycleStartDate.Day(),
-		18, 0, 0, 0,
+		reportHour, 0, 0, 0,
 		location)
 }
 
