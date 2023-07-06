@@ -123,7 +123,11 @@ func (user *User) PushWorkout(days, chatId int64) error {
 
 func isTodayOrWasYesterday(someDate time.Time) bool {
 	today := time.Now().YearDay()
-	return today-1 == someDate.YearDay() || today == someDate.YearDay()
+	workout := someDate.YearDay()
+	if today == 1 {
+		return workout == 1 || workout == 365
+	}
+	return today-1 == workout || today == workout
 }
 
 func (user *User) UpdateWorkout(update tgbotapi.Update, lastWorkout Workout) (Workout, error) {
