@@ -25,5 +25,8 @@ func Init(bot *tgbotapi.BotAPI) {
 	if _, err := scheduler.Every(1).Day().Saturday().At(reportTime).Do(func() { CreateChart(bot) }); err != nil {
 		log.Errorf("Reports scheduler err: %s", err)
 	}
+	if _, err := scheduler.Every(1).Week().At(reportTime).Do(func() { nudgeBannedUsers(bot) }); err != nil {
+		log.Errorf("Banned user nudge err: %s", err)
+	}
 	scheduler.StartAsync()
 }

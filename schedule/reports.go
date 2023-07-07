@@ -5,16 +5,37 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	quickchartgo "github.com/henomis/quickchart-go"
+	"github.com/spf13/viper"
 )
 
 type Leader struct {
 	User     users.User
 	Workouts int
+}
+
+func nudgeBannedUsers(bot *tgbotapi.BotAPI) {
+	inactiveUsers := users.GetInactiveUsers(0)
+	for _, user := range inactiveUsers {
+		lastBanDate, err := user.GetLastBanDate()
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		timeSinceBan := int(time.Now().Sub(lastBanDate).Hours())
+		waitHours := viper.GetInt("ban.wait.hours")
+		if timeSinceBan > waitHours {
+			msg := tgbotapi.NewMessage(user.TelegramUserID, "Maybe it's time to comeback?\nTap: /join")
+			if _, err := bot.Request(msg); err != nil {
+				log.Error("can't send private message", "error", err)
+			}
+		}
+	}
 }
 
 func CreateChart(bot *tgbotapi.BotAPI) {
