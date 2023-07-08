@@ -26,7 +26,7 @@ func scanUsers(bot *tgbotapi.BotAPI) error {
 				log.Error(err)
 				sentry.CaptureException(err)
 			} else if isNew {
-				log.Warn("new user not striking: %s", user.GetName())
+				log.Debug("new user not striking: %s", user.GetName())
 				continue
 			}
 			lastWorkout, err := user.GetLastXWorkout(1, group.ChatID)
