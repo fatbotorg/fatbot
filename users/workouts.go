@@ -85,6 +85,25 @@ func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
 	return user.Workouts
 }
 
+func (user *User) GetPreviousWeekWorkouts(chatId int64) []Workout {
+	db := db.DBCon
+	previousWeeksStart := time.Now().Add(time.Duration(-14) * time.Hour * 24)
+	previousWeeksEnd := time.Now().Add(time.Duration(-7) * time.Hour * 24)
+	group, err := GetGroup(chatId)
+	if err != nil {
+		log.Error(err)
+		sentry.CaptureException(err)
+		return []Workout{}
+	}
+	if err := db.Model(&User{}).
+		Preload("Workouts", "created_at > ? AND created_at < ? AND group_id = ? AND flagged = ?",
+			previousWeeksStart, previousWeeksEnd, group.ID, false).
+		Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
+	}
+	log.Debug(user.Workouts)
+	return user.Workouts
+}
+
 func (user *User) FlagLastWorkout(chatId int64) error {
 	db := db.DBCon
 	workout, err := user.GetLastXWorkout(1, chatId)
