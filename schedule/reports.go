@@ -45,11 +45,12 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 			continue
 		}
 		fileName := fmt.Sprintf("%d.png", group.ChatID)
-		usersWorkouts, leaders := collectUsersData(group)
+		usersWorkouts, previousWeekWorkouts, leaders := collectUsersData(group)
 		userNames := group.GetUserFixedNamesList()
 		usersStringSlice := "'" + strings.Join(userNames, "', '") + "'"
 		workoutsStringSlice := strings.Join(usersWorkouts, ", ")
-		chartConfig := createChartConfig(usersStringSlice, workoutsStringSlice)
+		previousWorkoutsStringSlice := strings.Join(previousWeekWorkouts, ", ")
+		chartConfig := createChartConfig(usersStringSlice, workoutsStringSlice, previousWorkoutsStringSlice)
 		qc := createQuickChart(chartConfig)
 		file, err := os.Create(fileName)
 		if err != nil {
@@ -85,12 +86,14 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 	}
 }
 
-func collectUsersData(group users.Group) (usersWorkouts []string, leaders []Leader) {
+func collectUsersData(group users.Group) (usersWorkouts, previousWeekWorkouts []string, leaders []Leader) {
 	leaders = append(leaders, Leader{
 		User:     users.User{},
 		Workouts: 0,
 	})
 	for _, user := range group.Users {
+		userPreviousWeekWorkouts := user.GetPreviousWeekWorkouts(group.ChatID)
+		previousWeekWorkouts = append(previousWeekWorkouts, fmt.Sprint(len(userPreviousWeekWorkouts)))
 		userPastWeekWorkouts := user.GetPastWeekWorkouts(group.ChatID)
 		usersWorkouts = append(usersWorkouts, fmt.Sprint(len(userPastWeekWorkouts)))
 		if leaders[0].Workouts > len(userPastWeekWorkouts) {
@@ -106,17 +109,23 @@ func collectUsersData(group users.Group) (usersWorkouts []string, leaders []Lead
 	return
 }
 
-func createChartConfig(usersStringSlice, workoutsStringSlice string) string {
+func createChartConfig(usersStringSlice, workoutsStringSlice, previousWorkoutsSlice string) string {
 	chartConfig := fmt.Sprintf(`{
 		type: 'bar',
 		data: {
 			labels: [%s],
-			datasets: [{
-			label: 'Workouts',
-			data: [%s]
-			}]
+			datasets: [
+				{
+					label: 'Workouts',
+					data: [%s]
+				},
+				{
+					label: 'Last Week',
+					data: [%s]
+				},
+			]
 		}
-	}`, usersStringSlice, workoutsStringSlice)
+	}`, usersStringSlice, workoutsStringSlice, previousWorkoutsSlice)
 	return chartConfig
 }
 
