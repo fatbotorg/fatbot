@@ -1,10 +1,10 @@
 package db
 
 import (
-	"log"
 	"os"
 	"time"
 
+	"github.com/charmbracelet/log"
 	"github.com/spf13/viper"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
