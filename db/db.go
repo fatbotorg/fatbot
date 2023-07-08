@@ -1,10 +1,10 @@
 package db
 
 import (
-	"log"
 	"os"
 	"time"
 
+	"github.com/charmbracelet/log"
 	"github.com/spf13/viper"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -24,7 +24,6 @@ func GetDB() *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{
 		NowFunc: func() time.Time {
 			return time.Now().In(location)
-
 		},
 	})
 	if err != nil {
