@@ -24,7 +24,6 @@ func GetDB() *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{
 		NowFunc: func() time.Time {
 			return time.Now().In(location)
-
 		},
 	})
 	if err != nil {
