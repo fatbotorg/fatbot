@@ -3,12 +3,14 @@ module fatbot
 go 1.19
 
 require (
+	github.com/aws/aws-sdk-go v1.44.298
 	github.com/charmbracelet/log v0.2.1
 	github.com/getsentry/sentry-go v0.21.0
 	github.com/go-co-op/gocron v1.25.0
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/gomodule/redigo v1.8.9
 	github.com/henomis/quickchart-go v1.0.0
+	github.com/sashabaranov/go-openai v1.14.0
 	github.com/spf13/viper v1.16.0
 	gorm.io/driver/sqlite v1.5.0
 	gorm.io/gorm v1.25.0
@@ -22,6 +24,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-isatty v0.0.18 // indirect
