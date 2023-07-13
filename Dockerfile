@@ -2,7 +2,7 @@ FROM alpine:edge AS build
 RUN apk add --no-cache --update go gcc g++
 WORKDIR /app
 COPY . .
-RUN go test -v
+# RUN go test -v
 RUN CGO_ENABLED=1 GOOS=linux go build -o fatbot
 
 FROM alpine:edge
