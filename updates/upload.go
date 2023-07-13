@@ -80,7 +80,11 @@ func handleWorkoutUpload(update tgbotapi.Update) (tgbotapi.MessageConfig, error)
 		}
 		var streakMessage string
 		if currentWorkout.Streak > 0 {
-			streakMessage = fmt.Sprintf("%d in a row! 💪👑💪 %s", currentWorkout.Streak, users.GetRandomStreakMessage())
+			streakSigns := ""
+			for i := 0; i < currentWorkout.Streak; i++ {
+				streakSigns += "👑"
+			}
+			streakMessage = fmt.Sprintf("%d in a row! %s %s", currentWorkout.Streak, streakSigns, users.GetRandomStreakMessage())
 		}
 
 		message = fmt.Sprintf("%s %s\nLast workout: %s (%s)\nThis week: %d\n%s",
