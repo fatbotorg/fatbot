@@ -453,6 +453,7 @@ func (user User) IsNew(chatId int64) (bool, error) {
 			return false, err
 		}
 	}
+	newUserGraceDays := viper.GetFloat64("users.new.days")
 	return noWorkouts &&
-		time.Now().Sub(user.CreatedAt).Hours() <= 24, nil
+		time.Now().Sub(user.CreatedAt).Hours() <= 24*newUserGraceDays, nil
 }
