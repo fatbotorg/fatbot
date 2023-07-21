@@ -139,7 +139,9 @@ func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
 	if err := db.Where(User{
 		TelegramUserID: message.From.ID,
 	}).Find(&user).Error; err != nil {
-		return user, err
+		getErr := fmt.Errorf("err getting userFromMessage: %s", err)
+		sentry.CaptureException(getErr)
+		return user, getErr
 	}
 	return user, nil
 }
