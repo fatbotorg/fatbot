@@ -67,6 +67,8 @@ func (state *State) GetStateMenu() (menu Menu, err error) {
 		menu = &BanUserMenu{}
 	case "grouplink":
 		menu = &GroupLinkMenu{}
+	case "addgroupadmin":
+		menu = &AddGroupAdmin{}
 	default:
 		return menu, fmt.Errorf("unknown menu: %s", rawMenu)
 	}

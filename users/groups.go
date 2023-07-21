@@ -14,6 +14,7 @@ type Group struct {
 	Approved bool
 	Title    string
 	Users    []User `gorm:"many2many:user_groups;"`
+	Admins   []User `gorm:"many2many:groups_admins;"`
 	Workouts []Workout
 }
 

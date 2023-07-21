@@ -56,10 +56,35 @@ type BanUserMenu struct {
 type GroupLinkMenu struct {
 	MenuBase
 }
+type AddGroupAdmin struct {
+	MenuBase
+}
 
 type Menu interface {
 	CreateMenu() MenuBase
 	PerformAction(ActionData) error
+}
+
+func (menu AddGroupAdmin) CreateMenu() MenuBase {
+	chooseGroup := Step{
+		Name:     "choosegroup",
+		Kind:     KeyboardStepKind,
+		Message:  "Choose Group",
+		Keyboard: createGroupsKeyboard(),
+		Result:   GroupIdStepResult,
+	}
+	chooseUser := Step{
+		Name:     "chooseuser",
+		Kind:     KeyboardStepKind,
+		Message:  "Choose User",
+		Keyboard: tgbotapi.InlineKeyboardMarkup{},
+		Result:   TelegramUserIdStepResult,
+	}
+	themenu := MenuBase{
+		Name:  "addgruopadmin",
+		Steps: []Step{chooseGroup, chooseUser},
+	}
+	return themenu
 }
 
 func (menu GroupLinkMenu) CreateMenu() MenuBase {
@@ -71,7 +96,7 @@ func (menu GroupLinkMenu) CreateMenu() MenuBase {
 		Result:   GroupIdStepResult,
 	}
 	themenu := MenuBase{
-		Name:  "banuser",
+		Name:  "grouplink",
 		Steps: []Step{chooseGroup},
 	}
 	return themenu

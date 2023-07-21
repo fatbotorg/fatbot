@@ -26,6 +26,7 @@ type User struct {
 	Workouts       []Workout
 	Events         []Event
 	Groups         []*Group `gorm:"many2many:user_groups;"`
+	GroupsAdmin    []*Group `gorm:"many2many:groups_admins;"`
 }
 
 type Blacklist struct {
