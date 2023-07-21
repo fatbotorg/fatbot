@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/getsentry/sentry-go"
 	"github.com/spf13/viper"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
