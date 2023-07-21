@@ -54,7 +54,15 @@ func detectImageLabels(imageBytes []byte) ([]string, int) {
 
 	answer := []string{}
 	points := 0
+	unwantedLabels := map[string]byte{
+		"adult":  0,
+		"male":   0,
+		"female": 0,
+	}
 	for _, label := range result.Labels {
+		if _, ok := unwantedLabels[strings.ToLower(*label.Name)]; ok {
+			continue
+		}
 		answer = append(answer, *label.Name)
 
 		if emoji := findEmoji(*label.Name); emoji != "" {

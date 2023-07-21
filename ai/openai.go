@@ -15,12 +15,12 @@ func GetAiResponse(labels []string) string {
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			Temperature: 1.0,
+			Temperature: 1.2,
 			Model:       openai.GPT3Dot5Turbo,
 			Messages: []openai.ChatCompletionMessage{
 				{
 					Role:    openai.ChatMessageRoleUser,
-					Content: fmt.Sprintf("Write a response to a user after their workout, congratulating them for their effort and enoucraging them to continue working out, address this list of words in your response: %s. Keep it under 240 characters. End the message with emojis matching the words from the list.", labels),
+					Content: fmt.Sprintf("Write a response to a user after their workout, congratulating them for their effort and enoucraging them to continue working out, address this list of words in your response: %s. Keep it under 200 characters. End the message with emojis matching the words from the list. Try to be funny.", labels),
 				},
 			},
 		},

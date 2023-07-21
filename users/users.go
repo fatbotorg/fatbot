@@ -137,11 +137,11 @@ func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
 	db := db.DBCon
 	var user User
 	if err := db.Where(User{
-		Username:       message.From.UserName,
-		Name:           message.From.FirstName,
 		TelegramUserID: message.From.ID,
 	}).Find(&user).Error; err != nil {
-		return user, err
+		getErr := fmt.Errorf("err getting userFromMessage: %s", err)
+		sentry.CaptureException(getErr)
+		return user, getErr
 	}
 	return user, nil
 }
@@ -453,6 +453,7 @@ func (user User) IsNew(chatId int64) (bool, error) {
 			return false, err
 		}
 	}
+	newUserGraceDays := viper.GetFloat64("users.new.days")
 	return noWorkouts &&
-		time.Now().Sub(user.CreatedAt).Hours() <= 24, nil
+		time.Now().Sub(user.CreatedAt).Hours() <= 24*newUserGraceDays, nil
 }

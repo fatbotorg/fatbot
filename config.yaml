@@ -7,3 +7,6 @@ ban:
     hours: 24
 workout:
   period: 60
+users:
+  new: 
+    days: 5
