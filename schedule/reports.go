@@ -34,6 +34,7 @@ func nudgeBannedUsers(bot *tgbotapi.BotAPI) {
 			if _, err := bot.Request(msg); err != nil {
 				log.Error("can't send private message", "error", err)
 			}
+			log.Info("sent a nudge to user", "name", user.GetName())
 		}
 	}
 }
