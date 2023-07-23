@@ -49,9 +49,9 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 		usersWorkouts, previousWeekWorkouts, leaders := collectUsersData(group)
 		userNames := group.GetUserFixedNamesList()
 		usersStringSlice := "'" + strings.Join(userNames, "', '") + "'"
-		workoutsStringSlice := strings.Join(usersWorkouts, ", ")
 		previousWorkoutsStringSlice := strings.Join(previousWeekWorkouts, ", ")
-		chartConfig := createChartConfig(usersStringSlice, workoutsStringSlice, previousWorkoutsStringSlice)
+		workoutsStringSlice := strings.Join(usersWorkouts, ", ")
+		chartConfig := createChartConfig(usersStringSlice, previousWorkoutsStringSlice, workoutsStringSlice)
 		qc := createQuickChart(chartConfig)
 		file, err := os.Create(fileName)
 		if err != nil {
@@ -110,23 +110,23 @@ func collectUsersData(group users.Group) (usersWorkouts, previousWeekWorkouts []
 	return
 }
 
-func createChartConfig(usersStringSlice, workoutsStringSlice, previousWorkoutsSlice string) string {
+func createChartConfig(usersStringSlice, previousWorkoutsSlice, workoutsStringSlice string) string {
 	chartConfig := fmt.Sprintf(`{
 		type: 'bar',
 		data: {
 			labels: [%s],
 			datasets: [
 				{
-					label: 'Workouts',
+					label: 'Last Week',
 					data: [%s]
 				},
 				{
-					label: 'Last Week',
+					label: 'Workouts',
 					data: [%s]
 				},
 			]
 		}
-	}`, usersStringSlice, workoutsStringSlice, previousWorkoutsSlice)
+	}`, usersStringSlice, previousWorkoutsSlice, workoutsStringSlice)
 	return chartConfig
 }
 
