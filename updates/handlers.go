@@ -59,7 +59,9 @@ func (update MediaUpdate) handle() error {
 	if update.Update.FromChat().IsPrivate() {
 		return nil
 	}
-	if strings.ToLower(update.Update.Message.Caption) == "skip" {
+	caption := update.Update.Message.Caption
+	lines := strings.Split(strings.ToLower(caption), "\n")
+	if caption != "" && strings.ReplaceAll(lines[0], " ", "") == "skip" {
 		return nil
 	}
 	msg, err := handleWorkoutUpload(update)
