@@ -1,2 +1,4 @@
 *.db
 fatbot
+*.png
+*.env

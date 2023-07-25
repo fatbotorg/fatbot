@@ -1,7 +1,8 @@
 # Fat Bot
 The Telegram bot that keeps you lean
 ---
-This is the open sourced code for the Telegram bot that manages groups of users helping them workout.
+
+![alt text](http://omer.hamerman.co.s3.amazonaws.com/putin.png)
 
 ### Usage as a user
 As a participant in a group, you're expected to share a workout-related image once every 5 days (hopefully more often than that).
@@ -68,3 +69,6 @@ In both cases, a private message will be sent to approve the request (if through
 Important: soon, notifications for approval will only be sent to local admins to prevent superadmins from overload, so make sure you're a local admin in the group as well, use the admin panel for that.
 
 
+#### User options
+* `/join` - welcomes new users and asks the admin(s) to approve and pick their group. Existing users who were banned will require approval from the admin upon which they'll be send a link to join. After rejoining the bot expects two reports immediately or the user is banned again
+* `/status` - tells the user how much time he has left till the end of the 5 days period

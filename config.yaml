@@ -1,0 +1,12 @@
+timezone: "Europe/Rome"
+report:
+  day: "Saturday"
+  hour: 18
+ban:
+  wait:
+    hours: 24
+workout:
+  period: 60
+users:
+  new: 
+    days: 5

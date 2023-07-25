@@ -7,6 +7,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build -o fatbot
 
 FROM alpine:edge
 WORKDIR /app
-RUN apk add sqlite
+RUN apk add --no-cache sqlite tzdata
 COPY --from=build /app/fatbot /app/fatbot
+COPY --from=build /app/config.yaml /app/config.yaml
 ENTRYPOINT /app/fatbot
