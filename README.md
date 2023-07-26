@@ -30,7 +30,7 @@ Admining a group is done via the admin panel available to you with `/admin` dire
 
 ##### Additional options for admins
 * `/newgroup` to set up new groups (described below)
-* `/send_weekly_report` shares the weekly report immediately - mainly used for debugging
+* `/admin_send_report` shares the weekly report immediately - mainly used for debugging
 
 
 ### Getting started on your own 
@@ -40,6 +40,7 @@ Here's how to run your own:
 * Go to bot father on Telegram look for `@BotFather` then `/start` -> `/newbot` -> fill in details and take the API key
 * On your machine run `export TELEGRAM_APITOKEN=<token>`
 * If you want Open AI's responses to workouts, you'd also want to get one from https://openai.com and running `export OPENAI_APITOKEN=<token>`
+* For the admin panel to work you'd want to use Redis and expose it locally, the easiest way is: `redis-server —daemonize yes`
 * `go run .`
 * Unless changes made, the DB will be created locally -> `./fat.db`
 
