@@ -1,7 +1,7 @@
 timezone: "Europe/Rome"
 report:
   day: "Saturday"
-  hour: 18
+  hour: 20
 ban:
   wait:
     hours: 24
