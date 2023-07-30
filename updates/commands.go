@@ -1,7 +1,6 @@
 package updates
 
 import (
-	"fatbot/schedule"
 	"fatbot/state"
 	"fatbot/users"
 	"fmt"
@@ -163,7 +162,7 @@ func sendLinkJoinForAdminApproval(fatBotUpdate FatBotUpdate, group users.Group) 
 		),
 	)
 	adminMessage.ReplyMarkup = approvalKeyboard
-	users.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
+	users.SendMessageToGroupAdmins(fatBotUpdate.Bot, group.ChatID, adminMessage)
 	text := `Hello and welcome!
 You will soon get a link to join the group 🎉.
 Once you click the link, please send a picture of your workout *in the group chat*
