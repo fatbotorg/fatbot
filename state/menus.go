@@ -6,8 +6,10 @@ import (
 )
 
 type MenuBase struct {
-	Name  string
-	Steps []Step
+	Name           string
+	Label          string
+	Steps          []Step
+	SuperAdminOnly bool
 }
 
 type stepKind string
@@ -56,21 +58,21 @@ type BanUserMenu struct {
 type GroupLinkMenu struct {
 	MenuBase
 }
-type AddGroupAdmin struct {
+type AddGroupAdminMenu struct {
 	MenuBase
 }
 
 type Menu interface {
-	CreateMenu() MenuBase
+	CreateMenu(userId int64) MenuBase
 	PerformAction(ActionData) error
 }
 
-func (menu AddGroupAdmin) CreateMenu() MenuBase {
+func (menu AddGroupAdminMenu) CreateMenu(userId int64) MenuBase {
 	chooseGroup := Step{
 		Name:     "choosegroup",
 		Kind:     KeyboardStepKind,
 		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(),
+		Keyboard: createGroupsKeyboard(0),
 		Result:   GroupIdStepResult,
 	}
 	chooseUser := Step{
@@ -81,33 +83,37 @@ func (menu AddGroupAdmin) CreateMenu() MenuBase {
 		Result:   TelegramUserIdStepResult,
 	}
 	themenu := MenuBase{
-		Name:  "addgruopadmin",
-		Steps: []Step{chooseGroup, chooseUser},
+		Name:           "addgroupadmin",
+		Label:          "Add Admin",
+		Steps:          []Step{chooseGroup, chooseUser},
+		SuperAdminOnly: true,
 	}
 	return themenu
 }
 
-func (menu GroupLinkMenu) CreateMenu() MenuBase {
+func (menu GroupLinkMenu) CreateMenu(userId int64) MenuBase {
 	chooseGroup := Step{
 		Name:     "choosegroup",
 		Kind:     KeyboardStepKind,
 		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(),
+		Keyboard: createGroupsKeyboard(userId),
 		Result:   GroupIdStepResult,
 	}
 	themenu := MenuBase{
-		Name:  "grouplink",
-		Steps: []Step{chooseGroup},
+		Name:           "grouplink",
+		Label:          "Group Link",
+		Steps:          []Step{chooseGroup},
+		SuperAdminOnly: false,
 	}
 	return themenu
 }
 
-func (menu BanUserMenu) CreateMenu() MenuBase {
+func (menu BanUserMenu) CreateMenu(userId int64) MenuBase {
 	chooseGroup := Step{
 		Name:     "choosegroup",
 		Kind:     KeyboardStepKind,
 		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(),
+		Keyboard: createGroupsKeyboard(userId),
 		Result:   GroupIdStepResult,
 	}
 	chooseUser := Step{
@@ -118,18 +124,20 @@ func (menu BanUserMenu) CreateMenu() MenuBase {
 		Result:   TelegramUserIdStepResult,
 	}
 	themenu := MenuBase{
-		Name:  "banuser",
-		Steps: []Step{chooseGroup, chooseUser},
+		Name:           "banuser",
+		Label:          "Ban User",
+		Steps:          []Step{chooseGroup, chooseUser},
+		SuperAdminOnly: false,
 	}
 	return themenu
 }
 
-func (menu RejoinUserMenu) CreateMenu() MenuBase {
+func (menu RejoinUserMenu) CreateMenu(userId int64) MenuBase {
 	chooseGroup := Step{
 		Name:     "choosegroup",
 		Kind:     KeyboardStepKind,
 		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(),
+		Keyboard: createGroupsKeyboard(userId),
 		Result:   GroupIdStepResult,
 	}
 	chooseUser := Step{
@@ -140,18 +148,20 @@ func (menu RejoinUserMenu) CreateMenu() MenuBase {
 		Result:   TelegramInactiveUserIdStepResult,
 	}
 	themenu := MenuBase{
-		Name:  "rejoinuser",
-		Steps: []Step{chooseGroup, chooseUser},
+		Name:           "rejoinuser",
+		Label:          "Rejoin User",
+		Steps:          []Step{chooseGroup, chooseUser},
+		SuperAdminOnly: false,
 	}
 	return themenu
 }
 
-func (menu ShowEventsMenu) CreateMenu() MenuBase {
+func (menu ShowEventsMenu) CreateMenu(userId int64) MenuBase {
 	chooseGroup := Step{
 		Name:     "choosegroup",
 		Kind:     KeyboardStepKind,
 		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(),
+		Keyboard: createGroupsKeyboard(userId),
 		Result:   GroupIdStepResult,
 	}
 	chooseUser := Step{
@@ -162,18 +172,20 @@ func (menu ShowEventsMenu) CreateMenu() MenuBase {
 		Result:   TelegramUserIdStepResult,
 	}
 	themenu := MenuBase{
-		Name:  "showevents",
-		Steps: []Step{chooseGroup, chooseUser},
+		Name:           "showevents",
+		Label:          "Show Events",
+		Steps:          []Step{chooseGroup, chooseUser},
+		SuperAdminOnly: true,
 	}
 	return themenu
 }
 
-func (menu RenameMenu) CreateMenu() MenuBase {
+func (menu RenameMenu) CreateMenu(userId int64) MenuBase {
 	chooseGroup := Step{
 		Name:     "choosegroup",
 		Kind:     KeyboardStepKind,
 		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(),
+		Keyboard: createGroupsKeyboard(userId),
 		Result:   GroupIdStepResult,
 	}
 	chooseUser := Step{
@@ -191,18 +203,20 @@ func (menu RenameMenu) CreateMenu() MenuBase {
 		Result:   NewNameStepResult,
 	}
 	themenu := MenuBase{
-		Name:  "rename",
-		Steps: []Step{chooseGroup, chooseUser, insertName},
+		Name:           "rename",
+		Label:          "Rename User",
+		Steps:          []Step{chooseGroup, chooseUser, insertName},
+		SuperAdminOnly: false,
 	}
 	return themenu
 }
 
-func (menu PushWorkoutMenu) CreateMenu() MenuBase {
+func (menu PushWorkoutMenu) CreateMenu(userId int64) MenuBase {
 	chooseGroup := Step{
 		Name:     "choosegroup",
 		Kind:     KeyboardStepKind,
 		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(),
+		Keyboard: createGroupsKeyboard(userId),
 		Result:   GroupIdStepResult,
 	}
 	chooseUser := Step{
@@ -219,18 +233,20 @@ func (menu PushWorkoutMenu) CreateMenu() MenuBase {
 		Result:  PushDaysStepResult,
 	}
 	themenu := MenuBase{
-		Name:  "pushworkout",
-		Steps: []Step{chooseGroup, chooseUser, insertDays},
+		Name:           "pushworkout",
+		Label:          "Push Workout",
+		Steps:          []Step{chooseGroup, chooseUser, insertDays},
+		SuperAdminOnly: false,
 	}
 	return themenu
 }
 
-func (menu DeleteLastWorkoutMenu) CreateMenu() MenuBase {
+func (menu DeleteLastWorkoutMenu) CreateMenu(userId int64) MenuBase {
 	chooseGroup := Step{
 		Name:     "choosegroup",
 		Kind:     KeyboardStepKind,
 		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(),
+		Keyboard: createGroupsKeyboard(userId),
 		Result:   GroupIdStepResult,
 	}
 	chooseUser := Step{
@@ -241,23 +257,27 @@ func (menu DeleteLastWorkoutMenu) CreateMenu() MenuBase {
 		Result:   TelegramUserIdStepResult,
 	}
 	themenu := MenuBase{
-		Name:  "deletelastworkout",
-		Steps: []Step{chooseGroup, chooseUser},
+		Name:           "deletelastworkout",
+		Label:          "Delete Workout",
+		Steps:          []Step{chooseGroup, chooseUser},
+		SuperAdminOnly: false,
 	}
 	return themenu
 }
 
-func (menu ShowUsersMenu) CreateMenu() MenuBase {
+func (menu ShowUsersMenu) CreateMenu(userId int64) MenuBase {
 	chooseGroup := Step{
 		Name:     "choosegroup",
 		Kind:     KeyboardStepKind,
 		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(),
+		Keyboard: createGroupsKeyboard(userId),
 		Result:   GroupIdStepResult,
 	}
 	themenu := MenuBase{
-		Name:  "showusers",
-		Steps: []Step{chooseGroup},
+		Name:           "showusers",
+		Label:          "Show Users",
+		Steps:          []Step{chooseGroup},
+		SuperAdminOnly: false,
 	}
 	return themenu
 }
