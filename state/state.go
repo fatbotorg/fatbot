@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fatbot/users"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ type State struct {
 	ChatId int64
 	Value  string
 	Menu   Menu
+	UserId int64
 }
 
 func New(chatId int64) (*State, error) {
@@ -36,7 +38,7 @@ func (state *State) getValueSplit() []string {
 }
 
 func (state *State) IsLastStep() bool {
-	return len(state.Menu.CreateMenu().Steps) == len(state.getValueSplit())
+	return len(state.Menu.CreateMenu(0).Steps) == len(state.getValueSplit())
 }
 
 func (state *State) IsFirstStep() bool {
@@ -68,7 +70,7 @@ func (state *State) GetStateMenu() (menu Menu, err error) {
 	case "grouplink":
 		menu = &GroupLinkMenu{}
 	case "addgroupadmin":
-		menu = &AddGroupAdmin{}
+		menu = &AddGroupAdminMenu{}
 	default:
 		return menu, fmt.Errorf("unknown menu: %s", rawMenu)
 	}
@@ -76,7 +78,7 @@ func (state *State) GetStateMenu() (menu Menu, err error) {
 }
 
 func (state *State) getTelegramUserId() (userId int64, err error) {
-	for stepIndex, step := range state.Menu.CreateMenu().Steps {
+	for stepIndex, step := range state.Menu.CreateMenu(0).Steps {
 		switch step.Result {
 		case TelegramUserIdStepResult, TelegramInactiveUserIdStepResult:
 			stateSlice := state.getValueSplit()
@@ -91,7 +93,7 @@ func (state *State) getTelegramUserId() (userId int64, err error) {
 }
 
 func (state *State) getGroupChatId() (userId int64, err error) {
-	for stepIndex, step := range state.Menu.CreateMenu().Steps {
+	for stepIndex, step := range state.Menu.CreateMenu(0).Steps {
 		if step.Result == GroupIdStepResult {
 			stateSlice := state.getValueSplit()
 			groupId, err := strconv.ParseInt(stateSlice[stepIndex+1], 10, 64)
@@ -111,7 +113,7 @@ func (state *State) ExtractData() (data int64, err error) {
 
 func (state *State) CurrentStep() Step {
 	stateSlice := state.getValueSplit()
-	return state.Menu.CreateMenu().Steps[len(stateSlice)-1]
+	return state.Menu.CreateMenu(0).Steps[len(stateSlice)-1]
 }
 
 func CreateStateEntry(chatId int64, value string) error {
@@ -161,7 +163,14 @@ func HandleAdminCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		log.Errorf("Error clearing state: %s", err)
 	}
 	msg := tgbotapi.NewMessage(update.FromChat().ID, "Choose an option")
-	adminKeyboard := CreateAdminKeyboard()
+	userId := update.SentFrom().ID
+	user, err := users.GetUserById(userId)
+	if err != nil {
+		log.Error(err)
+		return msg
+	}
+	var adminKeyboard tgbotapi.InlineKeyboardMarkup
+	adminKeyboard = CreateAdminKeyboard(user.IsAdmin)
 	msg.ReplyMarkup = adminKeyboard
 	return msg
 }
