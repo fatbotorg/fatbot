@@ -16,7 +16,7 @@ type ActionData struct {
 	State  *State
 }
 
-func (menu AddGroupAdmin) PerformAction(params ActionData) error {
+func (menu AddGroupAdminMenu) PerformAction(params ActionData) error {
 	defer DeleteStateEntry(params.State.ChatId)
 	telegramUserId, err := params.State.getTelegramUserId()
 	if err != nil {
