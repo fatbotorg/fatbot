@@ -62,27 +62,44 @@ func createUsersKeyboard(chatId int64, active bool) tgbotapi.InlineKeyboardMarku
 	return keyboard
 }
 
-func CreateAdminKeyboard() tgbotapi.InlineKeyboardMarkup {
-	var adminKeyboard = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Rename User", "rename"),
-			tgbotapi.NewInlineKeyboardButtonData("Push Workout", "pushworkout"),
-		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Delete Workout", "deletelastworkout"),
-			tgbotapi.NewInlineKeyboardButtonData("Show Workouts", "showusers"),
-		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Show Events", "showevents"),
-			tgbotapi.NewInlineKeyboardButtonData("Rejoin User", "rejoinuser"),
-		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Ban User", "banuser"),
-			tgbotapi.NewInlineKeyboardButtonData("Group Link", "grouplink"),
-		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Add Admin", "addgroupadmin"),
-		),
-	)
-	return adminKeyboard
+func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
+	var rename RenameMenu
+	var pushWorkout PushWorkoutMenu
+	var deleteLastWorkout DeleteLastWorkoutMenu
+	var showUsers ShowUsersMenu
+	var showEvents ShowEventsMenu
+	var rejoinUser RejoinUserMenu
+	var banUser BanUserMenu
+	var groupLink GroupLinkMenu
+	var addGroupAdmin AddGroupAdminMenu
+	var menus = []MenuBase{
+		rename.CreateMenu(0),
+		pushWorkout.CreateMenu(0),
+		deleteLastWorkout.CreateMenu(0),
+		showUsers.CreateMenu(0),
+		showEvents.CreateMenu(0),
+		rejoinUser.CreateMenu(0),
+		banUser.CreateMenu(0),
+		groupLink.CreateMenu(0),
+		addGroupAdmin.CreateMenu(0),
+	}
+
+	row := []tgbotapi.InlineKeyboardButton{}
+	rows := [][]tgbotapi.InlineKeyboardButton{}
+	for _, menu := range menus {
+		if menu.SuperAdminOnly && !superAdmin {
+			continue
+		}
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData(
+			menu.Label,
+			menu.Name,
+		))
+		if len(row) == 2 {
+			rows = append(rows, row)
+			row = []tgbotapi.InlineKeyboardButton{}
+		}
+	}
+	rows = append(rows, row)
+	var keyboard = tgbotapi.NewInlineKeyboardMarkup(rows...)
+	return keyboard
 }
