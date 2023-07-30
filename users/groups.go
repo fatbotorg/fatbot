@@ -40,6 +40,19 @@ func GetGroups() (groups []Group) {
 	return
 }
 
+func GetManagedGroups(adminUserId int64) (groups []Group) {
+	adminuser, err := GetUserById(adminUserId)
+	if err != nil {
+		log.Error(err)
+		return []Group{}
+	}
+	adminuser.loadManagedGroups()
+	for _, group := range adminuser.GroupsAdmin {
+		groups = append(groups, *group)
+	}
+	return groups
+}
+
 func GetGroupByTitle(title string) (group Group, err error) {
 	db := db.DBCon
 	if err = db.Where("title = ?", title).Find(&group).Error; err != nil {
