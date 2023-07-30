@@ -92,7 +92,7 @@ func GetInactiveUsers(chatId int64) []User {
 	return users
 }
 
-func GetAdminUsers() []User {
+func GetSuperAdminUsers() []User {
 	db := db.DBCon
 	var users []User
 	db.Where("is_admin = ?", true).Find(&users)
