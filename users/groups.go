@@ -132,3 +132,24 @@ func (user *User) RegisterInGroup(chatId int64) error {
 	}
 	return nil
 }
+
+func GetGroupWithAdmins(chatId int64) (Group, error) {
+	if group, err := GetGroup(chatId); err != nil {
+		return Group{}, err
+	} else {
+		if err := group.loadGroupAdmins(); err != nil {
+			return Group{}, err
+		} else {
+			return group, nil
+		}
+	}
+}
+
+func (group *Group) loadGroupAdmins() error {
+	db := db.DBCon
+	err := db.Preload("Admins").Find(&group).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
