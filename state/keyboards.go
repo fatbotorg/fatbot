@@ -7,8 +7,14 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func createGroupsKeyboard() tgbotapi.InlineKeyboardMarkup {
-	groups := users.GetGroups()
+func createGroupsKeyboard(adminUserId int64) tgbotapi.InlineKeyboardMarkup {
+	var groups []users.Group
+	switch adminUserId {
+	case 0:
+		groups = users.GetGroups()
+	default:
+		groups = users.GetManagedGroups(adminUserId)
+	}
 	row := []tgbotapi.InlineKeyboardButton{}
 	rows := [][]tgbotapi.InlineKeyboardButton{}
 	for _, group := range groups {
