@@ -7,6 +7,16 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+func createAdminManagementMenu() tgbotapi.InlineKeyboardMarkup {
+	var adminKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Add Admin", "addadmin"),
+			tgbotapi.NewInlineKeyboardButtonData("Remove Admin", "removeadmin"),
+		),
+	)
+	return adminKeyboard
+}
+
 func createGroupsKeyboard(adminUserId int64) tgbotapi.InlineKeyboardMarkup {
 	var groups []users.Group
 	switch adminUserId {
