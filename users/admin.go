@@ -41,6 +41,19 @@ func (user User) AddLocalAdmin(chatId int64) error {
 	return nil
 }
 
+func (user User) RemoveLocalAdmin(chatId int64) error {
+	log.Debug("removing admin")
+	db := db.DBCon
+	if group, err := GetGroup(chatId); err != nil {
+		return err
+	} else {
+		if err := db.Model(&user).Association("GroupsAdmin").Delete(&group); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (user *User) loadManagedGroups() {
 	db := db.DBCon
 	if err := db.Preload("GroupsAdmin").Find(&user).Error; err != nil {

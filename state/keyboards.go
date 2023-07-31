@@ -87,7 +87,7 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 	var rejoinUser RejoinUserMenu
 	var banUser BanUserMenu
 	var groupLink GroupLinkMenu
-	var addGroupAdmin AddGroupAdminMenu
+	var manageAdmins ManageAdminsMenu
 	var menus = []MenuBase{
 		rename.CreateMenu(0),
 		pushWorkout.CreateMenu(0),
@@ -97,7 +97,7 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 		rejoinUser.CreateMenu(0),
 		banUser.CreateMenu(0),
 		groupLink.CreateMenu(0),
-		addGroupAdmin.CreateMenu(0),
+		manageAdmins.CreateMenu(0),
 	}
 
 	row := []tgbotapi.InlineKeyboardButton{}
