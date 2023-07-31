@@ -16,8 +16,12 @@ type ActionData struct {
 	State  *State
 }
 
-func (menu AddGroupAdminMenu) PerformAction(params ActionData) error {
+func (menu ManageAdminsMenu) PerformAction(params ActionData) error {
 	defer DeleteStateEntry(params.State.ChatId)
+	option, err := params.State.getOption()
+	if err != nil {
+		return err
+	}
 	telegramUserId, err := params.State.getTelegramUserId()
 	if err != nil {
 		return err
@@ -29,9 +33,15 @@ func (menu AddGroupAdminMenu) PerformAction(params ActionData) error {
 	if user, err := users.GetUserById(telegramUserId); err != nil {
 		return err
 	} else {
-		err := user.AddLocalAdmin(groupChatId)
-		if err != nil {
-			return err
+		switch option {
+		case "addadmin":
+			if err := user.AddLocalAdmin(groupChatId); err != nil {
+				return err
+			}
+		case "removeadmin":
+			if err := user.RemoveLocalAdmin(groupChatId); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
