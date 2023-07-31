@@ -21,7 +21,7 @@ func SendMessageToGroupAdmins(bot *tgbotapi.BotAPI, chatId int64, message tgbota
 		return
 	}
 	if len(group.Admins) == 0 {
-		log.Error("no admins for goup", "group", group.Title)
+		log.Error("no admins for group", "group", group.Title)
 		return
 	}
 	for _, admin := range group.Admins {
