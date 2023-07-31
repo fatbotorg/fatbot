@@ -24,6 +24,7 @@ const (
 	TelegramInactiveUserIdStepResult stepResult = "telegramInactiveUserId"
 	NewNameStepResult                stepResult = "newName"
 	PushDaysStepResult               stepResult = "pushDays"
+	OptionResult                     stepResult = "option"
 )
 
 type Step struct {
@@ -58,7 +59,7 @@ type BanUserMenu struct {
 type GroupLinkMenu struct {
 	MenuBase
 }
-type AddGroupAdminMenu struct {
+type ManageAdminsMenu struct {
 	MenuBase
 }
 
@@ -67,7 +68,14 @@ type Menu interface {
 	PerformAction(ActionData) error
 }
 
-func (menu AddGroupAdminMenu) CreateMenu(userId int64) MenuBase {
+func (menu ManageAdminsMenu) CreateMenu(userId int64) MenuBase {
+	chooseAdminOption := Step{
+		Name:     "adminoptions",
+		Kind:     KeyboardStepKind,
+		Message:  "Choose Option",
+		Keyboard: createAdminManagementMenu(),
+		Result:   OptionResult,
+	}
 	chooseGroup := Step{
 		Name:     "choosegroup",
 		Kind:     KeyboardStepKind,
@@ -83,9 +91,9 @@ func (menu AddGroupAdminMenu) CreateMenu(userId int64) MenuBase {
 		Result:   TelegramUserIdStepResult,
 	}
 	themenu := MenuBase{
-		Name:           "addgroupadmin",
-		Label:          "Add Admin",
-		Steps:          []Step{chooseGroup, chooseUser},
+		Name:           "adminoptions",
+		Label:          "Manage Admins",
+		Steps:          []Step{chooseAdminOption, chooseGroup, chooseUser},
 		SuperAdminOnly: true,
 	}
 	return themenu

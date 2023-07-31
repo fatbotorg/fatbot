@@ -69,12 +69,23 @@ func (state *State) GetStateMenu() (menu Menu, err error) {
 		menu = &BanUserMenu{}
 	case "grouplink":
 		menu = &GroupLinkMenu{}
-	case "addgroupadmin":
-		menu = &AddGroupAdminMenu{}
+	case "adminoptions", "addadmin", "removeadmin":
+		menu = &ManageAdminsMenu{}
 	default:
 		return menu, fmt.Errorf("unknown menu: %s", rawMenu)
 	}
 	return
+}
+
+func (state *State) getOption() (option string, err error) {
+	for stepIndex, step := range state.Menu.CreateMenu(0).Steps {
+		if step.Result == OptionResult {
+			stateSlice := state.getValueSplit()
+			log.Debug(stateSlice)
+			return stateSlice[stepIndex+1], nil
+		}
+	}
+	return "", nil
 }
 
 func (state *State) getTelegramUserId() (userId int64, err error) {
