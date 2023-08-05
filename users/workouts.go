@@ -103,6 +103,37 @@ func (user *User) GetPreviousWeekWorkouts(chatId int64) []Workout {
 	log.Debug(user.Workouts)
 	return user.Workouts
 }
+func (user *User) GetMonthlyWorkoutsSummary(chatId int64, start, end time.Time) (userWorkoutsByMonthAsString []string) {
+	db := db.DBCon
+	group, err := GetGroup(chatId)
+	if err != nil {
+		log.Error(err)
+		sentry.CaptureException(err)
+		return nil
+	}
+	if err := db.Model(&User{}).
+		Preload("Workouts", "created_at > ? AND created_at < ? AND group_id = ? AND flagged = ?",
+			start, end, group.ID, false).
+		Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
+		log.Error(err)
+		sentry.CaptureException(err)
+		return nil
+	}
+	workoutsCountByMonth := make(map[time.Month]int)
+
+	// Iterate over the user's workouts and add them to the corresponding month's slice
+	for _, workout := range user.Workouts {
+		month := workout.CreatedAt.Month()
+		workoutsCountByMonth[month]++
+	}
+	// Create a slice to store the workout counts as strings
+	userWorkoutsByMonthAsString = make([]string, 0, len(workoutsCountByMonth))
+	for i, count := range workoutsCountByMonth {
+		userWorkoutsByMonthAsString[i] = fmt.Sprintf("%d", count)
+	}
+	log.Debug(user.Workouts)
+	return
+}
 
 func (user *User) FlagLastWorkout(chatId int64) error {
 	db := db.DBCon

@@ -5,12 +5,14 @@ import (
 	"fatbot/state"
 	"fatbot/users"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	quickchartgo "github.com/henomis/quickchart-go"
 	"github.com/spf13/viper"
 )
 
@@ -34,6 +36,8 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 		}
 	case "status":
 		msg = handleStatusCommand(update)
+	case "summary":
+		handleMonthlySummaryCommand(fatBotUpdate)
 	case "help":
 		msg.ChatID = update.FromChat().ID
 		msg.Text = "Join the group using: /join\nCheck your status using: /status"
@@ -132,6 +136,118 @@ func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConf
 	return msg
 }
 
+func handleMonthlySummaryCommand(fatBotUpdate FatBotUpdate) {
+	update := fatBotUpdate.Update
+	bot := fatBotUpdate.Bot
+	var user users.User
+	var err error
+	if user, err = users.GetUserFromMessage(update.Message); err != nil {
+		log.Error(err)
+		sentry.CaptureException(err)
+	} else if user.ID == 0 {
+		return
+	}
+	months := 6 //until we'll let user to enter # of months
+	start, end := getDuration(months)
+	chatId, err := user.GetChatId()
+	// FIX: user typed errors not this
+	if err != nil {
+		if err.Error() == "user has multiple groups - ambiguate" {
+			if chatIds, err := user.GetChatIds(); err != nil {
+				log.Error(err)
+				sentry.CaptureException(err)
+				return
+			} else {
+				for _, chatId := range chatIds {
+					createUserMonthlySummaryChart(bot, user, chatId, start, end)
+				}
+			}
+			return
+		} else {
+			log.Error(err)
+			sentry.CaptureException(err)
+			return
+		}
+	}
+	createUserMonthlySummaryChart(bot, user, chatId, start, end)
+}
+
+func createUserMonthlySummaryChart(bot *tgbotapi.BotAPI, user users.User, chatId int64, start, end time.Time) {
+	group, _ := users.GetGroup(chatId)
+	fileName := fmt.Sprintf("%s_%s.png", user.Username, group.Title)
+	userWorkoutsByMonthAsString := user.GetMonthlyWorkoutsSummary(chatId, start, end)
+	months := getMonthsInRange(start, end)
+	monthsStringSlice := "'" + strings.Join(months, "', '") + "'"
+	userWorkoutsByMonthStringSlice := strings.Join(userWorkoutsByMonthAsString, ", ")
+	chartConfig := createMonthlyChartConfig(monthsStringSlice, userWorkoutsByMonthStringSlice)
+	qc := createQuickChart(chartConfig)
+	file, err := os.Create(fileName)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+	qc.Write(file)
+
+	msg := tgbotapi.NewPhoto(group.ChatID, tgbotapi.FilePath(fileName))
+	msg.Caption = fmt.Sprintf("Monthly Workouts summary:\n")
+
+	if _, err = bot.Send(msg); err != nil {
+		log.Error(err)
+		sentry.CaptureException(err)
+	}
+}
+
+func createMonthlyChartConfig(monthsStringSlice, userWorkoutsByMonthStringSlice string) string {
+	chartConfig := fmt.Sprintf(`{
+		type: 'bar',
+		data: {
+			labels: [%s],
+			datasets: [
+				{
+					label: 'Workouts',
+					data: [%s]
+				},
+				]
+			}
+			}`, monthsStringSlice, userWorkoutsByMonthStringSlice)
+	return chartConfig
+}
+
+func getDuration(months int) (firstDayOfStartMonth, firstDayOfCurrentMonth time.Time) {
+	currentTime := time.Now()
+	firstDayOfCurrentMonth = time.Date(currentTime.Year(), currentTime.Month(), 1, 0, 0, 0, 0, currentTime.Location())
+	firstDayOfStartMonth = firstDayOfCurrentMonth.AddDate(0, -months, 0)
+	return
+
+}
+
+func getMonthsInRange(start, end time.Time) []string {
+	months := make([]string, 0)
+	currentMonth := start.Month()
+	currentYear := start.Year()
+	for start.Before(end) || start.Equal(end) {
+		months = append(months, start.Month().String())
+		currentMonth++
+		if currentMonth > 12 {
+			currentMonth = 1
+			currentYear++
+		}
+
+		// Set the start to the first day of the next month
+		start = time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, start.Location())
+	}
+	return months
+}
+
+func createQuickChart(chartConfig string) *quickchartgo.Chart {
+	qc := quickchartgo.New()
+	qc.Config = chartConfig
+	qc.Width = 500
+	qc.Height = 300
+	qc.Version = "2.9.4"
+	qc.BackgroundColor = "white"
+	return qc
+}
 func hasValidGroupCommandArgument(commandArguments string) (bool, users.Group) {
 	joinArguments := strings.Split(commandArguments, " ")
 	groupTitle := joinArguments[0]
