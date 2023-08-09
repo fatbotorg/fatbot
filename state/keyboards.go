@@ -10,6 +10,16 @@ import (
 func createAdminManagementMenu() tgbotapi.InlineKeyboardMarkup {
 	var adminKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("List", "showadmins"),
+			tgbotapi.NewInlineKeyboardButtonData("Edit", "editadmins"),
+		),
+	)
+	return adminKeyboard
+}
+
+func createAdminManagementEditMenu() tgbotapi.InlineKeyboardMarkup {
+	var adminKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Add Admin", "addadmin"),
 			tgbotapi.NewInlineKeyboardButtonData("Remove Admin", "removeadmin"),
 		),
