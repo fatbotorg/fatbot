@@ -53,7 +53,7 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 	if data == "adminmenuback" {
 		return handleAdminMenuBackClick(fatBotUpdate, *menuState)
 	}
-	menu, err := menuState.GetStateMenu()
+	menu, err := menuState.GetStateMenu(data)
 	if err != nil {
 		return err
 	}
