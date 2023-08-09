@@ -16,7 +16,35 @@ type ActionData struct {
 	State  *State
 }
 
-func (menu ManageAdminsMenu) PerformAction(params ActionData) error {
+func (menu ManageAdminsMenu) PerformAction(params ActionData) error { return nil }
+
+func (menu ShowAdminsMenu) PerformAction(params ActionData) error {
+	defer DeleteStateEntry(params.State.ChatId)
+	groupChatId, err := params.State.getGroupChatId()
+	if err != nil {
+		return err
+	}
+	group, err := users.GetGroupWithAdmins(groupChatId)
+	if err != nil {
+		return nil
+	}
+	chatId := params.Update.FromChat().ID
+	msg := tgbotapi.NewMessage(chatId, "")
+	var adminsList string
+	for _, admin := range group.Admins {
+		adminsList += admin.GetName() + " "
+	}
+	msg.Text = adminsList
+	if msg.Text == "" {
+		msg.Text = fmt.Sprintf("No admins in group %s", group.Title)
+	}
+	if _, err := params.Bot.Send(msg); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (menu ChangeAdminsMenu) PerformAction(params ActionData) error {
 	defer DeleteStateEntry(params.State.ChatId)
 	option, err := params.State.getOption()
 	if err != nil {
@@ -42,6 +70,8 @@ func (menu ManageAdminsMenu) PerformAction(params ActionData) error {
 			if err := user.RemoveLocalAdmin(groupChatId); err != nil {
 				return err
 			}
+		default:
+			log.Warnf("Unknown", "option", option)
 		}
 	}
 	return nil
@@ -100,27 +130,6 @@ func (menu RejoinUserMenu) PerformAction(params ActionData) error {
 		if err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func (menu ShowEventsMenu) PerformAction(params ActionData) error {
-	defer DeleteStateEntry(params.State.ChatId)
-	telegramUserId, err := params.State.getTelegramUserId()
-	if err != nil {
-		return err
-	}
-	if user, err := users.GetUserById(telegramUserId); err != nil {
-		return err
-	} else {
-		var message string
-		msg := tgbotapi.NewMessage(params.Update.FromChat().ID, "")
-		events := user.GetEvents()
-		for _, event := range events {
-			message = message + "On: " + event.CreatedAt.String() + " -> event: " + string(event.Event) + "\n"
-		}
-		msg.Text = message
-		params.Bot.Request(msg)
 	}
 	return nil
 }
