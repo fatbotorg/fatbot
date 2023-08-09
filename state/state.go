@@ -78,10 +78,10 @@ func (state *State) GetStateMenu() (menu Menu, err error) {
 }
 
 func (state *State) getOption() (option string, err error) {
-	for stepIndex, step := range state.Menu.CreateMenu(0).Steps {
-		if step.Result == OptionResult {
+	steps := state.Menu.CreateMenu(0).Steps
+	for stepIndex := len(steps) - 1; stepIndex >= 0; stepIndex-- {
+		if steps[stepIndex].Result == OptionResult {
 			stateSlice := state.getValueSplit()
-			log.Debug(stateSlice)
 			return stateSlice[stepIndex+1], nil
 		}
 	}
