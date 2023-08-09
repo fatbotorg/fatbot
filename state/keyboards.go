@@ -83,7 +83,6 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 	var pushWorkout PushWorkoutMenu
 	var deleteLastWorkout DeleteLastWorkoutMenu
 	var showUsers ShowUsersMenu
-	var showEvents ShowEventsMenu
 	var rejoinUser RejoinUserMenu
 	var banUser BanUserMenu
 	var groupLink GroupLinkMenu
@@ -93,7 +92,6 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 		pushWorkout.CreateMenu(0),
 		deleteLastWorkout.CreateMenu(0),
 		showUsers.CreateMenu(0),
-		showEvents.CreateMenu(0),
 		rejoinUser.CreateMenu(0),
 		banUser.CreateMenu(0),
 		groupLink.CreateMenu(0),

@@ -48,9 +48,6 @@ type DeleteLastWorkoutMenu struct {
 type ShowUsersMenu struct {
 	MenuBase
 }
-type ShowEventsMenu struct {
-	MenuBase
-}
 type RejoinUserMenu struct {
 	MenuBase
 }
@@ -80,7 +77,6 @@ var menuMap = map[string]Menu{
 	"pushworkout":       PushWorkoutMenu{},
 	"deletelastworkout": DeleteLastWorkoutMenu{},
 	"showusers":         ShowUsersMenu{},
-	"showevents":        ShowEventsMenu{},
 	"rejoinuser":        RejoinUserMenu{},
 	"banuser":           BanUserMenu{},
 	"grouplink":         GroupLinkMenu{},
@@ -123,93 +119,40 @@ func (menu ChangeAdminsMenu) CreateMenu(userId int64) MenuBase {
 	return themenu
 }
 
+func (menu GroupLinkMenu) CreateMenu(userId int64) MenuBase {
+	chooseGroup := groupStepBase
+	chooseGroup.Keyboard = createGroupsKeyboard(userId)
+	return MenuBase{
+		Name:  "grouplink",
+		Label: "Group Link",
+		Steps: []Step{chooseGroup},
+	}
+}
+
 func (menu BanUserMenu) CreateMenu(userId int64) MenuBase {
-	chooseGroup := Step{
-		Name:     "choosegroup",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(userId),
-		Result:   GroupIdStepResult,
+	chooseGroup := groupStepBase
+	chooseGroup.Keyboard = createGroupsKeyboard(userId)
+	return MenuBase{
+		Name:  "banuser",
+		Label: "Ban User",
+		Steps: []Step{chooseGroup, userStep},
 	}
-	chooseUser := Step{
-		Name:     "chooseuser",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose User",
-		Keyboard: tgbotapi.InlineKeyboardMarkup{},
-		Result:   TelegramUserIdStepResult,
-	}
-	themenu := MenuBase{
-		Name:           "banuser",
-		Label:          "Ban User",
-		Steps:          []Step{chooseGroup, chooseUser},
-		SuperAdminOnly: false,
-	}
-	return themenu
 }
 
 func (menu RejoinUserMenu) CreateMenu(userId int64) MenuBase {
-	chooseGroup := Step{
-		Name:     "choosegroup",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(userId),
-		Result:   GroupIdStepResult,
-	}
-	chooseUser := Step{
-		Name:     "chooseuser",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose User",
-		Keyboard: tgbotapi.InlineKeyboardMarkup{},
-		Result:   TelegramInactiveUserIdStepResult,
-	}
+	chooseGroup := groupStepBase
+	chooseGroup.Keyboard = createGroupsKeyboard(userId)
 	themenu := MenuBase{
-		Name:           "rejoinuser",
-		Label:          "Rejoin User",
-		Steps:          []Step{chooseGroup, chooseUser},
-		SuperAdminOnly: false,
-	}
-	return themenu
-}
-
-func (menu ShowEventsMenu) CreateMenu(userId int64) MenuBase {
-	chooseGroup := Step{
-		Name:     "choosegroup",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(userId),
-		Result:   GroupIdStepResult,
-	}
-	chooseUser := Step{
-		Name:     "chooseuser",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose User",
-		Keyboard: tgbotapi.InlineKeyboardMarkup{},
-		Result:   TelegramUserIdStepResult,
-	}
-	themenu := MenuBase{
-		Name:           "showevents",
-		Label:          "Show Events",
-		Steps:          []Step{chooseGroup, chooseUser},
-		SuperAdminOnly: true,
+		Name:  "rejoinuser",
+		Label: "Rejoin User",
+		Steps: []Step{chooseGroup, userStep},
 	}
 	return themenu
 }
 
 func (menu RenameMenu) CreateMenu(userId int64) MenuBase {
-	chooseGroup := Step{
-		Name:     "choosegroup",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(userId),
-		Result:   GroupIdStepResult,
-	}
-	chooseUser := Step{
-		Name:     "chooseuser",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose User",
-		Keyboard: tgbotapi.InlineKeyboardMarkup{},
-		Result:   TelegramUserIdStepResult,
-	}
+	chooseGroup := groupStepBase
+	chooseGroup.Keyboard = createGroupsKeyboard(userId)
 	insertName := Step{
 		Name:     "insertname",
 		Kind:     InputStepKind,
@@ -218,83 +161,47 @@ func (menu RenameMenu) CreateMenu(userId int64) MenuBase {
 		Result:   NewNameStepResult,
 	}
 	themenu := MenuBase{
-		Name:           "rename",
-		Label:          "Rename User",
-		Steps:          []Step{chooseGroup, chooseUser, insertName},
-		SuperAdminOnly: false,
+		Name:  "rename",
+		Label: "Rename User",
+		Steps: []Step{chooseGroup, userStep, insertName},
 	}
 	return themenu
 }
 
 func (menu PushWorkoutMenu) CreateMenu(userId int64) MenuBase {
-	chooseGroup := Step{
-		Name:     "choosegroup",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(userId),
-		Result:   GroupIdStepResult,
-	}
-	chooseUser := Step{
-		Name:     "chooseuser",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose User",
-		Keyboard: tgbotapi.InlineKeyboardMarkup{},
-		Result:   TelegramUserIdStepResult,
-	}
+	chooseGroup := groupStepBase
+	chooseGroup.Keyboard = createGroupsKeyboard(userId)
 	insertDays := Step{
 		Name:    "insertdays",
 		Kind:    InputStepKind,
 		Message: "Insert Days",
 		Result:  PushDaysStepResult,
 	}
-	themenu := MenuBase{
-		Name:           "pushworkout",
-		Label:          "Push Workout",
-		Steps:          []Step{chooseGroup, chooseUser, insertDays},
-		SuperAdminOnly: false,
+	return MenuBase{
+		Name:  "pushworkout",
+		Label: "Push Workout",
+		Steps: []Step{chooseGroup, userStep, insertDays},
 	}
-	return themenu
 }
 
 func (menu DeleteLastWorkoutMenu) CreateMenu(userId int64) MenuBase {
-	chooseGroup := Step{
-		Name:     "choosegroup",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(userId),
-		Result:   GroupIdStepResult,
+	chooseGroup := groupStepBase
+	chooseGroup.Keyboard = createGroupsKeyboard(userId)
+	return MenuBase{
+		Name:  "deletelastworkout",
+		Label: "Delete Workout",
+		Steps: []Step{chooseGroup, userStep},
 	}
-	chooseUser := Step{
-		Name:     "chooseuser",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose User",
-		Keyboard: tgbotapi.InlineKeyboardMarkup{},
-		Result:   TelegramUserIdStepResult,
-	}
-	themenu := MenuBase{
-		Name:           "deletelastworkout",
-		Label:          "Delete Workout",
-		Steps:          []Step{chooseGroup, chooseUser},
-		SuperAdminOnly: false,
-	}
-	return themenu
 }
 
 func (menu ShowUsersMenu) CreateMenu(userId int64) MenuBase {
-	chooseGroup := Step{
-		Name:     "choosegroup",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(userId),
-		Result:   GroupIdStepResult,
+	chooseGroup := groupStepBase
+	chooseGroup.Keyboard = createGroupsKeyboard(userId)
+	return MenuBase{
+		Name:  "showusers",
+		Label: "Show Users",
+		Steps: []Step{chooseGroup},
 	}
-	themenu := MenuBase{
-		Name:           "showusers",
-		Label:          "Show Users",
-		Steps:          []Step{chooseGroup},
-		SuperAdminOnly: false,
-	}
-	return themenu
 }
 
 func (step *Step) PopulateKeyboard(data int64) {
@@ -304,6 +211,6 @@ func (step *Step) PopulateKeyboard(data int64) {
 	case TelegramInactiveUserIdStepResult:
 		step.Keyboard = createUsersKeyboard(data, false)
 	default:
-		log.Error("unknown step result for keyboard population")
+		log.Errorf("unknown step result for keyboard population: %s", step.Result)
 	}
 }

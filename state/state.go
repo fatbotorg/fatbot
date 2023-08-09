@@ -34,7 +34,6 @@ func New(chatId int64) (*State, error) {
 
 func (state *State) getValueSplit() []string {
 	return strings.Split(state.Value, Delimiter)
-
 }
 
 func (state *State) IsLastStep() bool {
