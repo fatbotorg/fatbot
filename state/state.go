@@ -45,34 +45,28 @@ func (state *State) IsFirstStep() bool {
 	return len(state.getValueSplit()) == 1
 }
 
-func (state *State) GetStateMenu() (menu Menu, err error) {
+func (state *State) GetStateMenu(data string) (menu Menu, err error) {
 	if state == nil {
 		err = fmt.Errorf("state is nil")
 		return
 	}
 	rawSplit := state.getValueSplit()
-	rawMenu := rawSplit[0]
-	switch rawMenu {
-	case "rename":
-		menu = &RenameMenu{}
-	case "pushworkout":
-		menu = &PushWorkoutMenu{}
-	case "deletelastworkout":
-		menu = &DeleteLastWorkoutMenu{}
-	case "showusers":
-		menu = &ShowUsersMenu{}
-	case "showevents":
-		menu = &ShowEventsMenu{}
-	case "rejoinuser":
-		menu = &RejoinUserMenu{}
-	case "banuser":
-		menu = &BanUserMenu{}
-	case "grouplink":
-		menu = &GroupLinkMenu{}
-	case "adminoptions", "addadmin", "removeadmin":
-		menu = &ManageAdminsMenu{}
-	default:
-		return menu, fmt.Errorf("unknown menu: %s", rawMenu)
+	var rawMenu string
+	for i, step := range rawSplit {
+		if menu, ok := menuMap[step]; ok {
+			isParent := menu.CreateMenu(0).ParentMenu
+			if !isParent {
+				rawMenu = rawSplit[i]
+				break
+			}
+		}
+	}
+	if _, ok := menuMap[data]; ok {
+		rawMenu = data
+	}
+	var ok bool
+	if menu, ok = menuMap[rawMenu]; !ok {
+		return menu, fmt.Errorf("no such menu %s", rawMenu)
 	}
 	return
 }
