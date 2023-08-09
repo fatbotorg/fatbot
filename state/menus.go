@@ -10,6 +10,7 @@ type MenuBase struct {
 	Label          string
 	Steps          []Step
 	SuperAdminOnly bool
+	ParentMenu     bool
 }
 
 type stepKind string
@@ -62,56 +63,62 @@ type GroupLinkMenu struct {
 type ManageAdminsMenu struct {
 	MenuBase
 }
+type ShowAdminsMenu struct {
+	MenuBase
+}
+type ChangeAdminsMenu struct {
+	MenuBase
+}
 
 type Menu interface {
 	CreateMenu(userId int64) MenuBase
 	PerformAction(ActionData) error
 }
 
+var menuMap = map[string]Menu{
+	"rename":            RenameMenu{},
+	"pushworkout":       PushWorkoutMenu{},
+	"deletelastworkout": DeleteLastWorkoutMenu{},
+	"showusers":         ShowUsersMenu{},
+	"showevents":        ShowEventsMenu{},
+	"rejoinuser":        RejoinUserMenu{},
+	"banuser":           BanUserMenu{},
+	"grouplink":         GroupLinkMenu{},
+	"adminoptions":      ManageAdminsMenu{},
+	"showadmins":        ShowAdminsMenu{},
+	"editadmins":        ChangeAdminsMenu{},
+}
+
 func (menu ManageAdminsMenu) CreateMenu(userId int64) MenuBase {
-	chooseAdminOption := Step{
-		Name:     "adminoptions",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose Option",
-		Keyboard: createAdminManagementMenu(),
-		Result:   OptionResult,
-	}
-	chooseGroup := Step{
-		Name:     "choosegroup",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(0),
-		Result:   GroupIdStepResult,
-	}
-	chooseUser := Step{
-		Name:     "chooseuser",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose User",
-		Keyboard: tgbotapi.InlineKeyboardMarkup{},
-		Result:   TelegramUserIdStepResult,
-	}
 	themenu := MenuBase{
 		Name:           "adminoptions",
 		Label:          "Manage Admins",
-		Steps:          []Step{chooseAdminOption, chooseGroup, chooseUser},
+		Steps:          []Step{chooseAdminMenuOption},
 		SuperAdminOnly: true,
+		ParentMenu:     true,
 	}
 	return themenu
 }
 
-func (menu GroupLinkMenu) CreateMenu(userId int64) MenuBase {
-	chooseGroup := Step{
-		Name:     "choosegroup",
-		Kind:     KeyboardStepKind,
-		Message:  "Choose Group",
-		Keyboard: createGroupsKeyboard(userId),
-		Result:   GroupIdStepResult,
+func (menu ShowAdminsMenu) CreateMenu(userId int64) MenuBase {
+	chooseGroup := groupStepBase
+	chooseGroup.Keyboard = createGroupsKeyboard(0)
+	return MenuBase{
+		Name:           "showadmins",
+		Label:          "Show Admins",
+		Steps:          []Step{chooseAdminMenuOption, chooseGroup},
+		SuperAdminOnly: true,
 	}
+}
+
+func (menu ChangeAdminsMenu) CreateMenu(userId int64) MenuBase {
+	chooseGroup := groupStepBase
+	chooseGroup.Keyboard = createGroupsKeyboard(userId)
 	themenu := MenuBase{
-		Name:           "grouplink",
-		Label:          "Group Link",
-		Steps:          []Step{chooseGroup},
-		SuperAdminOnly: false,
+		Name:           "editadmins",
+		Label:          "Manage Admins",
+		Steps:          []Step{chooseAdminMenuOption, chooseAdminEditOption, chooseGroup, userStep},
+		SuperAdminOnly: true,
 	}
 	return themenu
 }
