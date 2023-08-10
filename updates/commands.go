@@ -1,7 +1,6 @@
 package updates
 
 import (
-	"fatbot/schedule"
 	"fatbot/state"
 	"fatbot/users"
 	"fmt"
@@ -163,7 +162,7 @@ func sendLinkJoinForAdminApproval(fatBotUpdate FatBotUpdate, group users.Group) 
 		),
 	)
 	adminMessage.ReplyMarkup = approvalKeyboard
-	users.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
+	users.SendMessageToGroupAdmins(fatBotUpdate.Bot, group.ChatID, adminMessage)
 	text := `Hello and welcome!
 You will soon get a link to join the group 🎉.
 Once you click the link, please send a picture of your workout *in the group chat*
@@ -197,7 +196,7 @@ func handleJoinCommandNewUser(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageCo
 		),
 	)
 	adminMessage.ReplyMarkup = createNewUserGroupsKeyboard(from.ID, from.FirstName, from.UserName)
-	users.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
+	users.SendMessageToSuperAdmins(fatBotUpdate.Bot, adminMessage)
 	text := `Hello and welcome!
 You will soon get a link to join the group 🎉.
 Once you click the link, please send a picture of your workout *in the group chat*
@@ -238,14 +237,16 @@ func handleAdminCommandUpdate(fatBotUpdate FatBotUpdate) error {
 	if err != nil {
 		return err
 	}
-	if !user.IsAdmin {
+	localAdmin, err := user.IsLocalAdmin()
+	if err != nil {
+		return err
+	}
+	if !user.IsAdmin && !localAdmin {
 		return nil
 	}
 	switch update.Message.Command() {
 	case "admin":
 		msg = state.HandleAdminCommand(update)
-	case "admin_send_report":
-		schedule.CreateChart(bot)
 	default:
 		msg.Text = "Unknown command"
 	}

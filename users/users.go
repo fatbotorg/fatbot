@@ -26,6 +26,7 @@ type User struct {
 	Workouts       []Workout
 	Events         []Event
 	Groups         []*Group `gorm:"many2many:user_groups;"`
+	GroupsAdmin    []*Group `gorm:"many2many:groups_admins;"`
 }
 
 type Blacklist struct {
@@ -91,7 +92,7 @@ func GetInactiveUsers(chatId int64) []User {
 	return users
 }
 
-func GetAdminUsers() []User {
+func GetSuperAdminUsers() []User {
 	db := db.DBCon
 	var users []User
 	db.Where("is_admin = ?", true).Find(&users)

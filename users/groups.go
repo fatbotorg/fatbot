@@ -14,6 +14,7 @@ type Group struct {
 	Approved bool
 	Title    string
 	Users    []User `gorm:"many2many:user_groups;"`
+	Admins   []User `gorm:"many2many:groups_admins;"`
 	Workouts []Workout
 }
 
@@ -37,6 +38,19 @@ func GetGroups() (groups []Group) {
 	db := db.DBCon
 	db.Find(&groups)
 	return
+}
+
+func GetManagedGroups(adminUserId int64) (groups []Group) {
+	adminuser, err := GetUserById(adminUserId)
+	if err != nil {
+		log.Error(err)
+		return []Group{}
+	}
+	adminuser.loadManagedGroups()
+	for _, group := range adminuser.GroupsAdmin {
+		groups = append(groups, *group)
+	}
+	return groups
 }
 
 func GetGroupByTitle(title string) (group Group, err error) {
@@ -115,6 +129,27 @@ func (user *User) RegisterInGroup(chatId int64) error {
 		if err := db.Model(&user).Association("Groups").Append(&group); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func GetGroupWithAdmins(chatId int64) (Group, error) {
+	if group, err := GetGroup(chatId); err != nil {
+		return Group{}, err
+	} else {
+		if err := group.loadGroupAdmins(); err != nil {
+			return Group{}, err
+		} else {
+			return group, nil
+		}
+	}
+}
+
+func (group *Group) loadGroupAdmins() error {
+	db := db.DBCon
+	err := db.Preload("Admins").Find(&group).Error
+	if err != nil {
+		return err
 	}
 	return nil
 }

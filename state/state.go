@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fatbot/users"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ type State struct {
 	ChatId int64
 	Value  string
 	Menu   Menu
+	UserId int64
 }
 
 func New(chatId int64) (*State, error) {
@@ -32,49 +34,55 @@ func New(chatId int64) (*State, error) {
 
 func (state *State) getValueSplit() []string {
 	return strings.Split(state.Value, Delimiter)
-
 }
 
 func (state *State) IsLastStep() bool {
-	return len(state.Menu.CreateMenu().Steps) == len(state.getValueSplit())
+	return len(state.Menu.CreateMenu(0).Steps) == len(state.getValueSplit())
 }
 
 func (state *State) IsFirstStep() bool {
 	return len(state.getValueSplit()) == 1
 }
 
-func (state *State) GetStateMenu() (menu Menu, err error) {
+func (state *State) GetStateMenu(data string) (menu Menu, err error) {
 	if state == nil {
 		err = fmt.Errorf("state is nil")
 		return
 	}
 	rawSplit := state.getValueSplit()
-	rawMenu := rawSplit[0]
-	switch rawMenu {
-	case "rename":
-		menu = &RenameMenu{}
-	case "pushworkout":
-		menu = &PushWorkoutMenu{}
-	case "deletelastworkout":
-		menu = &DeleteLastWorkoutMenu{}
-	case "showusers":
-		menu = &ShowUsersMenu{}
-	case "showevents":
-		menu = &ShowEventsMenu{}
-	case "rejoinuser":
-		menu = &RejoinUserMenu{}
-	case "banuser":
-		menu = &BanUserMenu{}
-	case "grouplink":
-		menu = &GroupLinkMenu{}
-	default:
-		return menu, fmt.Errorf("unknown menu: %s", rawMenu)
+	var rawMenu string
+	for i, step := range rawSplit {
+		if menu, ok := menuMap[step]; ok {
+			isParent := menu.CreateMenu(0).ParentMenu
+			if !isParent {
+				rawMenu = rawSplit[i]
+				break
+			}
+		}
+	}
+	if _, ok := menuMap[data]; ok {
+		rawMenu = data
+	}
+	var ok bool
+	if menu, ok = menuMap[rawMenu]; !ok {
+		return menu, fmt.Errorf("no such menu %s", rawMenu)
 	}
 	return
 }
 
+func (state *State) getOption() (option string, err error) {
+	steps := state.Menu.CreateMenu(0).Steps
+	for stepIndex := len(steps) - 1; stepIndex >= 0; stepIndex-- {
+		if steps[stepIndex].Result == OptionResult {
+			stateSlice := state.getValueSplit()
+			return stateSlice[stepIndex+1], nil
+		}
+	}
+	return "", nil
+}
+
 func (state *State) getTelegramUserId() (userId int64, err error) {
-	for stepIndex, step := range state.Menu.CreateMenu().Steps {
+	for stepIndex, step := range state.Menu.CreateMenu(0).Steps {
 		switch step.Result {
 		case TelegramUserIdStepResult, TelegramInactiveUserIdStepResult:
 			stateSlice := state.getValueSplit()
@@ -89,7 +97,7 @@ func (state *State) getTelegramUserId() (userId int64, err error) {
 }
 
 func (state *State) getGroupChatId() (userId int64, err error) {
-	for stepIndex, step := range state.Menu.CreateMenu().Steps {
+	for stepIndex, step := range state.Menu.CreateMenu(0).Steps {
 		if step.Result == GroupIdStepResult {
 			stateSlice := state.getValueSplit()
 			groupId, err := strconv.ParseInt(stateSlice[stepIndex+1], 10, 64)
@@ -109,7 +117,7 @@ func (state *State) ExtractData() (data int64, err error) {
 
 func (state *State) CurrentStep() Step {
 	stateSlice := state.getValueSplit()
-	return state.Menu.CreateMenu().Steps[len(stateSlice)-1]
+	return state.Menu.CreateMenu(0).Steps[len(stateSlice)-1]
 }
 
 func CreateStateEntry(chatId int64, value string) error {
@@ -159,7 +167,14 @@ func HandleAdminCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		log.Errorf("Error clearing state: %s", err)
 	}
 	msg := tgbotapi.NewMessage(update.FromChat().ID, "Choose an option")
-	adminKeyboard := CreateAdminKeyboard()
+	userId := update.SentFrom().ID
+	user, err := users.GetUserById(userId)
+	if err != nil {
+		log.Error(err)
+		return msg
+	}
+	var adminKeyboard tgbotapi.InlineKeyboardMarkup
+	adminKeyboard = CreateAdminKeyboard(user.IsAdmin)
 	msg.ReplyMarkup = adminKeyboard
 	return msg
 }
