@@ -17,7 +17,7 @@ import (
 
 func handleProbationUploadMessage(update tgbotapi.Update, user users.User) (tgbotapi.MessageConfig, error) {
 	msg := tgbotapi.NewMessage(update.FromChat().ID, "")
-	completedUploads, err := user.LastTwoWorkoutsInPastHour()
+	completedUploads, err := user.LastTwoWorkoutsInPastHour(update.FromChat().ID)
 	if err != nil {
 		return msg, nil
 	}
@@ -87,10 +87,7 @@ func handleWorkoutUpload(update MediaUpdate) (tgbotapi.MessageConfig, error) {
 	}
 
 	if user.OnProbation {
-		chatId, err := user.GetSingleChatId()
-		if err != nil {
-			return msg, err
-		}
+		chatId := update.Update.FromChat().ID
 		if err := user.FlagLastWorkout(chatId); err != nil {
 			return msg, err
 		}
