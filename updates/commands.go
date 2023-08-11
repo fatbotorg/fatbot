@@ -78,32 +78,20 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		msg.Text = "Unregistered user"
 		return msg
 	}
-	chatId, err := user.GetChatId()
-	// FIX: user typed errors not this
-	if err != nil {
-		if err.Error() == "user has multiple groups - ambiguate" {
-			if chatIds, err := user.GetChatIds(); err != nil {
-				log.Error(err)
-				sentry.CaptureException(err)
-				return msg
-			} else {
-				for _, chatId := range chatIds {
-					group, _ := users.GetGroup(chatId)
-					msg.Text = msg.Text +
-						"\n\n" +
-						fmt.Sprint(group.Title) +
-						": " +
-						createStatusMessage(user, chatId, msg).Text
-				}
-			}
-			return msg
-		} else {
-			log.Error(err)
-			sentry.CaptureException(err)
-			return msg
+	if chatIds, err := user.GetChatIds(); err != nil {
+		log.Error(err)
+		sentry.CaptureException(err)
+		return msg
+	} else {
+		for _, chatId := range chatIds {
+			group, _ := users.GetGroup(chatId)
+			msg.Text = msg.Text +
+				"\n\n" +
+				fmt.Sprint(group.Title) +
+				": " +
+				createStatusMessage(user, chatId, msg).Text
 		}
 	}
-	msg = createStatusMessage(user, chatId, msg)
 	return msg
 }
 
