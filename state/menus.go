@@ -17,9 +17,10 @@ type stepKind string
 type stepResult string
 
 const (
-	Delimiter                                   = ":"
-	InputStepKind                    stepKind   = "input"
-	KeyboardStepKind                 stepKind   = "keyboard"
+	Delimiter                 = ":"
+	InputStepKind    stepKind = "input"
+	KeyboardStepKind stepKind = "keyboard"
+
 	GroupIdStepResult                stepResult = "groupId"
 	TelegramUserIdStepResult         stepResult = "telegramUserId"
 	TelegramInactiveUserIdStepResult stepResult = "telegramInactiveUserId"
@@ -142,10 +143,12 @@ func (menu BanUserMenu) CreateMenu(userId int64) MenuBase {
 func (menu RejoinUserMenu) CreateMenu(userId int64) MenuBase {
 	chooseGroup := groupStepBase
 	chooseGroup.Keyboard = createGroupsKeyboard(userId)
+	inactiveUsersStep := userStep
+	inactiveUsersStep.Result = TelegramInactiveUserIdStepResult
 	themenu := MenuBase{
 		Name:  "rejoinuser",
 		Label: "Rejoin User",
-		Steps: []Step{chooseGroup, userStep},
+		Steps: []Step{chooseGroup, inactiveUsersStep},
 	}
 	return themenu
 }
