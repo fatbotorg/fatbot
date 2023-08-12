@@ -36,7 +36,10 @@ func getLastCycleExactTime() time.Time {
 	timezone := viper.GetString("timezone")
 	location, _ := time.LoadLocation(timezone)
 	var lastCycleStartDate time.Time
-	if time.Now().Weekday().String() == reportWeekDay && time.Now().In(location).Hour() >= reportHour {
+	timeNow := time.Now().In(location)
+	if timeNow.Weekday().String() == reportWeekDay &&
+		timeNow.Hour() >= reportHour &&
+		timeNow.Minute() > 0 {
 		lastCycleStartDate = time.Now()
 	} else {
 		daysSinceCycleStart := int(time.Now().Weekday()) + 1
