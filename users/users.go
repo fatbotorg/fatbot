@@ -26,6 +26,7 @@ type User struct {
 	Workouts       []Workout
 	Events         []Event
 	Groups         []*Group `gorm:"many2many:user_groups;"`
+	GroupsAdmin    []*Group `gorm:"many2many:groups_admins;"`
 }
 
 type Blacklist struct {
@@ -91,7 +92,7 @@ func GetInactiveUsers(chatId int64) []User {
 	return users
 }
 
-func GetAdminUsers() []User {
+func GetSuperAdminUsers() []User {
 	db := db.DBCon
 	var users []User
 	db.Where("is_admin = ?", true).Find(&users)
@@ -244,22 +245,6 @@ will have 60 minutes to send 2 workouts
 	return
 }
 
-func (user User) GetSingleChatId() (int64, error) {
-	chatIds, err := user.GetChatIds()
-	if err != nil {
-		return 0, err
-	}
-	switch len(chatIds) {
-	case 0:
-		return 0, fmt.Errorf("cant find chatids")
-	case 1:
-		return chatIds[0], nil
-	default:
-		return 0, fmt.Errorf("too many groups cant infer")
-
-	}
-}
-
 func (user *User) GetChatIds() (chatIds []int64, err error) {
 	user.LoadGroups()
 	if user.Groups == nil {
@@ -282,65 +267,53 @@ func (user *User) GetChatIds() (chatIds []int64, err error) {
 	}
 }
 
-func (user *User) GetChatId() (chatId int64, err error) {
-	user.LoadGroups()
-	if user.Groups == nil {
-		return 0, fmt.Errorf("user %s has nil groups", user.GetName())
-	}
-	switch len(user.Groups) {
-	case 0:
-		return 0, fmt.Errorf("user %s has no groups", user.GetName())
-	case 1:
-		chatId = user.Groups[0].ChatID
-		return chatId, nil
-	default:
-		return 0, fmt.Errorf("user has multiple groups - ambiguate")
-	}
-}
-
 func (user *User) UnBan(bot *tgbotapi.BotAPI) error {
-	chatId, err := user.GetChatId()
+	chatIds, err := user.GetChatIds()
 	if err != nil {
 		return err
 	}
-	unbanConfig := tgbotapi.UnbanChatMemberConfig{
-		ChatMemberConfig: user.CreateChatMemberConfig(bot.Self.UserName, chatId),
-	}
-	if _, err := bot.Request(unbanConfig); err != nil {
-		return err
+	for _, chatId := range chatIds {
+		unbanConfig := tgbotapi.UnbanChatMemberConfig{
+			ChatMemberConfig: user.CreateChatMemberConfig(bot.Self.UserName, chatId),
+		}
+		if _, err := bot.Request(unbanConfig); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func (user *User) InviteExistingUser(bot *tgbotapi.BotAPI) error {
-	chatId, err := user.GetChatId()
+	chatIds, err := user.GetChatIds()
 	if err != nil {
 		return err
 	}
-	msg := tgbotapi.NewMessage(user.TelegramUserID, "")
-	unixTime24HoursFromNow := int(time.Now().Add(time.Duration(24 * time.Hour)).Unix())
-	chatConfig := tgbotapi.ChatConfig{
-		ChatID:             chatId,
-		SuperGroupUsername: bot.Self.UserName,
-	}
-	createInviteLinkConfig := tgbotapi.CreateChatInviteLinkConfig{
-		ChatConfig:         chatConfig,
-		Name:               user.GetName(),
-		ExpireDate:         unixTime24HoursFromNow,
-		MemberLimit:        1,
-		CreatesJoinRequest: false,
-	}
-	response, err := bot.Request(createInviteLinkConfig)
-	if err != nil {
-		return err
-	}
-	link, err := extractInviteLinkFromResponse(response)
-	if err != nil {
-		return err
-	}
-	msg.Text = link
-	if _, err := bot.Send(msg); err != nil {
-		return err
+	for _, chatId := range chatIds {
+		msg := tgbotapi.NewMessage(user.TelegramUserID, "")
+		unixTime24HoursFromNow := int(time.Now().Add(time.Duration(24 * time.Hour)).Unix())
+		chatConfig := tgbotapi.ChatConfig{
+			ChatID:             chatId,
+			SuperGroupUsername: bot.Self.UserName,
+		}
+		createInviteLinkConfig := tgbotapi.CreateChatInviteLinkConfig{
+			ChatConfig:         chatConfig,
+			Name:               user.GetName(),
+			ExpireDate:         unixTime24HoursFromNow,
+			MemberLimit:        1,
+			CreatesJoinRequest: false,
+		}
+		response, err := bot.Request(createInviteLinkConfig)
+		if err != nil {
+			return err
+		}
+		link, err := extractInviteLinkFromResponse(response)
+		if err != nil {
+			return err
+		}
+		msg.Text = link
+		if _, err := bot.Send(msg); err != nil {
+			return err
+		}
 	}
 	return nil
 }

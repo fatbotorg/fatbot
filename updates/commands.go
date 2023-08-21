@@ -1,7 +1,6 @@
 package updates
 
 import (
-	"fatbot/schedule"
 	"fatbot/state"
 	"fatbot/users"
 	"fmt"
@@ -83,32 +82,20 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 		msg.Text = "Unregistered user"
 		return msg
 	}
-	chatId, err := user.GetChatId()
-	// FIX: user typed errors not this
-	if err != nil {
-		if err.Error() == "user has multiple groups - ambiguate" {
-			if chatIds, err := user.GetChatIds(); err != nil {
-				log.Error(err)
-				sentry.CaptureException(err)
-				return msg
-			} else {
-				for _, chatId := range chatIds {
-					group, _ := users.GetGroup(chatId)
-					msg.Text = msg.Text +
-						"\n\n" +
-						fmt.Sprint(group.Title) +
-						": " +
-						createStatusMessage(user, chatId, msg).Text
-				}
-			}
-			return msg
-		} else {
-			log.Error(err)
-			sentry.CaptureException(err)
-			return msg
+	if chatIds, err := user.GetChatIds(); err != nil {
+		log.Error(err)
+		sentry.CaptureException(err)
+		return msg
+	} else {
+		for _, chatId := range chatIds {
+			group, _ := users.GetGroup(chatId)
+			msg.Text = msg.Text +
+				"\n\n" +
+				fmt.Sprint(group.Title) +
+				": " +
+				createStatusMessage(user, chatId, msg).Text
 		}
 	}
-	msg = createStatusMessage(user, chatId, msg)
 	return msg
 }
 
@@ -279,7 +266,7 @@ func sendLinkJoinForAdminApproval(fatBotUpdate FatBotUpdate, group users.Group) 
 		),
 	)
 	adminMessage.ReplyMarkup = approvalKeyboard
-	users.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
+	users.SendMessageToGroupAdmins(fatBotUpdate.Bot, group.ChatID, adminMessage)
 	text := `Hello and welcome!
 You will soon get a link to join the group 🎉.
 Once you click the link, please send a picture of your workout *in the group chat*
@@ -313,7 +300,7 @@ func handleJoinCommandNewUser(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageCo
 		),
 	)
 	adminMessage.ReplyMarkup = createNewUserGroupsKeyboard(from.ID, from.FirstName, from.UserName)
-	users.SendMessageToAdmins(fatBotUpdate.Bot, adminMessage)
+	users.SendMessageToSuperAdmins(fatBotUpdate.Bot, adminMessage)
 	text := `Hello and welcome!
 You will soon get a link to join the group 🎉.
 Once you click the link, please send a picture of your workout *in the group chat*
@@ -354,14 +341,16 @@ func handleAdminCommandUpdate(fatBotUpdate FatBotUpdate) error {
 	if err != nil {
 		return err
 	}
-	if !user.IsAdmin {
+	localAdmin, err := user.IsLocalAdmin()
+	if err != nil {
+		return err
+	}
+	if !user.IsAdmin && !localAdmin {
 		return nil
 	}
 	switch update.Message.Command() {
 	case "admin":
 		msg = state.HandleAdminCommand(update)
-	case "admin_send_report":
-		schedule.CreateChart(bot)
 	default:
 		msg.Text = "Unknown command"
 	}
