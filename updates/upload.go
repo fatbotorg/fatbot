@@ -30,9 +30,9 @@ func handleProbationUploadMessage(update tgbotapi.Update, user users.User) (tgbo
 
 func getFile(update MediaUpdate) ([]byte, error) {
 	var fileConfig tgbotapi.FileConfig
-	if len(update.Update.Message.Photo) > 0 {
-		// FIX: will this always stay 2?
-		fileConfig.FileID = update.Update.Message.Photo[2].FileID
+	numPhotos := len(update.Update.Message.Photo)
+	if numPhotos > 0 {
+		fileConfig.FileID = update.Update.Message.Photo[numPhotos-1].FileID
 	} else if update.Update.Message.Video != nil {
 		fileConfig.FileID = update.Update.Message.Video.Thumbnail.FileID
 	}
