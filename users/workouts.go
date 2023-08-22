@@ -103,14 +103,8 @@ func (user *User) GetPreviousWeekWorkouts(chatId int64) []Workout {
 	log.Debug(user.Workouts)
 	return user.Workouts
 }
-func (user *User) GetMonthlyWorkoutsSummary(chatId int64, start, end time.Time) (userWorkoutsByMonthAsString []string) {
+func (user *User) GetMonthlyWorkoutsSummary(group Group, start, end time.Time, months []string) (userWorkoutsByMonthAsString []string) {
 	db := db.DBCon
-	group, err := GetGroup(chatId)
-	if err != nil {
-		log.Error(err)
-		sentry.CaptureException(err)
-		return nil
-	}
 	if err := db.Model(&User{}).
 		Preload("Workouts", "created_at > ? AND created_at < ? AND group_id = ? AND flagged = ?",
 			start, end, group.ID, false).
@@ -119,16 +113,20 @@ func (user *User) GetMonthlyWorkoutsSummary(chatId int64, start, end time.Time) 
 		sentry.CaptureException(err)
 		return nil
 	}
-	workoutsCountByMonth := make(map[time.Month]int)
+	workoutsCountByMonth := make(map[string]int)
+	for _, month := range months {
+		workoutsCountByMonth[month] = 0
+	}
 
 	// Iterate over the user's workouts and add them to the corresponding month's slice
 	for _, workout := range user.Workouts {
-		month := workout.CreatedAt.Month()
+		month := workout.CreatedAt.Month().String()
 		workoutsCountByMonth[month]++
 	}
 	// Create a slice to store the workout counts as strings
-	userWorkoutsByMonthAsString = make([]string, 0, len(workoutsCountByMonth))
-	for i, count := range workoutsCountByMonth {
+	userWorkoutsByMonthAsString = make([]string, len(months))
+	for i, monthName := range months {
+		count := workoutsCountByMonth[monthName]
 		userWorkoutsByMonthAsString[i] = fmt.Sprintf("%d", count)
 	}
 	log.Debug(user.Workouts)

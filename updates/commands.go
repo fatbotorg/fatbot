@@ -126,44 +126,40 @@ func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConf
 func handleMonthlySummaryCommand(fatBotUpdate FatBotUpdate) {
 	update := fatBotUpdate.Update
 	bot := fatBotUpdate.Bot
-	var user users.User
-	var err error
-	if user, err = users.GetUserFromMessage(update.Message); err != nil {
+	originalChatId := update.FromChat().ID
+	user, err := users.GetUserFromMessage(update.Message)
+	if err != nil {
 		log.Error(err)
 		sentry.CaptureException(err)
-	} else if user.ID == 0 {
 		return
 	}
-	months := 6 //until we'll let user to enter # of months
-	start, end := getDuration(months)
-	chatId, err := user.GetChatId()
-	// FIX: user typed errors not this
-	if err != nil {
-		if err.Error() == "user has multiple groups - ambiguate" {
-			if chatIds, err := user.GetChatIds(); err != nil {
-				log.Error(err)
-				sentry.CaptureException(err)
-				return
-			} else {
-				for _, chatId := range chatIds {
-					createUserMonthlySummaryChart(bot, user, chatId, start, end)
-				}
-			}
-			return
-		} else {
-			log.Error(err)
-			sentry.CaptureException(err)
-			return
-		}
-	}
-	createUserMonthlySummaryChart(bot, user, chatId, start, end)
-}
 
-func createUserMonthlySummaryChart(bot *tgbotapi.BotAPI, user users.User, chatId int64, start, end time.Time) {
+	if user.ID == 0 {
+		return
+	}
+	months := 6 // until we'll let the user enter the number of months
+	start, end := getDuration(months)
+	chatIds, err := user.GetChatIds()
+	if err != nil {
+		log.Error(err)
+		sentry.CaptureException(err)
+		return
+	}
+	if len(chatIds) > 1 {
+		for _, chatId := range chatIds {
+			createUserMonthlySummaryChart(bot, originalChatId, user, chatId, start, end)
+		}
+	} else if len(chatIds) == 1 {
+		createUserMonthlySummaryChart(bot, originalChatId, user, chatIds[0], start, end)
+	} else {
+		log.Errorf("No chat IDs found for user %s", user.Username)
+	}
+}
+func createUserMonthlySummaryChart(bot *tgbotapi.BotAPI, originalChatId int64, user users.User, chatId int64, start, end time.Time) {
 	group, _ := users.GetGroup(chatId)
 	fileName := fmt.Sprintf("%s_%s.png", user.Username, group.Title)
-	userWorkoutsByMonthAsString := user.GetMonthlyWorkoutsSummary(chatId, start, end)
 	months := getMonthsInRange(start, end)
+	userWorkoutsByMonthAsString := user.GetMonthlyWorkoutsSummary(group, start, end, months)
 	monthsStringSlice := "'" + strings.Join(months, "', '") + "'"
 	userWorkoutsByMonthStringSlice := strings.Join(userWorkoutsByMonthAsString, ", ")
 	chartConfig := createMonthlyChartConfig(monthsStringSlice, userWorkoutsByMonthStringSlice)
@@ -174,8 +170,7 @@ func createUserMonthlySummaryChart(bot *tgbotapi.BotAPI, user users.User, chatId
 	}
 	defer file.Close()
 	qc.Write(file)
-
-	msg := tgbotapi.NewPhoto(group.ChatID, tgbotapi.FilePath(fileName))
+	msg := tgbotapi.NewPhoto(originalChatId, tgbotapi.FilePath(fileName))
 	msg.Caption = fmt.Sprintf("Monthly Workouts summary:\n")
 
 	if _, err = bot.Send(msg); err != nil {
@@ -200,9 +195,9 @@ func createMonthlyChartConfig(monthsStringSlice, userWorkoutsByMonthStringSlice 
 	return chartConfig
 }
 
-func getDuration(months int) (firstDayOfStartMonth, firstDayOfCurrentMonth time.Time) {
-	currentTime := time.Now()
-	firstDayOfCurrentMonth = time.Date(currentTime.Year(), currentTime.Month(), 1, 0, 0, 0, 0, currentTime.Location())
+func getDuration(months int) (firstDayOfStartMonth, currentTime time.Time) {
+	currentTime = time.Now()
+	firstDayOfCurrentMonth := time.Date(currentTime.Year(), currentTime.Month(), 1, 0, 0, 0, 0, currentTime.Location())
 	firstDayOfStartMonth = firstDayOfCurrentMonth.AddDate(0, -months, 0)
 	return
 
