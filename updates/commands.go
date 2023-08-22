@@ -145,12 +145,10 @@ func handleMonthlySummaryCommand(fatBotUpdate FatBotUpdate) {
 		sentry.CaptureException(err)
 		return
 	}
-	if len(chatIds) > 1 {
+	if len(chatIds) > 0 {
 		for _, chatId := range chatIds {
 			createUserMonthlySummaryChart(bot, originalChatId, user, chatId, start, end)
 		}
-	} else if len(chatIds) == 1 {
-		createUserMonthlySummaryChart(bot, originalChatId, user, chatIds[0], start, end)
 	} else {
 		log.Errorf("No chat IDs found for user %s", user.Username)
 	}
