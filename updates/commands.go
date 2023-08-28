@@ -169,7 +169,7 @@ func createUserMonthlySummaryChart(bot *tgbotapi.BotAPI, originalChatId int64, u
 	defer file.Close()
 	qc.Write(file)
 	msg := tgbotapi.NewPhoto(originalChatId, tgbotapi.FilePath(fileName))
-	msg.Caption = fmt.Sprintf("Monthly Workouts summary:\n")
+	msg.Caption = fmt.Sprintf("Monthly Workouts summary\n")
 
 	if _, err = bot.Send(msg); err != nil {
 		log.Error(err)
