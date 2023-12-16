@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"fatbot/schedule"
 	"fatbot/state"
 	"fatbot/users"
 	"fmt"
