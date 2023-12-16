@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"fatbot/schedule"
 	"fatbot/state"
 	"fatbot/users"
 	"fmt"
@@ -235,6 +236,8 @@ func handleAdminCommandUpdate(fatBotUpdate FatBotUpdate) error {
 	switch update.Message.Command() {
 	case "admin":
 		msg = state.HandleAdminCommand(update)
+	case "admin_send_report":
+		schedule.CreateChart(bot)
 	default:
 		msg.Text = "Unknown command"
 	}
