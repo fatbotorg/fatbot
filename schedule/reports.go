@@ -95,7 +95,11 @@ func collectUsersData(group users.Group) (usersWorkouts, previousWeekWorkouts []
 	for _, user := range group.Users {
 		userPreviousWeekWorkouts := user.GetPreviousWeekWorkouts(group.ChatID)
 		previousWeekWorkouts = append(previousWeekWorkouts, fmt.Sprint(len(userPreviousWeekWorkouts)))
-		userPastWeekWorkouts := user.GetPastWeekWorkouts(group.ChatID)
+		if err := user.LoadWorkoutsThisCycle(group.ChatID); err != nil {
+			log.Error(err)
+			return
+		}
+		userPastWeekWorkouts := user.Workouts
 		usersWorkouts = append(usersWorkouts, fmt.Sprint(len(userPastWeekWorkouts)))
 		if leaders[0].Workouts > len(userPastWeekWorkouts) {
 			continue
