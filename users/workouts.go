@@ -71,7 +71,7 @@ func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
 
 func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
 	db := db.DBCon
-	lastWeek := time.Now().Add(time.Duration(-7) * time.Hour * 24)
+	lastWeek := getLastCycleExactTime()
 	group, err := GetGroup(chatId)
 	if err != nil {
 		log.Error(err)
