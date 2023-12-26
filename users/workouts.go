@@ -71,7 +71,9 @@ func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
 
 func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
 	db := db.DBCon
-	lastWeek := time.Now().Add(time.Duration(-7) * time.Hour * 24)
+	timezone := viper.GetString("timezone")
+	location, _ := time.LoadLocation(timezone)
+	lastWeek := time.Now().In(location).Add(time.Duration(-7) * time.Hour * 24)
 	group, err := GetGroup(chatId)
 	if err != nil {
 		log.Error(err)
@@ -87,8 +89,10 @@ func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
 
 func (user *User) GetPreviousWeekWorkouts(chatId int64) []Workout {
 	db := db.DBCon
-	previousWeeksStart := time.Now().Add(time.Duration(-14) * time.Hour * 24)
-	previousWeeksEnd := time.Now().Add(time.Duration(-7) * time.Hour * 24)
+	timezone := viper.GetString("timezone")
+	location, _ := time.LoadLocation(timezone)
+	previousWeeksStart := time.Now().In(location).Add(time.Duration(-14) * time.Hour * 24)
+	previousWeeksEnd := time.Now().In(location).Add(time.Duration(-7) * time.Hour * 24)
 	group, err := GetGroup(chatId)
 	if err != nil {
 		log.Error(err)
