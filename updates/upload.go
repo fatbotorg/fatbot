@@ -22,7 +22,7 @@ func handleProbationUploadMessage(update tgbotapi.Update, user users.User) (tgbo
 		return msg, nil
 	}
 	if completedUploads {
-		msg.Text = fmt.Sprintf("Welcome back %s!", user.GetName())
+		msg.Text = fmt.Sprintf("%s, %s", user.GetName(), ai.GetAiWelcomeResponse())
 		msg.ReplyToMessageID = update.Message.MessageID
 	}
 	return msg, nil
@@ -87,10 +87,6 @@ func handleWorkoutUpload(update MediaUpdate) (tgbotapi.MessageConfig, error) {
 	}
 
 	if user.OnProbation {
-		chatId := update.Update.FromChat().ID
-		if err := user.FlagLastWorkout(chatId); err != nil {
-			return msg, err
-		}
 		return handleProbationUploadMessage(botUpdate, user)
 	}
 
