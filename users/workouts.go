@@ -107,19 +107,6 @@ func (user *User) GetPreviousWeekWorkouts(chatId int64) []Workout {
 	return user.Workouts
 }
 
-// func (user *User) FlagLastWorkout(chatId int64) error {
-// 	db := db.DBCon
-// 	workout, err := user.GetLastXWorkout(1, chatId)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	err = db.Model(&workout).Update("flagged", 1).Error
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
 func (user *User) RollbackLastWorkout(chatId int64) (Workout, error) {
 	db := db.DBCon
 	lastWorkout, err := user.GetLastXWorkout(1, chatId)
