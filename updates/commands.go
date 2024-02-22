@@ -96,6 +96,23 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	return msg
 }
 
+func createStatsMessage(chatId int64, msg tgbotapi.MessageConfig) tgbotapi.MessageConfig {
+	users := users.GetUsers(chatId)
+	for _, user := range users {
+		user.LoadWorkoutsThisCycle(chatId)
+		workoutsStr := ""
+		for range len(user.Workouts) {
+			workoutsStr = workoutsStr + "🤸"
+		}
+		msg.Text = msg.Text +
+			"\n" +
+			fmt.Sprint(user.GetName()) +
+			": " +
+			workoutsStr
+	}
+
+	return msg
+}
 func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConfig) tgbotapi.MessageConfig {
 	lastWorkout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
