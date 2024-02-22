@@ -67,6 +67,35 @@ func handleNewGroupCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	}
 	return msg
 }
+func handleStatsCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
+	var user users.User
+	var err error
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+	if user, err = users.GetUserFromMessage(update.Message); err != nil {
+		log.Error(err)
+		sentry.CaptureException(err)
+	} else if user.ID == 0 {
+		msg.Text = "Unregistered user"
+		return msg
+	}
+
+	if chatIds, err := user.GetChatIds(); err != nil {
+		log.Error(err)
+		sentry.CaptureException(err)
+		return msg
+	} else {
+		for _, chatId := range chatIds {
+			group, _ := users.GetGroup(chatId)
+
+			msg.Text = msg.Text +
+				"\n\n" +
+				fmt.Sprint(group.Title) +
+				": " +
+				createStatsMessage(chatId, msg).Text
+		}
+	}
+	return msg
+}
 
 func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	var user users.User
