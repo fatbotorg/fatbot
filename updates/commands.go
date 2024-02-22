@@ -34,6 +34,8 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 		}
 	case "status":
 		msg = handleStatusCommand(update)
+	case "stats":
+		msg = handleStatsCommand(update)
 	case "help":
 		msg.ChatID = update.FromChat().ID
 		msg.Text = "Join the group using: /join\nCheck your status using: /status"
@@ -67,6 +69,35 @@ func handleNewGroupCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	}
 	return msg
 }
+func handleStatsCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
+	var user users.User
+	var err error
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+	if user, err = users.GetUserFromMessage(update.Message); err != nil {
+		log.Error(err)
+		sentry.CaptureException(err)
+	} else if user.ID == 0 {
+		msg.Text = "Unregistered user"
+		return msg
+	}
+
+	if chatIds, err := user.GetChatIds(); err != nil {
+		log.Error(err)
+		sentry.CaptureException(err)
+		return msg
+	} else {
+		for _, chatId := range chatIds {
+			group, _ := users.GetGroup(chatId)
+
+			msg.Text = msg.Text +
+				"\n\n" +
+				fmt.Sprint(group.Title) +
+				": " +
+				createStatsMessage(chatId, msg).Text
+		}
+	}
+	return msg
+}
 
 func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	var user users.User
@@ -96,6 +127,23 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	return msg
 }
 
+func createStatsMessage(chatId int64, msg tgbotapi.MessageConfig) tgbotapi.MessageConfig {
+	users := users.GetUsers(chatId)
+	for _, user := range users {
+		user.LoadWorkoutsThisCycle(chatId)
+		workoutsStr := ""
+		for range len(user.Workouts) {
+			workoutsStr = workoutsStr + "🤸"
+		}
+		msg.Text = msg.Text +
+			"\n" +
+			fmt.Sprint(user.GetName()) +
+			": " +
+			workoutsStr
+	}
+
+	return msg
+}
 func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConfig) tgbotapi.MessageConfig {
 	lastWorkout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
