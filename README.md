@@ -73,3 +73,4 @@ Important: soon, notifications for approval will only be sent to local admins to
 #### User options
 * `/join` - welcomes new users and asks the admin(s) to approve and pick their group. Existing users who were banned will require approval from the admin upon which they'll be send a link to join. After rejoining the bot expects two reports immediately or the user is banned again
 * `/status` - tells the user how much time he has left till the end of the 5 days period
+* `/stats` - tells the user how many workouts each member of his group has
