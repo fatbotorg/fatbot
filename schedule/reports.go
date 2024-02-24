@@ -139,3 +139,33 @@ func createQuickChart(chartConfig string) *quickchartgo.Chart {
 	qc.BackgroundColor = "white"
 	return qc
 }
+
+func ReportStandings(bot *tgbotapi.BotAPI) {
+	// create stats message and send it to all groups
+	statsMessage := "Here are the current standings:"
+	groups := users.GetGroups()
+	for _, group := range groups {
+		stats := CreateStatsMessage(group.ChatID)
+		msg := tgbotapi.NewMessage(group.ChatID, statsMessage+"\n"+stats)
+		bot.Send(msg)
+	}
+
+}
+
+func CreateStatsMessage(chatId int64) string {
+	users := users.GetUsers(chatId)
+	message := ""
+	for _, user := range users {
+		user.LoadWorkoutsThisCycle(chatId)
+		workoutsStr := ""
+		for range len(user.Workouts) {
+			workoutsStr = workoutsStr + "🟩"
+		}
+		message = message +
+			"\n" +
+			fmt.Sprint(user.GetName()) +
+			": " +
+			workoutsStr
+	}
+	return message
+}
