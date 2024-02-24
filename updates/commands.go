@@ -92,7 +92,7 @@ func handleStatsCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 				"\n\n" +
 				fmt.Sprint(group.Title) +
 				": " +
-				createStatsMessage(chatId)
+				schedule.CreateStatsMessage(chatId)
 		}
 	}
 	return msg
@@ -126,23 +126,6 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	return msg
 }
 
-func createStatsMessage(chatId int64) string {
-	users := users.GetUsers(chatId)
-	message := ""
-	for _, user := range users {
-		user.LoadWorkoutsThisCycle(chatId)
-		workoutsStr := ""
-		for range len(user.Workouts) {
-			workoutsStr = workoutsStr + "🤸"
-		}
-		message = message +
-			"\n" +
-			fmt.Sprint(user.GetName()) +
-			": " +
-			workoutsStr
-	}
-	return message
-}
 func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConfig) tgbotapi.MessageConfig {
 	lastWorkout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
