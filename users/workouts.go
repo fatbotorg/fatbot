@@ -26,8 +26,8 @@ type Workout struct {
 	UserID         uint
 	GroupID        uint
 	PhotoMessageID int
-	// Flagged        bool
-	Streak int
+	Flagged        bool
+	Streak         int
 }
 
 func getLastCycleExactTime() time.Time {
@@ -60,9 +60,10 @@ func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
 	if err := db.Model(&User{}).
 		Preload(
 			"Workouts",
-			"created_at > ? AND group_id = ?",
+			"created_at > ? AND group_id = ? AND flagged = ?",
 			lastCycleExactTime,
 			group.ID,
+			false,
 		).Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
 	}
 	return nil
@@ -80,7 +81,7 @@ func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
 		return []Workout{}
 	}
 	if err := db.Model(&User{}).
-		Preload("Workouts", "created_at > ? AND group_id = ?", lastWeek, group.ID).
+		Preload("Workouts", "created_at > ? AND group_id = ? AND flagged = ?", lastWeek, group.ID, false).
 		Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
 	}
 	return user.Workouts
@@ -99,12 +100,25 @@ func (user *User) GetPreviousWeekWorkouts(chatId int64) []Workout {
 		return []Workout{}
 	}
 	if err := db.Model(&User{}).
-		Preload("Workouts", "created_at > ? AND created_at < ? AND group_id = ?",
-			previousWeeksStart, previousWeeksEnd, group.ID).
+		Preload("Workouts", "created_at > ? AND created_at < ? AND group_id = ? AND flagged = ?",
+			previousWeeksStart, previousWeeksEnd, group.ID, false).
 		Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
 	}
 	log.Debug(user.Workouts)
 	return user.Workouts
+}
+
+func (user *User) FlagLastWorkout(chatId int64) error {
+	db := db.DBCon
+	workout, err := user.GetLastXWorkout(1, chatId)
+	if err != nil {
+		return err
+	}
+	err = db.Model(&workout).Update("flagged", 1).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (user *User) RollbackLastWorkout(chatId int64) (Workout, error) {
@@ -190,12 +204,4 @@ func (user *User) GetLastXWorkout(lastx int, chatId int64) (Workout, error) {
 		return Workout{}, &NoWorkoutsError{Name: user.GetName()}
 	}
 	return user.Workouts[len(user.Workouts)-lastx], nil
-}
-
-func (user *User) LastTwoWorkoutsInPastHour(chatId int64) (bool, error) {
-	lastWorkout, err := user.GetLastXWorkout(2, chatId)
-	if err != nil {
-		return false, err
-	}
-	return time.Now().Sub(lastWorkout.CreatedAt).Minutes() <= 60, nil
 }

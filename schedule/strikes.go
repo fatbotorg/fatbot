@@ -66,13 +66,13 @@ func handleProbation(bot *tgbotapi.BotAPI, user users.User, group users.Group, t
 	}
 	diffHours := int(totalDays*24 - time.Now().Sub(lastWorkout.CreatedAt).Hours())
 	rejoinedLastHour := time.Now().Sub(user.UpdatedAt).Minutes() <= 60
-	lastTwoWorkoutsOk := diffHours > 0
-	if !lastTwoWorkoutsOk && !rejoinedLastHour {
+	lastWorkoutOk := diffHours > 0
+	if !lastWorkoutOk && !rejoinedLastHour {
 		if errors := user.Ban(bot, group.ChatID); errors != nil {
 			log.Errorf("Issue banning %s from %d: %s", user.GetName(), group.ChatID, errors)
 			sentry.CaptureException(err)
 		}
-	} else if lastTwoWorkoutsOk {
+	} else if lastWorkoutOk {
 		if err := user.UpdateOnProbation(false); err != nil {
 			log.Errorf("Issue updating unprobation %s from %d: %s", user.GetName(), group.ChatID, err)
 			sentry.CaptureException(err)
