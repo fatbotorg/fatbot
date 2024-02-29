@@ -17,14 +17,8 @@ import (
 
 func handleProbationUploadMessage(update tgbotapi.Update, user users.User) (tgbotapi.MessageConfig, error) {
 	msg := tgbotapi.NewMessage(update.FromChat().ID, "")
-	completedUploads, err := user.LastTwoWorkoutsInPastHour(update.FromChat().ID)
-	if err != nil {
-		return msg, nil
-	}
-	if completedUploads {
-		msg.Text = fmt.Sprintf("Welcome back %s!", user.GetName())
-		msg.ReplyToMessageID = update.Message.MessageID
-	}
+	msg.Text = fmt.Sprintf("%s, %s", user.GetName(), ai.GetAiWelcomeResponse())
+	msg.ReplyToMessageID = update.Message.MessageID
 	return msg, nil
 }
 
