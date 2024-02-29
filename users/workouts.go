@@ -205,11 +205,3 @@ func (user *User) GetLastXWorkout(lastx int, chatId int64) (Workout, error) {
 	}
 	return user.Workouts[len(user.Workouts)-lastx], nil
 }
-
-func (user *User) LastTwoWorkoutsInPastHour(chatId int64) (bool, error) {
-	lastWorkout, err := user.GetLastXWorkout(2, chatId)
-	if err != nil {
-		return false, err
-	}
-	return time.Now().Sub(lastWorkout.CreatedAt).Minutes() <= 60, nil
-}

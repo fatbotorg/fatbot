@@ -74,18 +74,23 @@ func handleWorkoutUpload(update MediaUpdate) (tgbotapi.MessageConfig, error) {
 	workOutOnceIn := viper.GetInt("workout.period")
 	if !lastWorkout.IsOlderThan(workOutOnceIn) && !user.OnProbation {
 		return msg, nil
-	}
-	var currentWorkout users.Workout
-	if currentWorkout, err = user.UpdateWorkout(botUpdate, lastWorkout); err != nil {
-		return msg, err
-	}
-
-	if user.OnProbation {
+	} else if user.OnProbation {
+		if _, err := user.UpdateWorkout(botUpdate, lastWorkout); err != nil {
+			return msg, err
+		}
+		if err := user.UpdateOnProbation(false); err != nil {
+			return msg, fmt.Errorf("Issue updating probation %s: %s", user.GetName(), err)
+		}
 		chatId := update.Update.FromChat().ID
 		if err := user.FlagLastWorkout(chatId); err != nil {
 			return msg, err
 		}
 		return handleProbationUploadMessage(botUpdate, user)
+	}
+
+	var currentWorkout users.Workout
+	if currentWorkout, err = user.UpdateWorkout(botUpdate, lastWorkout); err != nil {
+		return msg, err
 	}
 
 	if lastWorkout.CreatedAt.IsZero() {
