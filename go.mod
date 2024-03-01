@@ -16,6 +16,8 @@ require (
 	gorm.io/gorm v1.25.0
 )
 
+// replace github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1 => /Users/omerxx/omerxx/telegram-bot-api
+
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/lipgloss v0.7.1 // indirect
@@ -48,3 +50,5 @@ require (
 )
 
 replace github.com/mattn/go-sqlite3 => github.com/leso-kn/go-sqlite3 v0.0.0-20230710125852-03158dc838ed
+
+replace github.com/go-telegram-bot-api/telegram-bot-api/v5 => ./telegram-bot-api/
