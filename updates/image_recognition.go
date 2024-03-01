@@ -12,7 +12,7 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
-func detectImageLabels(imageBytes []byte) ([]string, int) {
+func detectImageLabels(imageBytes []byte) []string {
 	svc := rekognition.New(session.New())
 	input := &rekognition.DetectLabelsInput{
 		Image: &rekognition.Image{
@@ -49,11 +49,10 @@ func detectImageLabels(imageBytes []byte) ([]string, int) {
 		} else {
 			log.Error(err.Error())
 		}
-		return []string{}, 0
+		return []string{}
 	}
 
 	answer := []string{}
-	points := 0
 	unwantedLabels := map[string]byte{
 		"adult":  0,
 		"male":   0,
@@ -64,12 +63,8 @@ func detectImageLabels(imageBytes []byte) ([]string, int) {
 			continue
 		}
 		answer = append(answer, *label.Name)
-
-		if emoji := findEmoji(*label.Name); emoji != "" {
-			points++
-		}
 	}
-	return answer, points
+	return answer
 }
 
 func findEmoji(label string) string {

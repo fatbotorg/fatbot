@@ -64,7 +64,13 @@ func (update MediaUpdate) handle() error {
 	if caption != "" && strings.ReplaceAll(lines[0], " ", "") == "skip" {
 		return nil
 	}
-	msg, err := handleWorkoutUpload(update)
+
+	imageBytes, err := getFile(update)
+	if err != nil {
+		return err
+	}
+	labels := detectImageLabels(imageBytes)
+	msg, err := handleWorkoutUpload(update, labels)
 	if err != nil {
 		return fmt.Errorf("Error handling last workout: %s", err)
 	}
@@ -72,6 +78,18 @@ func (update MediaUpdate) handle() error {
 		return nil
 	}
 	if _, err := update.Bot.Send(msg); err != nil {
+		return err
+	}
+
+	config := tgbotapi.SetMessageReactionConfig{
+		ChatID:    update.Update.FromChat().ID,
+		MessageID: update.Update.Message.MessageID,
+		Reactions: []tgbotapi.ReactionType{{
+			Type:  "emoji",
+			Emoji: findReaction(labels),
+		}},
+	}
+	if _, err := update.Bot.Request(config); err != nil {
 		return err
 	}
 	return nil

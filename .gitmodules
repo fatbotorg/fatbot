@@ -1,0 +1,3 @@
+[submodule "telegram-bot-apix"]
+	path = telegram-bot-apix
+	url = https://github.com/omerxx/telegram-bot-api
