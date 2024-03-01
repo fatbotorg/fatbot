@@ -46,7 +46,7 @@ func getFile(update MediaUpdate) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func handleWorkoutUpload(update MediaUpdate) (tgbotapi.MessageConfig, error) {
+func handleWorkoutUpload(update MediaUpdate, labels []string) (tgbotapi.MessageConfig, error) {
 	var message string
 	botUpdate := update.Update
 	msg := tgbotapi.NewMessage(botUpdate.Message.Chat.ID, "")
@@ -55,11 +55,6 @@ func handleWorkoutUpload(update MediaUpdate) (tgbotapi.MessageConfig, error) {
 		return msg, err
 	}
 
-	imageBytes, err := getFile(update)
-	if err != nil {
-		return msg, err
-	}
-	labels, points := detectImageLabels(imageBytes)
 	chatId := botUpdate.FromChat().ID
 	if !user.IsInGroup(chatId) {
 		if err := user.RegisterInGroup(chatId); err != nil {
@@ -119,14 +114,13 @@ func handleWorkoutUpload(update MediaUpdate) (tgbotapi.MessageConfig, error) {
 		}
 
 		log.Debug(labels)
-		message = fmt.Sprintf("%s %s\nLast workout: %s (%s)\nThis week: %d\n%s\n%s",
+		message = fmt.Sprintf("%s %s\nLast workout: %s (%s)\nThis week: %d\n%s",
 			user.GetName(),
 			ai.GetAiResponse(labels),
 			lastWorkout.CreatedAt.Weekday(),
 			timeAgo,
 			len(user.Workouts),
 			streakMessage,
-			fmt.Sprintf("Image quality: %d points!", points+1),
 		)
 	}
 
