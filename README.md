@@ -1,5 +1,6 @@
 # Fat Bot
 The Telegram bot that keeps you lean
+Or would it?
 ---
 
 ![alt text](http://omer.hamerman.co.s3.amazonaws.com/putin.png)
