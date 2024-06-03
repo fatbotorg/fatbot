@@ -2,7 +2,6 @@ package users
 
 import (
 	"math/rand"
-	"time"
 )
 
 //	func GetRandomWorkoutMessage() string {
@@ -43,7 +42,6 @@ import (
 //	}
 
 func GetRandomStreakMessage() string {
-	rand.Seed(time.Now().Unix()) // initialize global pseudo random generator
 	streakMessages := []string{
 		"Keep up the streak, superhero!",
 		"You're killing the streak, champ!",
