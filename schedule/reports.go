@@ -169,3 +169,45 @@ func CreateStatsMessage(chatId int64) string {
 	}
 	return message
 }
+
+func monthlyLeader(group users.Group) users.User {
+	groupUsers, err := group.GetUsers()
+	if err != nil {
+		log.Error(err)
+	}
+
+	var topUser users.User
+	for _, user := range groupUsers {
+		user.LoadWorkoutsThisMonthlyCycle(group.ChatID)
+		if topUser.ID == 0 {
+			topUser = user
+			continue
+		}
+		if len(user.Workouts) > len(topUser.Workouts) {
+			topUser = user
+		}
+	}
+
+	return topUser
+}
+
+func MonthlyReport(bot *tgbotapi.BotAPI) {
+	log.Debug("starting monthly report")
+	groups := users.GetGroupsWithUsers()
+	for _, group := range groups {
+		if len(group.Users) == 0 {
+			continue
+		}
+		leader := monthlyLeader(group)
+		if leader.ID == 0 {
+			continue
+		}
+		leader.SetImmunity(true)
+		msg := tgbotapi.NewMessage(group.ChatID, "")
+		msg.Text = fmt.Sprintf("Monthly summary:\n🥇 %s has won this month with %d workouts!\nHe gets immunity 🛡️", leader.GetName(), len(leader.Workouts))
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+}
