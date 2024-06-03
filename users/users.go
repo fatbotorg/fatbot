@@ -23,6 +23,7 @@ type User struct {
 	Active         bool
 	IsAdmin        bool
 	OnProbation    bool
+	Immuned        bool
 	Workouts       []Workout
 	Events         []Event
 	Groups         []*Group `gorm:"many2many:user_groups;"`
@@ -230,8 +231,8 @@ You can rejoin after %d hours:
 3. Get a link to join the group
 
 *NOTICE!!* After joining the group, you
-will have 60 minutes to send 2 workouts
-(pictures) in the group chat.`,
+will have 60 minutes to send a workout
+in the group chat.`,
 		user.GetName(),
 		waitHours,
 	))
@@ -430,4 +431,14 @@ func (user User) IsNew(chatId int64) (bool, error) {
 	newUserGraceDays := viper.GetFloat64("users.new.days")
 	return noWorkouts &&
 		time.Now().Sub(user.CreatedAt).Hours() <= 24*newUserGraceDays, nil
+}
+
+func (user User) SetImmunity(action bool) {
+	if user.Immuned == action {
+		return
+	}
+	db := db.DBCon
+	user.Immuned = action
+	db.Save(&user)
+
 }

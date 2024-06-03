@@ -22,6 +22,16 @@ func scanUsers(bot *tgbotapi.BotAPI) error {
 				handleProbation(bot, user, group, totalDays)
 				continue
 			}
+			if user.Immuned {
+				user.SetImmunity(false)
+				bot.Send(
+					tgbotapi.NewMessage(
+						group.ChatID,
+						fmt.Sprintf("Saved because of immunity: %s", user.GetName()),
+					),
+				)
+				continue
+			}
 			if isNew, err := user.IsNew(group.ChatID); err != nil {
 				log.Error(err)
 				sentry.CaptureException(err)
