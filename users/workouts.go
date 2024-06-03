@@ -50,6 +50,34 @@ func getLastCycleExactTime() time.Time {
 		location)
 }
 
+func (user *User) LoadWorkoutsThisMonthlyCycle(chatId int64) error {
+	timezone := viper.GetString("timezone")
+	location, _ := time.LoadLocation(timezone)
+	thisMonthsFirstDay := time.Date(
+		time.Now().Year(),
+		time.Now().Month(),
+		1,
+		0, 0, 0, 0,
+		location)
+	group, err := GetGroup(chatId)
+	if err != nil {
+		return err
+	}
+	db := db.DBCon
+	if err := db.Model(&User{}).
+		Preload(
+			"Workouts",
+			"created_at > ? AND group_id = ? AND flagged = ?",
+			thisMonthsFirstDay,
+			group.ID,
+			false,
+		).Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
+	}
+	log.Debug("loaded", "groupid", group.ID, "user", user.Name, "workouts", len(user.Workouts))
+	log.Debug("this month firstday", "firstday", thisMonthsFirstDay)
+	return nil
+}
+
 func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
 	lastCycleExactTime := getLastCycleExactTime()
 	group, err := GetGroup(chatId)
