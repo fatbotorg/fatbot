@@ -29,8 +29,11 @@ func Init(bot *tgbotapi.BotAPI) {
 		log.Errorf("Standings scheduler err: %s", err)
 	}
 	if _, err := scheduler.Every(1).MonthLastDay().Do(func() { nudgeBannedUsers(bot) }); err != nil {
-		log.Info("Sending a nudge")
 		log.Errorf("Banned user nudge err: %s", err)
 	}
+	if _, err := scheduler.Every(1).MonthLastDay().At(reportTime).Do(func() { MonthlyReport(bot) }); err != nil {
+		log.Errorf("Monthly report scheduler err: %s", err)
+	}
+
 	scheduler.StartAsync()
 }
