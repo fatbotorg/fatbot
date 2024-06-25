@@ -183,6 +183,23 @@ func isTodayOrWasYesterday(someDate time.Time) bool {
 	return today-1 == workout || today == workout
 }
 
+func (user *User) CreateDummyWorkout() {
+	db := db.DBCon
+	db.Where("telegram_user_id = ?", user.TelegramUserID).Find(&user)
+	user.LoadGroups()
+	for _, group := range user.Groups {
+		workout := &Workout{
+			UserID:  user.ID,
+			Flagged: true,
+			GroupID: group.ID,
+		}
+		if err := db.Model(&user).Association("Workouts").Append(workout); err != nil {
+			log.Error("failed to create dummy workout", err, "user", user.GetName())
+		}
+	}
+	return
+}
+
 func (user *User) UpdateWorkout(update tgbotapi.Update, lastWorkout Workout) (Workout, error) {
 	db := db.DBCon
 	messageId := update.Message.MessageID

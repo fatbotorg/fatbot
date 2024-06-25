@@ -24,6 +24,7 @@ func scanUsers(bot *tgbotapi.BotAPI) error {
 			}
 			if user.Immuned {
 				user.SetImmunity(false)
+				user.CreateDummyWorkout()
 				bot.Send(
 					tgbotapi.NewMessage(
 						group.ChatID,
