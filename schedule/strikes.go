@@ -22,17 +22,6 @@ func scanUsers(bot *tgbotapi.BotAPI) error {
 				handleProbation(bot, user, group, totalDays)
 				continue
 			}
-			if user.Immuned {
-				user.SetImmunity(false)
-				user.CreateDummyWorkout()
-				bot.Send(
-					tgbotapi.NewMessage(
-						group.ChatID,
-						fmt.Sprintf("Saved because of immunity: %s", user.GetName()),
-					),
-				)
-				continue
-			}
 			if isNew, err := user.IsNew(group.ChatID); err != nil {
 				log.Error(err)
 				sentry.CaptureException(err)
@@ -57,6 +46,17 @@ func scanUsers(bot *tgbotapi.BotAPI) error {
 					sentry.CaptureException(err)
 				}
 			} else if diffHours < 0 {
+				if user.Immuned {
+					user.SetImmunity(false)
+					user.CreateDummyWorkout()
+					bot.Send(
+						tgbotapi.NewMessage(
+							group.ChatID,
+							fmt.Sprintf("Saved because of immunity: %s", user.GetName()),
+						),
+					)
+					continue
+				}
 				if err := user.Ban(bot, group.ChatID); err != nil {
 					err := fmt.Errorf("Issue banning %s from %d: %s", user.GetName(), group.ChatID, err)
 					log.Error(err)
