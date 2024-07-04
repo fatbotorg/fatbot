@@ -2,3 +2,4 @@
 fatbot
 *.png
 *.env
+*.envrc
