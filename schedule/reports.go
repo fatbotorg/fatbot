@@ -4,6 +4,7 @@ import (
 	"fatbot/users"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -60,11 +61,17 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 		defer file.Close()
 		qc.Write(file)
 
+		// Get monthly standings
+		monthlyLeaders := getMonthlyLeaders(group)
+
 		msg := tgbotapi.NewPhoto(group.ChatID, tgbotapi.FilePath(fileName))
+		caption := "Weekly summary:\n"
+
+		// Add weekly leader info
 		if len(leaders) == 1 {
 			leader := leaders[0]
-			msg.Caption = fmt.Sprintf(
-				"Weekly summary:\n%s is the ⭐ with %d workouts!",
+			caption += fmt.Sprintf(
+				"%s is the ⭐ with %d workouts!",
 				leader.User.GetName(),
 				leader.Workouts,
 			)
@@ -73,13 +80,29 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 				sentry.CaptureException(err)
 			}
 		} else if len(leaders) > 1 {
-			caption := fmt.Sprintf("Weekly summary:\n⭐ Leaders of the week with %d workouts:\n",
+			caption += fmt.Sprintf("⭐ Leaders of the week with %d workouts:\n",
 				leaders[0].Workouts)
 			for _, leader := range leaders {
-				caption = caption + leader.User.GetName() + " "
+				caption += leader.User.GetName() + " "
 			}
-			msg.Caption = caption
 		}
+
+		// Add monthly standings info
+		if len(monthlyLeaders) > 0 {
+			caption += "\n\nMonthly standings:"
+			for i, leader := range monthlyLeaders {
+				if i == 0 {
+					caption += fmt.Sprintf("\n🥇 %s is leading with %d workouts",
+						leader.User.GetName(), leader.Workouts)
+				} else if i == 1 {
+					caption += fmt.Sprintf("\n🥈 %s is in second place with %d workouts",
+						leader.User.GetName(), leader.Workouts)
+					break // Only show first and second place
+				}
+			}
+		}
+
+		msg.Caption = caption
 		if _, err = bot.Send(msg); err != nil {
 			log.Error(err)
 			sentry.CaptureException(err)
@@ -210,4 +233,30 @@ func MonthlyReport(bot *tgbotapi.BotAPI) {
 			log.Error(err)
 		}
 	}
+}
+
+// getMonthlyLeaders returns a sorted list of leaders for the month
+func getMonthlyLeaders(group users.Group) []Leader {
+	var monthlyLeaders []Leader
+
+	groupUsers, err := group.GetUsers()
+	if err != nil {
+		log.Error(err)
+		return monthlyLeaders
+	}
+
+	for _, user := range groupUsers {
+		user.LoadWorkoutsThisMonthlyCycle(group.ChatID)
+		monthlyLeaders = append(monthlyLeaders, Leader{
+			User:     user,
+			Workouts: len(user.Workouts),
+		})
+	}
+
+	// Sort leaders by workout count in descending order
+	sort.Slice(monthlyLeaders, func(i, j int) bool {
+		return monthlyLeaders[i].Workouts > monthlyLeaders[j].Workouts
+	})
+
+	return monthlyLeaders
 }
