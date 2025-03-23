@@ -88,6 +88,45 @@ func createUsersKeyboard(chatId int64, active bool) tgbotapi.InlineKeyboardMarku
 	return keyboard
 }
 
+// createAllUsersKeyboard creates a keyboard that includes both active and inactive users
+func createAllUsersKeyboard(chatId int64) tgbotapi.InlineKeyboardMarkup {
+	// Get both active and inactive users
+	activeUsers := users.GetUsers(chatId)
+	inactiveUsers := users.GetInactiveUsers(chatId)
+
+	// Combine the lists
+	allUsers := append(activeUsers, inactiveUsers...)
+
+	row := []tgbotapi.InlineKeyboardButton{}
+	rows := [][]tgbotapi.InlineKeyboardButton{}
+
+	for _, user := range allUsers {
+		// Add status indicator to inactive users
+		userLabel := user.GetName()
+		if !user.Active {
+			userLabel = userLabel + " (inactive)"
+		}
+
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData(userLabel, fmt.Sprint(user.TelegramUserID)))
+		if len(row) == 3 {
+			rows = append(rows, row)
+			row = []tgbotapi.InlineKeyboardButton{}
+		}
+	}
+
+	if len(row) > 0 && len(row) < 3 {
+		rows = append(rows, row)
+	}
+
+	backRow := []tgbotapi.InlineKeyboardButton{}
+	backButton := tgbotapi.NewInlineKeyboardButtonData("<- Back", "adminmenuback")
+	backRow = append(backRow, backButton)
+	rows = append(rows, backRow)
+
+	var keyboard = tgbotapi.NewInlineKeyboardMarkup(rows...)
+	return keyboard
+}
+
 func createConfirmationKeyboard() tgbotapi.InlineKeyboardMarkup {
 	var keyboard = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(

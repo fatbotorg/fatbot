@@ -215,6 +215,11 @@ func (menu RemoveUserMenu) CreateMenu(userId int64) MenuBase {
 	chooseGroup := groupStepBase
 	chooseGroup.Keyboard = createGroupsKeyboard(userId)
 
+	// Create a custom step for remove user that shows both active and inactive users
+	allUsersStep := userStep
+	allUsersStep.Name = "chooseanyuser"
+	allUsersStep.Message = "Choose User (Active or Inactive)"
+
 	confirmStep := Step{
 		Name:     "confirm",
 		Kind:     KeyboardStepKind,
@@ -226,7 +231,7 @@ func (menu RemoveUserMenu) CreateMenu(userId int64) MenuBase {
 	themenu := MenuBase{
 		Name:           "removeuser",
 		Label:          "Remove User",
-		Steps:          []Step{chooseGroup, userStep, confirmStep},
+		Steps:          []Step{chooseGroup, allUsersStep, confirmStep},
 		SuperAdminOnly: true,
 	}
 	return themenu
@@ -235,7 +240,12 @@ func (menu RemoveUserMenu) CreateMenu(userId int64) MenuBase {
 func (step *Step) PopulateKeyboard(data int64) {
 	switch step.Result {
 	case TelegramUserIdStepResult:
-		step.Keyboard = createUsersKeyboard(data, true)
+		if step.Name == "chooseanyuser" {
+			// For removeuser menu, show both active and inactive users
+			step.Keyboard = createAllUsersKeyboard(data)
+		} else {
+			step.Keyboard = createUsersKeyboard(data, true)
+		}
 	case TelegramInactiveUserIdStepResult:
 		step.Keyboard = createUsersKeyboard(data, false)
 	default:
