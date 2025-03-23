@@ -110,6 +110,11 @@ func (state *State) getGroupChatId() (userId int64, err error) {
 	return 0, fmt.Errorf("could not find groupchatid step")
 }
 
+func (state *State) getGroupId() (groupId int64, err error) {
+	// This is an alias for getGroupChatId for clarity in usage
+	return state.getGroupChatId()
+}
+
 func (state *State) ExtractData() (data int64, err error) {
 	stateSlice := state.getValueSplit()
 	return strconv.ParseInt(stateSlice[len(stateSlice)-1], 10, 64)
