@@ -88,6 +88,19 @@ func createUsersKeyboard(chatId int64, active bool) tgbotapi.InlineKeyboardMarku
 	return keyboard
 }
 
+func createConfirmationKeyboard() tgbotapi.InlineKeyboardMarkup {
+	var keyboard = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Yes", "yes"),
+			tgbotapi.NewInlineKeyboardButtonData("No", "no"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("<- Back", "adminmenuback"),
+		),
+	)
+	return keyboard
+}
+
 func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 	var rename RenameMenu
 	var pushWorkout PushWorkoutMenu
@@ -97,6 +110,7 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 	var banUser BanUserMenu
 	var groupLink GroupLinkMenu
 	var manageAdmins ManageAdminsMenu
+	var removeUser RemoveUserMenu
 	var menus = []MenuBase{
 		rename.CreateMenu(0),
 		pushWorkout.CreateMenu(0),
@@ -106,6 +120,7 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 		banUser.CreateMenu(0),
 		groupLink.CreateMenu(0),
 		manageAdmins.CreateMenu(0),
+		removeUser.CreateMenu(0),
 	}
 
 	row := []tgbotapi.InlineKeyboardButton{}

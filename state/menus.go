@@ -67,6 +67,9 @@ type ShowAdminsMenu struct {
 type ChangeAdminsMenu struct {
 	MenuBase
 }
+type RemoveUserMenu struct {
+	MenuBase
+}
 
 type Menu interface {
 	CreateMenu(userId int64) MenuBase
@@ -84,6 +87,7 @@ var menuMap = map[string]Menu{
 	"adminoptions":      ManageAdminsMenu{},
 	"showadmins":        ShowAdminsMenu{},
 	"editadmins":        ChangeAdminsMenu{},
+	"removeuser":        RemoveUserMenu{},
 }
 
 func (menu ManageAdminsMenu) CreateMenu(userId int64) MenuBase {
@@ -205,6 +209,27 @@ func (menu ShowUsersMenu) CreateMenu(userId int64) MenuBase {
 		Label: "Show Users",
 		Steps: []Step{chooseGroup},
 	}
+}
+
+func (menu RemoveUserMenu) CreateMenu(userId int64) MenuBase {
+	chooseGroup := groupStepBase
+	chooseGroup.Keyboard = createGroupsKeyboard(userId)
+
+	confirmStep := Step{
+		Name:     "confirm",
+		Kind:     KeyboardStepKind,
+		Message:  "Are you sure you want to remove this user? This action cannot be undone.",
+		Keyboard: createConfirmationKeyboard(),
+		Result:   OptionResult,
+	}
+
+	themenu := MenuBase{
+		Name:           "removeuser",
+		Label:          "Remove User",
+		Steps:          []Step{chooseGroup, userStep, confirmStep},
+		SuperAdminOnly: true,
+	}
+	return themenu
 }
 
 func (step *Step) PopulateKeyboard(data int64) {

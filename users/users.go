@@ -440,5 +440,33 @@ func (user User) SetImmunity(action bool) {
 	db := db.DBCon
 	user.Immuned = action
 	db.Save(&user)
+}
 
+// RemoveFromDatabase completely removes a user from the system
+func (user User) RemoveFromDatabase() error {
+	db := db.DBCon
+
+	// First dissociate user from groups and workouts
+	if err := db.Model(&user).Association("Groups").Clear(); err != nil {
+		return err
+	}
+
+	if err := db.Model(&user).Association("GroupsAdmin").Clear(); err != nil {
+		return err
+	}
+
+	if err := db.Model(&user).Association("Workouts").Clear(); err != nil {
+		return err
+	}
+
+	if err := db.Model(&user).Association("Events").Clear(); err != nil {
+		return err
+	}
+
+	// Then delete the user
+	if err := db.Delete(&user).Error; err != nil {
+		return err
+	}
+
+	return nil
 }

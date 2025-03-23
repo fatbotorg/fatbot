@@ -235,3 +235,59 @@ func (menu ShowUsersMenu) PerformAction(params ActionData) error {
 	}
 	return nil
 }
+
+func (menu RemoveUserMenu) PerformAction(params ActionData) error {
+	defer DeleteStateEntry(params.State.ChatId)
+
+	// Get the confirmation response
+	option, err := params.State.getOption()
+	if err != nil {
+		return err
+	}
+
+	// If user chose "no", don't proceed with deletion
+	if option == "no" {
+		msg := tgbotapi.NewMessage(params.Update.FromChat().ID, "User removal cancelled.")
+		if _, err := params.Bot.Send(msg); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// Only proceed if user confirmed with "yes"
+	if option == "yes" {
+		telegramUserId, err := params.State.getTelegramUserId()
+		if err != nil {
+			return err
+		}
+
+		groupChatId, err := params.State.getGroupChatId()
+		if err != nil {
+			return err
+		}
+
+		user, err := users.GetUserById(telegramUserId)
+		if err != nil {
+			return err
+		}
+
+		// First, ban the user from the group
+		errs := user.Ban(params.Bot, groupChatId)
+		if len(errs) > 0 {
+			return errs[0]
+		}
+
+		// Now remove the user from the database
+		if err := user.RemoveFromDatabase(); err != nil {
+			return err
+		}
+
+		msg := tgbotapi.NewMessage(params.Update.FromChat().ID,
+			fmt.Sprintf("User %s has been completely removed from the system.", user.GetName()))
+		if _, err := params.Bot.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
