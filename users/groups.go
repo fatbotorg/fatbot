@@ -153,3 +153,32 @@ func (group *Group) loadGroupAdmins() error {
 	}
 	return nil
 }
+
+// GetGroupsWithUserCounts returns all groups with their user counts (active and total)
+func GetGroupsWithUserCounts() (groupsInfo []map[string]interface{}) {
+	db := db.DBCon
+	var groups []Group
+
+	// Get all groups
+	db.Find(&groups)
+
+	for _, group := range groups {
+		// Load all users for this group
+		var activeUsers []User
+		var inactiveUsers []User
+
+		db.Model(&group).Association("Users").Find(&activeUsers, "active = ?", true)
+		db.Model(&group).Association("Users").Find(&inactiveUsers, "active = ?", false)
+
+		groupInfo := map[string]interface{}{
+			"group":         group,
+			"activeCount":   len(activeUsers),
+			"inactiveCount": len(inactiveUsers),
+			"totalCount":    len(activeUsers) + len(inactiveUsers),
+		}
+
+		groupsInfo = append(groupsInfo, groupInfo)
+	}
+
+	return
+}
