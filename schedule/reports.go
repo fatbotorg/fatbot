@@ -70,12 +70,12 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 		// Add weekly leader info and select a winner
 		var selectedWinner users.User
 
-		if len(leaders) <= 1 {
-			// No leaders or only the empty leader placeholder
+		if len(leaders) == 0 {
+			// No leaders this week
 			log.Debug("No leaders this week")
-		} else if len(leaders) == 2 {
-			// Only one real leader (the first is the empty placeholder)
-			leader := leaders[1]
+		} else if len(leaders) == 1 {
+			// Only one leader
+			leader := leaders[0]
 			selectedWinner = leader.User
 			caption += fmt.Sprintf(
 				"%s is the ⭐ with %d workouts!",
@@ -87,12 +87,12 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 				sentry.CaptureException(err)
 			}
 		} else {
-			// Multiple leaders (first is empty placeholder, rest are real)
+			// Multiple leaders
 			caption += fmt.Sprintf("⭐ Leaders of the week with %d workouts:\n",
-				leaders[1].Workouts)
+				leaders[0].Workouts)
 
 			// First announce all leaders
-			for _, leader := range leaders[1:] {
+			for _, leader := range leaders {
 				caption += leader.User.GetName() + " "
 				if err := leader.User.RegisterWeeklyLeaderEvent(); err != nil {
 					log.Errorf("Error while registering weekly leader event: %s", err)
@@ -101,10 +101,10 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 			}
 
 			// Now determine the winner based on who reached the max workout count first
-			selectedWinner = findEarliestLeader(leaders[1:], group.ChatID)
+			selectedWinner = findEarliestLeader(leaders, group.ChatID)
 
 			caption += fmt.Sprintf("\n\n🏆 %s has been chosen as this week's winner (first to reach %d workouts)!",
-				selectedWinner.GetName(), leaders[1].Workouts)
+				selectedWinner.GetName(), leaders[0].Workouts)
 		}
 
 		// Add monthly standings info
@@ -178,24 +178,31 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 }
 
 func collectUsersData(group users.Group) (usersWorkouts, previousWeekWorkouts []string, leaders []Leader) {
-	leaders = append(leaders, Leader{
-		User:     users.User{},
-		Workouts: 0,
-	})
+	var maxWorkouts int = 0
 	for _, user := range group.Users {
 		userPreviousWeekWorkouts := user.GetPreviousWeekWorkouts(group.ChatID)
 		previousWeekWorkouts = append(previousWeekWorkouts, fmt.Sprint(len(userPreviousWeekWorkouts)))
 		userPastWeekWorkouts := user.GetPastWeekWorkouts(group.ChatID)
 		usersWorkouts = append(usersWorkouts, fmt.Sprint(len(userPastWeekWorkouts)))
-		if leaders[0].Workouts > len(userPastWeekWorkouts) {
+
+		workoutCount := len(userPastWeekWorkouts)
+		if workoutCount == 0 {
 			continue
-		} else if leaders[0].Workouts < len(userPastWeekWorkouts) {
-			leaders = []Leader{}
 		}
-		leaders = append(leaders, Leader{
-			User:     user,
-			Workouts: len(userPastWeekWorkouts),
-		})
+
+		if workoutCount > maxWorkouts {
+			// Found a new maximum, clear previous leaders
+			leaders = []Leader{}
+			maxWorkouts = workoutCount
+		}
+
+		// If this user has the current maximum workouts, add them as a leader
+		if workoutCount == maxWorkouts {
+			leaders = append(leaders, Leader{
+				User:     user,
+				Workouts: workoutCount,
+			})
+		}
 	}
 	return
 }
