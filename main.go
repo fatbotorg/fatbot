@@ -2,6 +2,7 @@ package main
 
 import (
 	"fatbot/db"
+	"fatbot/migrations"
 	"fatbot/schedule"
 	"fatbot/updates"
 	"fatbot/users"
@@ -47,6 +48,11 @@ func main() {
 	if err := users.InitDB(); err != nil {
 		log.Fatal(err)
 	}
+
+	// Run migrations
+	log.Info("Running migrations...")
+	migrations.AddColumnsToEventsTable()
+
 	if bot, err = tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_APITOKEN")); err != nil {
 		log.Fatalf("Issue with token: %s", err)
 	} else {

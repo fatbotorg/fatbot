@@ -96,13 +96,107 @@ func (update MediaUpdate) handle() error {
 }
 
 func (update PrivateUpdate) handle() error {
+	// Handle stateful callbacks first
 	if err := handleStatefulCallback(update.FatBotUpdate); err == nil {
 		return err
 	}
+
+	// Check if this is a weekly winner message reply
+	if update.Update.Message != nil && update.Update.Message.ReplyToMessage != nil {
+		// If it's a reply to a message from the bot
+		if update.Update.Message.ReplyToMessage.From.ID == update.Bot.Self.ID {
+			// And if the original message contains specific text about being the weekly winner
+			if strings.Contains(update.Update.Message.ReplyToMessage.Text, "Congratulations on being this week's winner") {
+				return handleWeeklyWinnerMessage(update.FatBotUpdate)
+			}
+		}
+	}
+
+	// Default response for private messages
 	msg := tgbotapi.NewMessage(update.Update.FromChat().ID, "")
 	msg.Text = "Try /help"
 	if _, err := update.Bot.Send(msg); err != nil {
 		return err
 	}
+	return nil
+}
+
+// handleWeeklyWinnerMessage processes the weekly winner's message and sends it to all their groups
+func handleWeeklyWinnerMessage(fatBotUpdate FatBotUpdate) error {
+	update := fatBotUpdate.Update
+	bot := fatBotUpdate.Bot
+	user, err := users.GetUserFromMessage(update.Message)
+	if err != nil {
+		return err
+	}
+
+	// Get the message text from the user
+	message := update.Message.Text
+
+	// Get all the groups the user is in
+	if err := user.LoadGroups(); err != nil {
+		log.Error("Failed to load user groups", "error", err)
+		sentry.CaptureException(err)
+		return err
+	}
+
+	// Check if the user has any groups
+	if len(user.Groups) == 0 {
+		log.Error("User has no groups", "user", user.GetName())
+		sentry.CaptureException(fmt.Errorf("user has no groups: %s", user.GetName()))
+		return nil
+	}
+
+	// Create a response to the user
+	privateMsg := tgbotapi.NewMessage(
+		user.TelegramUserID,
+		"Thank you for your weekly message! It has been shared with your group(s).",
+	)
+
+	// Send the thank you message
+	_, err = bot.Send(privateMsg)
+	if err != nil {
+		log.Error("Failed to send thank you message to winner", "error", err)
+		sentry.CaptureException(err)
+	}
+
+	// For each group the user is in
+	for _, group := range user.Groups {
+		// Format the message to the group
+		groupMsg := tgbotapi.NewMessage(
+			group.ChatID,
+			fmt.Sprintf("🏆 Weekly winner %s's message to the group:\n\n\"%s\"",
+				user.GetName(),
+				message),
+		)
+
+		// Send the message to the group
+		sentMsg, err := bot.Send(groupMsg)
+		if err != nil {
+			log.Error("Failed to send weekly winner message to group", "error", err, "group", group.ChatID)
+			sentry.CaptureException(err)
+			continue
+		}
+
+		// Pin the message in the group
+		pinChatMessageConfig := tgbotapi.PinChatMessageConfig{
+			ChatID:              group.ChatID,
+			MessageID:           sentMsg.MessageID,
+			DisableNotification: false,
+		}
+
+		_, err = bot.Request(pinChatMessageConfig)
+		if err != nil {
+			log.Error("Failed to pin weekly winner message", "error", err)
+			sentry.CaptureException(err)
+		}
+
+		// Register the weekly winner message event
+		if err := user.RegisterWeeklyWinnerMessageEvent(message, group.ID); err != nil {
+			log.Error("Failed to register weekly winner message event", "error", err)
+			sentry.CaptureException(err)
+		}
+	}
+
 	return nil
 }

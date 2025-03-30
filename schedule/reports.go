@@ -67,9 +67,16 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 		msg := tgbotapi.NewPhoto(group.ChatID, tgbotapi.FilePath(fileName))
 		caption := "Weekly summary:\n"
 
-		// Add weekly leader info
-		if len(leaders) == 1 {
-			leader := leaders[0]
+		// Add weekly leader info and select a winner
+		var selectedWinner users.User
+
+		if len(leaders) <= 1 {
+			// No leaders or only the empty leader placeholder
+			log.Debug("No leaders this week")
+		} else if len(leaders) == 2 {
+			// Only one real leader (the first is the empty placeholder)
+			leader := leaders[1]
+			selectedWinner = leader.User
 			caption += fmt.Sprintf(
 				"%s is the ⭐ with %d workouts!",
 				leader.User.GetName(),
@@ -79,12 +86,25 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 				log.Errorf("Error while registering weekly leader event: %s", err)
 				sentry.CaptureException(err)
 			}
-		} else if len(leaders) > 1 {
+		} else {
+			// Multiple leaders (first is empty placeholder, rest are real)
 			caption += fmt.Sprintf("⭐ Leaders of the week with %d workouts:\n",
-				leaders[0].Workouts)
-			for _, leader := range leaders {
+				leaders[1].Workouts)
+
+			// First announce all leaders
+			for _, leader := range leaders[1:] {
 				caption += leader.User.GetName() + " "
+				if err := leader.User.RegisterWeeklyLeaderEvent(); err != nil {
+					log.Errorf("Error while registering weekly leader event: %s", err)
+					sentry.CaptureException(err)
+				}
 			}
+
+			// Now determine the winner based on who reached the max workout count first
+			selectedWinner = findEarliestLeader(leaders[1:], group.ChatID)
+
+			caption += fmt.Sprintf("\n\n🏆 %s has been chosen as this week's winner (first to reach %d workouts)!",
+				selectedWinner.GetName(), leaders[1].Workouts)
 		}
 
 		// Add monthly standings info
@@ -103,9 +123,56 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 		}
 
 		msg.Caption = caption
-		if _, err = bot.Send(msg); err != nil {
+		_, err = bot.Send(msg)
+		if err != nil {
 			log.Error(err)
 			sentry.CaptureException(err)
+		}
+
+		// If we have a winner, ask them for a weekly message
+		if selectedWinner.ID != 0 {
+			// Send private message to the winner asking for their weekly message
+			privateMsg := tgbotapi.NewMessage(
+				selectedWinner.TelegramUserID,
+				fmt.Sprintf("Congratulations on being this week's winner! 🏆\n\nPlease respond with your weekly message to the group. This message will be pinned and remembered."),
+			)
+
+			// Set up a force reply to make it clear they need to respond
+			privateMsg.ReplyMarkup = tgbotapi.ForceReply{
+				ForceReply: true,
+				Selective:  false,
+			}
+
+			_, err = bot.Send(privateMsg)
+			if err != nil {
+				log.Error("Failed to send private message to weekly winner", "error", err)
+				sentry.CaptureException(err)
+			}
+
+			// Send a message to the group announcing that the winner should send a message
+			groupMsg := tgbotapi.NewMessage(
+				group.ChatID,
+				fmt.Sprintf("🎤 %s, as this week's winner, please share your weekly message/advice with the group!", selectedWinner.GetName()),
+			)
+
+			sentGroupMsg, err := bot.Send(groupMsg)
+			if err != nil {
+				log.Error("Failed to send group message about weekly winner message", "error", err)
+				sentry.CaptureException(err)
+			} else {
+				// Pin this message to remind the winner
+				pinChatMessageConfig := tgbotapi.PinChatMessageConfig{
+					ChatID:              group.ChatID,
+					MessageID:           sentGroupMsg.MessageID,
+					DisableNotification: false,
+				}
+
+				_, err = bot.Request(pinChatMessageConfig)
+				if err != nil {
+					log.Error("Failed to pin message", "error", err)
+					sentry.CaptureException(err)
+				}
+			}
 		}
 	}
 }
@@ -259,4 +326,83 @@ func getMonthlyLeaders(group users.Group) []Leader {
 	})
 
 	return monthlyLeaders
+}
+
+// ReminderOfWinnerMessage reminds the group of the previous week's winner message
+func ReminderOfWinnerMessage(bot *tgbotapi.BotAPI) {
+	groups := users.GetGroupsWithUsers()
+	for _, group := range groups {
+		if len(group.Users) == 0 {
+			continue
+		}
+
+		// Get the latest weekly winner message
+		winnerName, message, timestamp, err := users.GetLatestWeeklyWinnerMessage(group.ID)
+		if err != nil {
+			log.Error("Failed to get weekly winner message", "error", err)
+			sentry.CaptureException(err)
+			continue
+		}
+
+		// Skip if no message exists
+		if message == "" {
+			continue
+		}
+
+		// Send reminder message to the group
+		reminderMsg := tgbotapi.NewMessage(
+			group.ChatID,
+			fmt.Sprintf("📣 Reminder of last week's winner message from %s (sent on %s):\n\n\"%s\"",
+				winnerName,
+				timestamp.Format("Monday, January 2"),
+				message),
+		)
+
+		_, err = bot.Send(reminderMsg)
+		if err != nil {
+			log.Error("Failed to send reminder message", "error", err)
+			sentry.CaptureException(err)
+		}
+	}
+}
+
+// findEarliestLeader finds the leader who reached the max workout count first
+func findEarliestLeader(leaders []Leader, chatID int64) users.User {
+	if len(leaders) == 0 {
+		return users.User{}
+	}
+
+	if len(leaders) == 1 {
+		return leaders[0].User
+	}
+
+	var earliestLeader Leader = leaders[0]
+	var earliestTime time.Time
+
+	// Initialize with the first leader's last workout time
+	lastWorkout, err := leaders[0].User.GetLastXWorkout(1, chatID)
+	if err == nil {
+		earliestTime = lastWorkout.CreatedAt
+	} else {
+		// If we can't get the last workout, just use current time
+		earliestTime = time.Now()
+	}
+
+	// Check each leader's last workout time
+	for _, leader := range leaders[1:] {
+		lastWorkout, err := leader.User.GetLastXWorkout(1, chatID)
+		if err != nil {
+			log.Error("Failed to get last workout for user", "user", leader.User.GetName(), "error", err)
+			continue
+		}
+
+		// If this leader's last workout is earlier than our current earliest,
+		// they become the new earliest leader
+		if lastWorkout.CreatedAt.Before(earliestTime) {
+			earliestLeader = leader
+			earliestTime = lastWorkout.CreatedAt
+		}
+	}
+
+	return earliestLeader.User
 }

@@ -1,5 +1,11 @@
 package migrations
 
+import (
+	"fatbot/db"
+
+	"github.com/charmbracelet/log"
+)
+
 // func ChatIdToGroupsMigration(user *users.User) {
 // 	if len(user.Groups) == 0 {
 // 		group, err := users.GetGroup(user.ChatID)
@@ -59,3 +65,28 @@ package migrations
 // 		}
 // 	}
 // }
+
+// AddColumnsToEventsTable adds the Data and GroupID columns to the events table
+func AddColumnsToEventsTable() {
+	dbCon := db.DBCon
+
+	// Check if Data column exists
+	if err := dbCon.Exec("SELECT Data FROM events LIMIT 1").Error; err != nil {
+		// Column doesn't exist, add it
+		if err := dbCon.Exec("ALTER TABLE events ADD COLUMN Data TEXT").Error; err != nil {
+			log.Error("Failed to add Data column to events table", "error", err)
+			return
+		}
+		log.Info("Added Data column to events table")
+	}
+
+	// Check if GroupID column exists
+	if err := dbCon.Exec("SELECT GroupID FROM events LIMIT 1").Error; err != nil {
+		// Column doesn't exist, add it
+		if err := dbCon.Exec("ALTER TABLE events ADD COLUMN GroupID INTEGER DEFAULT 0").Error; err != nil {
+			log.Error("Failed to add GroupID column to events table", "error", err)
+			return
+		}
+		log.Info("Added GroupID column to events table")
+	}
+}
