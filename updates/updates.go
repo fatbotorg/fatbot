@@ -41,6 +41,9 @@ type MediaUpdate struct {
 type PrivateUpdate struct {
 	FatBotUpdate
 }
+type GroupReplyUpdate struct {
+	FatBotUpdate
+}
 
 func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 	switch true {
@@ -54,6 +57,8 @@ func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 		return CommandUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isMediaUpdate():
 		return MediaUpdate{FatBotUpdate: fatBotUpdate}, nil
+	case fatBotUpdate.isGroupReplyUpdate():
+		return GroupReplyUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isPrivateUpdate():
 		return PrivateUpdate{FatBotUpdate: fatBotUpdate}, nil
 	default:

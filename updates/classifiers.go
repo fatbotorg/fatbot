@@ -43,3 +43,28 @@ func isAdminCommand(cmd string) bool {
 	}
 	return false
 }
+
+func (fatBotUpdate FatBotUpdate) isGroupReplyUpdate() bool {
+	update := fatBotUpdate.Update
+	// Check if it's a message in a group chat (not private)
+	if update.Message == nil || update.FromChat().IsPrivate() {
+		return false
+	}
+
+	// Check if it's a reply to a bot message
+	if update.Message.ReplyToMessage == nil || update.Message.ReplyToMessage.From == nil {
+		return false
+	}
+
+	// Check if it's a reply to the bot
+	if update.Message.ReplyToMessage.From.ID != fatBotUpdate.Bot.Self.ID {
+		return false
+	}
+
+	// Check if it's a reply to the weekly message request
+	if !strings.Contains(update.Message.ReplyToMessage.Text, "please share your weekly message/advice as a reply to this message") {
+		return false
+	}
+
+	return true
+}

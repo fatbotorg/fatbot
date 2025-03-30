@@ -126,38 +126,26 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 			sentry.CaptureException(err)
 		}
 
-		// If we have a winner, ask them for a weekly message
+		// If we have a winner, ask them for a weekly message directly in the group chat
 		if selectedWinner.ID != 0 {
-			// Send private message to the winner asking for their weekly message
-			privateMsg := tgbotapi.NewMessage(
-				selectedWinner.TelegramUserID,
-				fmt.Sprintf("Congratulations on being this week's winner! 🏆\n\nPlease respond with your weekly message to the group. This message will be pinned and remembered."),
-			)
-
-			// Set up a force reply to make it clear they need to respond
-			privateMsg.ReplyMarkup = tgbotapi.ForceReply{
-				ForceReply: true,
-				Selective:  false,
-			}
-
-			_, err = bot.Send(privateMsg)
-			if err != nil {
-				log.Error("Failed to send private message to weekly winner", "error", err)
-				sentry.CaptureException(err)
-			}
-
-			// Send a message to the group announcing that the winner should send a message
+			// Send a message to the group asking the winner for their weekly message
 			groupMsg := tgbotapi.NewMessage(
 				group.ChatID,
-				fmt.Sprintf("🎤 %s, as this week's first leader, will share a weekly message/advice with the group!", selectedWinner.GetName()),
+				fmt.Sprintf("🎤 %s, as this week's first leader, please share your weekly message/advice as a reply to this message!", selectedWinner.GetName()),
 			)
+
+			// Force reply to make it clear we expect a response
+			groupMsg.ReplyMarkup = tgbotapi.ForceReply{
+				ForceReply: true,
+				Selective:  true,
+			}
 
 			sentGroupMsg, err := bot.Send(groupMsg)
 			if err != nil {
 				log.Error("Failed to send group message about weekly winner message", "error", err)
 				sentry.CaptureException(err)
 			} else {
-				// Pin this message to remind the winner
+				// Pin this message temporarily to catch the winner's attention
 				pinChatMessageConfig := tgbotapi.PinChatMessageConfig{
 					ChatID:              group.ChatID,
 					MessageID:           sentGroupMsg.MessageID,
