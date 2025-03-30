@@ -102,9 +102,6 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 
 			// Now determine the winner based on who reached the max workout count first
 			selectedWinner = findEarliestLeader(leaders, group.ChatID)
-
-			caption += fmt.Sprintf("\n\n🏆 %s has been chosen as this week's winner (first to reach %d workouts)!",
-				selectedWinner.GetName(), leaders[0].Workouts)
 		}
 
 		// Add monthly standings info
@@ -152,7 +149,7 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 			// Send a message to the group announcing that the winner should send a message
 			groupMsg := tgbotapi.NewMessage(
 				group.ChatID,
-				fmt.Sprintf("🎤 %s, as this week's winner, please share your weekly message/advice with the group!", selectedWinner.GetName()),
+				fmt.Sprintf("🎤 %s, as this week's first leader, will share a weekly message/advice with the group!", selectedWinner.GetName()),
 			)
 
 			sentGroupMsg, err := bot.Send(groupMsg)
@@ -246,7 +243,6 @@ func ReportStandings(bot *tgbotapi.BotAPI) {
 		msg := tgbotapi.NewMessage(group.ChatID, statsMessage+"\n"+stats)
 		bot.Send(msg)
 	}
-
 }
 
 func CreateStatsMessage(chatId int64) string {
