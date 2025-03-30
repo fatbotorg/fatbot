@@ -190,12 +190,6 @@ func handleWeeklyWinnerMessage(fatBotUpdate FatBotUpdate) error {
 			log.Error("Failed to pin weekly winner message", "error", err)
 			sentry.CaptureException(err)
 		}
-
-		// Register the weekly winner message event
-		if err := user.RegisterWeeklyWinnerMessageEvent(message, group.ID); err != nil {
-			log.Error("Failed to register weekly winner message event", "error", err)
-			sentry.CaptureException(err)
-		}
 	}
 
 	return nil

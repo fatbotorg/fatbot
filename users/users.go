@@ -46,27 +46,6 @@ func (e *NoSuchUserError) Error() string {
 func InitDB() error {
 	db := db.DBCon
 	db.AutoMigrate(&User{}, &Group{}, &Workout{}, &Event{}, &Blacklist{})
-
-	// Check if Data column exists in events table
-	if err := db.Exec("SELECT Data FROM events LIMIT 1").Error; err != nil {
-		// Column doesn't exist, add it
-		if err := db.Exec("ALTER TABLE events ADD COLUMN Data TEXT").Error; err != nil {
-			log.Error("Failed to add Data column to events table", "error", err)
-		} else {
-			log.Info("Added Data column to events table")
-		}
-	}
-
-	// Check if GroupID column exists in events table
-	if err := db.Exec("SELECT GroupID FROM events LIMIT 1").Error; err != nil {
-		// Column doesn't exist, add it
-		if err := db.Exec("ALTER TABLE events ADD COLUMN GroupID INTEGER DEFAULT 0").Error; err != nil {
-			log.Error("Failed to add GroupID column to events table", "error", err)
-		} else {
-			log.Info("Added GroupID column to events table")
-		}
-	}
-
 	return nil
 }
 

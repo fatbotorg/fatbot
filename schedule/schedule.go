@@ -34,10 +34,6 @@ func Init(bot *tgbotapi.BotAPI) {
 	if _, err := scheduler.Every(1).MonthLastDay().At(reportTime).Do(func() { MonthlyReport(bot) }); err != nil {
 		log.Errorf("Monthly report scheduler err: %s", err)
 	}
-	// Schedule the weekly winner message reminder for Mondays at 7PM
-	if _, err := scheduler.Every(1).Monday().At(reportTime).Do(func() { ReminderOfWinnerMessage(bot) }); err != nil {
-		log.Errorf("Weekly winner message reminder scheduler err: %s", err)
-	}
 
 	scheduler.StartAsync()
 }

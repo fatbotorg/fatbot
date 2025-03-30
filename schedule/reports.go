@@ -328,44 +328,6 @@ func getMonthlyLeaders(group users.Group) []Leader {
 	return monthlyLeaders
 }
 
-// ReminderOfWinnerMessage reminds the group of the previous week's winner message
-func ReminderOfWinnerMessage(bot *tgbotapi.BotAPI) {
-	groups := users.GetGroupsWithUsers()
-	for _, group := range groups {
-		if len(group.Users) == 0 {
-			continue
-		}
-
-		// Get the latest weekly winner message
-		winnerName, message, timestamp, err := users.GetLatestWeeklyWinnerMessage(group.ID)
-		if err != nil {
-			log.Error("Failed to get weekly winner message", "error", err)
-			sentry.CaptureException(err)
-			continue
-		}
-
-		// Skip if no message exists
-		if message == "" {
-			continue
-		}
-
-		// Send reminder message to the group
-		reminderMsg := tgbotapi.NewMessage(
-			group.ChatID,
-			fmt.Sprintf("📣 Reminder of last week's winner message from %s (sent on %s):\n\n\"%s\"",
-				winnerName,
-				timestamp.Format("Monday, January 2"),
-				message),
-		)
-
-		_, err = bot.Send(reminderMsg)
-		if err != nil {
-			log.Error("Failed to send reminder message", "error", err)
-			sentry.CaptureException(err)
-		}
-	}
-}
-
 // findEarliestLeader finds the leader who reached the max workout count first
 func findEarliestLeader(leaders []Leader, chatID int64) users.User {
 	if len(leaders) == 0 {
