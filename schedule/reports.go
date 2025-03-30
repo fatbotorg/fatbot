@@ -128,17 +128,16 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 
 		// If we have a winner, ask them for a weekly message directly in the group chat
 		if selectedWinner.ID != 0 {
-			// Send a message to the group asking the winner for their weekly message
+			// Create a mention that works even if user has no username
+			userMention := fmt.Sprintf("[%s](tg://user?id=%d)", selectedWinner.GetName(), selectedWinner.TelegramUserID)
+
 			groupMsg := tgbotapi.NewMessage(
 				group.ChatID,
-				fmt.Sprintf("🎤 %s, as this week's first leader, please share your weekly message/advice as a reply to this message!", selectedWinner.GetName()),
+				fmt.Sprintf("🎤 %s, as this week's first leader, please share your weekly message/advice as a reply to this message!", userMention),
 			)
 
-			// Force reply to make it clear we expect a response
-			groupMsg.ReplyMarkup = tgbotapi.ForceReply{
-				ForceReply: true,
-				Selective:  true,
-			}
+			// Enable markdown for the mention to work
+			groupMsg.ParseMode = "MarkdownV2"
 
 			sentGroupMsg, err := bot.Send(groupMsg)
 			if err != nil {
