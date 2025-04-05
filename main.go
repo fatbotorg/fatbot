@@ -32,6 +32,7 @@ func main() {
 	initViper()
 	// Init DB
 	db.DBCon = db.GetDB()
+	log.SetLevel(log.DebugLevel)
 	if os.Getenv("ENVIRONMENT") != "production" {
 		log.SetLevel(log.DebugLevel)
 	} else {
