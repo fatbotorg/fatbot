@@ -47,6 +47,7 @@ func main() {
 	if err := users.InitDB(); err != nil {
 		log.Fatal(err)
 	}
+
 	if bot, err = tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_APITOKEN")); err != nil {
 		log.Fatalf("Issue with token: %s", err)
 	} else {

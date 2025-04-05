@@ -67,9 +67,16 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 		msg := tgbotapi.NewPhoto(group.ChatID, tgbotapi.FilePath(fileName))
 		caption := "Weekly summary:\n"
 
-		// Add weekly leader info
-		if len(leaders) == 1 {
+		// Add weekly leader info and select a winner
+		var selectedWinner users.User
+
+		if len(leaders) == 0 {
+			// No leaders this week
+			log.Debug("No leaders this week")
+		} else if len(leaders) == 1 {
+			// Only one leader
 			leader := leaders[0]
+			selectedWinner = leader.User
 			caption += fmt.Sprintf(
 				"%s is the ⭐ with %d workouts!",
 				leader.User.GetName(),
@@ -79,12 +86,22 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 				log.Errorf("Error while registering weekly leader event: %s", err)
 				sentry.CaptureException(err)
 			}
-		} else if len(leaders) > 1 {
+		} else {
+			// Multiple leaders
 			caption += fmt.Sprintf("⭐ Leaders of the week with %d workouts:\n",
 				leaders[0].Workouts)
+
+			// First announce all leaders
 			for _, leader := range leaders {
 				caption += leader.User.GetName() + " "
+				if err := leader.User.RegisterWeeklyLeaderEvent(); err != nil {
+					log.Errorf("Error while registering weekly leader event: %s", err)
+					sentry.CaptureException(err)
+				}
 			}
+
+			// Now determine the winner based on who reached the max workout count first
+			selectedWinner = findEarliestLeader(leaders, group.ChatID)
 		}
 
 		// Add monthly standings info
@@ -103,32 +120,60 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 		}
 
 		msg.Caption = caption
-		if _, err = bot.Send(msg); err != nil {
+		_, err = bot.Send(msg)
+		if err != nil {
 			log.Error(err)
 			sentry.CaptureException(err)
+		}
+
+		// If we have a winner, ask them for a weekly message directly in the group chat
+		if selectedWinner.ID != 0 {
+			// Create a mention that works even if user has no username
+			userMention := fmt.Sprintf("[%s](tg://user?id=%d)", selectedWinner.GetName(), selectedWinner.TelegramUserID)
+
+			groupMsg := tgbotapi.NewMessage(
+				group.ChatID,
+				fmt.Sprintf("🎤 %s, as this week's first leader, please share your weekly message as a reply to this message", userMention),
+			)
+
+			// Enable markdown for the mention to work
+			groupMsg.ParseMode = "MarkdownV2"
+
+			_, err := bot.Send(groupMsg)
+			if err != nil {
+				log.Error("Failed to send group message about weekly winner message", "error", err)
+				sentry.CaptureException(err)
+			}
 		}
 	}
 }
 
 func collectUsersData(group users.Group) (usersWorkouts, previousWeekWorkouts []string, leaders []Leader) {
-	leaders = append(leaders, Leader{
-		User:     users.User{},
-		Workouts: 0,
-	})
+	var maxWorkouts int = 0
 	for _, user := range group.Users {
 		userPreviousWeekWorkouts := user.GetPreviousWeekWorkouts(group.ChatID)
 		previousWeekWorkouts = append(previousWeekWorkouts, fmt.Sprint(len(userPreviousWeekWorkouts)))
 		userPastWeekWorkouts := user.GetPastWeekWorkouts(group.ChatID)
 		usersWorkouts = append(usersWorkouts, fmt.Sprint(len(userPastWeekWorkouts)))
-		if leaders[0].Workouts > len(userPastWeekWorkouts) {
+
+		workoutCount := len(userPastWeekWorkouts)
+		if workoutCount == 0 {
 			continue
-		} else if leaders[0].Workouts < len(userPastWeekWorkouts) {
-			leaders = []Leader{}
 		}
-		leaders = append(leaders, Leader{
-			User:     user,
-			Workouts: len(userPastWeekWorkouts),
-		})
+
+		if workoutCount > maxWorkouts {
+			// Found a new maximum, clear previous leaders
+			leaders = []Leader{}
+			maxWorkouts = workoutCount
+		}
+
+		// If this user has the current maximum workouts, add them as a leader
+		if workoutCount == maxWorkouts {
+			leaders = append(leaders, Leader{
+				User:     user,
+				Workouts: workoutCount,
+			})
+		}
 	}
 	return
 }
@@ -172,7 +217,6 @@ func ReportStandings(bot *tgbotapi.BotAPI) {
 		msg := tgbotapi.NewMessage(group.ChatID, statsMessage+"\n"+stats)
 		bot.Send(msg)
 	}
-
 }
 
 func CreateStatsMessage(chatId int64) string {
@@ -259,4 +303,45 @@ func getMonthlyLeaders(group users.Group) []Leader {
 	})
 
 	return monthlyLeaders
+}
+
+// findEarliestLeader finds the leader who reached the max workout count first
+func findEarliestLeader(leaders []Leader, chatID int64) users.User {
+	if len(leaders) == 0 {
+		return users.User{}
+	}
+
+	if len(leaders) == 1 {
+		return leaders[0].User
+	}
+
+	var earliestLeader Leader = leaders[0]
+	var earliestTime time.Time
+
+	// Initialize with the first leader's last workout time
+	lastWorkout, err := leaders[0].User.GetLastXWorkout(1, chatID)
+	if err == nil {
+		earliestTime = lastWorkout.CreatedAt
+	} else {
+		// If we can't get the last workout, just use current time
+		earliestTime = time.Now()
+	}
+
+	// Check each leader's last workout time
+	for _, leader := range leaders[1:] {
+		lastWorkout, err := leader.User.GetLastXWorkout(1, chatID)
+		if err != nil {
+			log.Error("Failed to get last workout for user", "user", leader.User.GetName(), "error", err)
+			continue
+		}
+
+		// If this leader's last workout is earlier than our current earliest,
+		// they become the new earliest leader
+		if lastWorkout.CreatedAt.Before(earliestTime) {
+			earliestLeader = leader
+			earliestTime = lastWorkout.CreatedAt
+		}
+	}
+
+	return earliestLeader.User
 }
