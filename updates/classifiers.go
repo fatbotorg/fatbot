@@ -62,7 +62,7 @@ func (fatBotUpdate FatBotUpdate) isGroupReplyUpdate() bool {
 	}
 
 	// Check if it's a reply to the weekly message request
-	if !strings.Contains(update.Message.ReplyToMessage.Text, "please share your weekly message/advice as a reply to this message") {
+	if !strings.Contains(update.Message.ReplyToMessage.Text, "please share your weekly message as a reply to this message") {
 		return false
 	}
 

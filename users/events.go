@@ -2,6 +2,7 @@ package users
 
 import (
 	"fatbot/db"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -12,6 +13,7 @@ const (
 	BanEventType                 eventType = "ban"
 	LastDayNotificationEventType eventType = "lastDayNotification"
 	WeeklyLeaderEventType        eventType = "weeklyLeader"
+	WeeklyMessageRepliedType     eventType = "weeklyMessageReplied"
 )
 
 type Event struct {
@@ -45,4 +47,17 @@ func (user *User) RegisterLastDayNotificationEvent() error {
 
 func (user *User) RegisterWeeklyLeaderEvent() error {
 	return user.registerEvent(WeeklyLeaderEventType)
+}
+
+func (user *User) RegisterWeeklyMessageRepliedEvent() error {
+	return user.registerEvent(WeeklyMessageRepliedType)
+}
+
+func (user *User) HasRepliedToWeeklyMessage() bool {
+	db := db.DBCon
+	var events []Event
+	// Find all events from this week
+	oneWeekAgo := time.Now().AddDate(0, 0, -7)
+	db.Where("user_id = ? AND event = ? AND created_at > ?", user.ID, WeeklyMessageRepliedType, oneWeekAgo).Find(&events)
+	return len(events) > 0
 }

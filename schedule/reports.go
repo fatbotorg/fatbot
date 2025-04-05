@@ -133,29 +133,16 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 
 			groupMsg := tgbotapi.NewMessage(
 				group.ChatID,
-				fmt.Sprintf("🎤 %s, as this week's first leader, please share your weekly message/advice as a reply to this message!", userMention),
+				fmt.Sprintf("🎤 %s, as this week's first leader, please share your weekly message as a reply to this message", userMention),
 			)
 
 			// Enable markdown for the mention to work
 			groupMsg.ParseMode = "MarkdownV2"
 
-			sentGroupMsg, err := bot.Send(groupMsg)
+			_, err := bot.Send(groupMsg)
 			if err != nil {
 				log.Error("Failed to send group message about weekly winner message", "error", err)
 				sentry.CaptureException(err)
-			} else {
-				// Pin this message temporarily to catch the winner's attention
-				pinChatMessageConfig := tgbotapi.PinChatMessageConfig{
-					ChatID:              group.ChatID,
-					MessageID:           sentGroupMsg.MessageID,
-					DisableNotification: false,
-				}
-
-				_, err = bot.Request(pinChatMessageConfig)
-				if err != nil {
-					log.Error("Failed to pin message", "error", err)
-					sentry.CaptureException(err)
-				}
 			}
 		}
 	}
