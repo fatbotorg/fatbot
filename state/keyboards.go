@@ -28,33 +28,58 @@ func createAdminManagementEditMenu() tgbotapi.InlineKeyboardMarkup {
 }
 
 func createGroupsKeyboard(adminUserId int64) tgbotapi.InlineKeyboardMarkup {
-	var groups []users.Group
-	switch adminUserId {
-	case 0:
-		groups = users.GetGroups()
-	default:
-		groups = users.GetManagedGroups(adminUserId)
+	var groupsInfo []map[string]interface{}
+
+	// When showing groups for removal, always show all groups with user counts
+	if adminUserId == 0 {
+		groupsInfo = users.GetGroupsWithUserCounts()
+	} else {
+		// For local admin operations, filter by managed groups
+		var groups []users.Group = users.GetManagedGroups(adminUserId)
+		for _, group := range groups {
+			groupsInfo = append(groupsInfo, map[string]interface{}{
+				"group": group,
+			})
+		}
 	}
+
 	row := []tgbotapi.InlineKeyboardButton{}
 	rows := [][]tgbotapi.InlineKeyboardButton{}
-	for _, group := range groups {
-		groupLabel := fmt.Sprintf("%s", group.Title)
+
+	for _, info := range groupsInfo {
+		group := info["group"].(users.Group)
+
+		// Create label with user counts if available
+		var groupLabel string
+		if info["totalCount"] != nil {
+			groupLabel = fmt.Sprintf("%s (%d users)",
+				group.Title,
+				info["totalCount"].(int))
+		} else {
+			groupLabel = group.Title
+		}
+
 		row = append(row, tgbotapi.NewInlineKeyboardButtonData(
 			groupLabel,
 			fmt.Sprintf("%d", group.ChatID),
 		))
-		if len(row) == 3 {
+
+		// Only 2 buttons per row for group removal to fit more text
+		if len(row) == 2 {
 			rows = append(rows, row)
 			row = []tgbotapi.InlineKeyboardButton{}
 		}
 	}
-	if len(row) > 0 && len(row) < 3 {
+
+	if len(row) > 0 {
 		rows = append(rows, row)
 	}
+
 	backRow := []tgbotapi.InlineKeyboardButton{}
 	backButton := tgbotapi.NewInlineKeyboardButtonData("<- Back", "adminmenuback")
 	backRow = append(backRow, backButton)
 	rows = append(rows, backRow)
+
 	var keyboard = tgbotapi.NewInlineKeyboardMarkup(rows...)
 	return keyboard
 }
@@ -140,6 +165,45 @@ func createConfirmationKeyboard() tgbotapi.InlineKeyboardMarkup {
 	return keyboard
 }
 
+// createRemoveGroupKeyboard creates a specialized keyboard for the group removal menu
+// with detailed information about each group and its users
+func createRemoveGroupKeyboard() tgbotapi.InlineKeyboardMarkup {
+	groupsInfo := users.GetGroupsWithUserCounts()
+
+	row := []tgbotapi.InlineKeyboardButton{}
+	rows := [][]tgbotapi.InlineKeyboardButton{}
+
+	for _, info := range groupsInfo {
+		group := info["group"].(users.Group)
+		activeCount := info["activeCount"].(int)
+		inactiveCount := info["inactiveCount"].(int)
+		totalCount := info["totalCount"].(int)
+
+		// Create detailed label with active, inactive and total user counts
+		groupLabel := fmt.Sprintf("%s (%d active / %d inactive / %d total)",
+			group.Title,
+			activeCount,
+			inactiveCount,
+			totalCount)
+
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData(
+			groupLabel,
+			fmt.Sprintf("%d", group.ChatID),
+		))
+
+		// Only 1 button per row for group removal to fit more text
+		rows = append(rows, row)
+		row = []tgbotapi.InlineKeyboardButton{}
+	}
+
+	backRow := []tgbotapi.InlineKeyboardButton{}
+	backButton := tgbotapi.NewInlineKeyboardButtonData("<- Back", "adminmenuback")
+	backRow = append(backRow, backButton)
+	rows = append(rows, backRow)
+
+	return tgbotapi.NewInlineKeyboardMarkup(rows...)
+}
+
 func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 	var rename RenameMenu
 	var pushWorkout PushWorkoutMenu
@@ -150,6 +214,7 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 	var groupLink GroupLinkMenu
 	var manageAdmins ManageAdminsMenu
 	var removeUser RemoveUserMenu
+	var removeGroup RemoveGroupMenu
 	var menus = []MenuBase{
 		rename.CreateMenu(0),
 		pushWorkout.CreateMenu(0),
@@ -160,6 +225,7 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 		groupLink.CreateMenu(0),
 		manageAdmins.CreateMenu(0),
 		removeUser.CreateMenu(0),
+		removeGroup.CreateMenu(0),
 	}
 
 	row := []tgbotapi.InlineKeyboardButton{}

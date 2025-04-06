@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fatbot/db"
 	"fatbot/users"
 	"fmt"
 	"strconv"
@@ -284,6 +285,89 @@ func (menu RemoveUserMenu) PerformAction(params ActionData) error {
 
 		msg := tgbotapi.NewMessage(params.Update.FromChat().ID,
 			fmt.Sprintf("User %s has been completely removed from the system.", user.GetName()))
+		if _, err := params.Bot.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (menu RemoveGroupMenu) PerformAction(params ActionData) error {
+	defer DeleteStateEntry(params.State.ChatId)
+
+	// Get the confirmation response
+	option, err := params.State.getOption()
+	if err != nil {
+		return err
+	}
+
+	// If user chose "no", don't proceed with deletion
+	if option == "no" {
+		msg := tgbotapi.NewMessage(params.Update.FromChat().ID, "Group removal cancelled.")
+		if _, err := params.Bot.Send(msg); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// Only proceed if user confirmed with "yes"
+	if option == "yes" {
+		groupId, err := params.State.getGroupId()
+		if err != nil {
+			return err
+		}
+
+		// Get the group to be removed
+		group, err := users.GetGroup(groupId)
+		if err != nil {
+			return err
+		}
+
+		// Get all users in the group (both active and inactive)
+		groupWithAllUsers := users.GetGroupWithUsers(groupId)
+		inactiveUsers := users.GetGroupWithInactiveUsers(groupId).Users
+		allUsers := append(groupWithAllUsers.Users, inactiveUsers...)
+
+		// Process users
+		var usersRemoved, usersDeleted int
+		for _, user := range allUsers {
+			// First, load the user's groups to see if they belong to other groups
+			err := user.LoadGroups()
+			if err != nil {
+				return err
+			}
+
+			// If this is the user's only group, remove them from the database completely
+			if len(user.Groups) <= 1 {
+				if err := user.RemoveFromDatabase(); err != nil {
+					return err
+				}
+				usersDeleted++
+			} else {
+				// If user belongs to multiple groups, just remove them from this group
+				// First, remove the association between user and group
+				db := db.DBCon
+				if err := db.Model(&user).Association("Groups").Delete(&group); err != nil {
+					return err
+				}
+				usersRemoved++
+			}
+		}
+
+		// Remove the group from the database
+		db := db.DBCon
+		if err := db.Delete(&group).Error; err != nil {
+			return err
+		}
+
+		// Send a summary message
+		msg := tgbotapi.NewMessage(params.Update.FromChat().ID,
+			fmt.Sprintf("Group '%s' has been removed.\n\n"+
+				"Summary:\n"+
+				"- %d users were removed from the group\n"+
+				"- %d users were completely deleted from the system",
+				group.Title, usersRemoved, usersDeleted))
 		if _, err := params.Bot.Send(msg); err != nil {
 			return err
 		}
