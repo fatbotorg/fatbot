@@ -6,6 +6,7 @@ import (
 	"fatbot/users"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -13,6 +14,22 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/spf13/viper"
 )
+
+// adminAttempts tracks unauthorized access attempts to admin commands
+var (
+	adminAttempts     = make(map[int64]int)
+	adminAttemptMutex sync.Mutex
+)
+
+// Record an admin command attempt by a non-admin user
+func recordAdminAttempt(userId int64) int {
+	adminAttemptMutex.Lock()
+	defer adminAttemptMutex.Unlock()
+
+	// Record the attempt and return count
+	adminAttempts[userId]++
+	return adminAttempts[userId]
+}
 
 func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 	update := fatBotUpdate.Update
@@ -185,7 +202,7 @@ func sendLinkJoinForAdminApproval(fatBotUpdate FatBotUpdate, group users.Group) 
 	text := `Hello and welcome!
 You will soon get a link to join the group 🎉.
 Once you click the link, please send a picture of your workout *in the group chat*
-‼️ NOTE ‼️: if you don’t send a picture in the same day you get the link you will be BANNED from the group!`
+‼️ NOTE ‼️: if you don't send a picture in the same day you get the link you will be BANNED from the group!`
 	msg.Text = text
 	return msg, nil
 }
@@ -219,7 +236,7 @@ func handleJoinCommandNewUser(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageCo
 	text := `Hello and welcome!
 You will soon get a link to join the group 🎉.
 Once you click the link, please send a picture of your workout *in the group chat*
-‼️ NOTE ‼️: if you don’t send a picture in the same day you get the link you will be BANNED from the group!`
+‼️ NOTE ‼️: if you don't send a picture in the same day you get the link you will be BANNED from the group!`
 	msg.Text = text
 	return msg, nil
 }
@@ -251,8 +268,9 @@ func handleAdminCommandUpdate(fatBotUpdate FatBotUpdate) error {
 	update := fatBotUpdate.Update
 	bot := fatBotUpdate.Bot
 	msg.ChatID = update.FromChat().ID
+	userId := update.Message.From.ID
 
-	user, err := users.GetUserById(update.Message.From.ID)
+	user, err := users.GetUserById(userId)
 	if err != nil {
 		return err
 	}
@@ -260,9 +278,38 @@ func handleAdminCommandUpdate(fatBotUpdate FatBotUpdate) error {
 	if err != nil {
 		return err
 	}
+
+	// Check if the user is not an admin
 	if !user.IsAdmin && !localAdmin {
+		// Record the attempt and get the count
+		attempts := recordAdminAttempt(userId)
+
+		if attempts == 1 {
+			// First attempt - send a warning
+			msg.Text = "You are not authorized to use admin commands. Only group administrators can use this feature."
+		} else if attempts < 5 {
+			// Repeated attempts - send a stronger warning
+			msg.Text = fmt.Sprintf("Warning: This is your %d attempt to access admin commands. Continued unauthorized attempts may result in being blocked.", attempts)
+		} else {
+			// Many attempts - send a final warning
+			msg.Text = "FINAL WARNING: Your repeated attempts to access admin features have been logged. Further attempts will result in being blocked from using this bot."
+
+			// Notify actual admins about the repeated attempts
+			adminMsg := tgbotapi.NewMessage(0, fmt.Sprintf(
+				"⚠️ Security Alert: User %s (ID: %d) has made %d attempts to access admin commands.",
+				user.GetName(),
+				userId,
+				attempts,
+			))
+			users.SendMessageToSuperAdmins(bot, adminMsg)
+		}
+
+		if _, err := bot.Send(msg); err != nil {
+			return err
+		}
 		return nil
 	}
+
 	switch update.Message.Command() {
 	case "admin":
 		msg = state.HandleAdminCommand(update)

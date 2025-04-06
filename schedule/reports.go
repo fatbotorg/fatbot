@@ -46,6 +46,16 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 		if len(group.Users) == 0 {
 			continue
 		}
+
+		// Skip groups with fewer than 4 members
+		if len(group.Users) < 4 {
+			log.Debug("Skipping weekly report for small group",
+				"group_id", group.ChatID,
+				"name", group.Title,
+				"member_count", len(group.Users))
+			continue
+		}
+
 		fileName := fmt.Sprintf("%d.png", group.ChatID)
 		usersWorkouts, previousWeekWorkouts, leaders := collectUsersData(group)
 		userNames := group.GetUserFixedNamesList()
@@ -82,7 +92,7 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 				leader.User.GetName(),
 				leader.Workouts,
 			)
-			if err := leader.User.RegisterWeeklyLeaderEvent(); err != nil {
+			if err := leader.User.RegisterWeeklyLeaderEvent(group.ChatID); err != nil {
 				log.Errorf("Error while registering weekly leader event: %s", err)
 				sentry.CaptureException(err)
 			}
@@ -94,7 +104,7 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 			// First announce all leaders
 			for _, leader := range leaders {
 				caption += leader.User.GetName() + " "
-				if err := leader.User.RegisterWeeklyLeaderEvent(); err != nil {
+				if err := leader.User.RegisterWeeklyLeaderEvent(group.ChatID); err != nil {
 					log.Errorf("Error while registering weekly leader event: %s", err)
 					sentry.CaptureException(err)
 				}
@@ -213,6 +223,17 @@ func ReportStandings(bot *tgbotapi.BotAPI) {
 	statsMessage := "Here are the current standings:"
 	groups := users.GetGroups()
 	for _, group := range groups {
+		// Skip groups with fewer than 4 members
+		groupWithUsers := users.GetGroupWithUsers(group.ChatID)
+
+		if len(groupWithUsers.Users) < 4 {
+			log.Debug("Skipping standings report for small group",
+				"group_id", group.ChatID,
+				"name", group.Title,
+				"member_count", len(groupWithUsers.Users))
+			continue
+		}
+
 		stats := CreateStatsMessage(group.ChatID)
 		msg := tgbotapi.NewMessage(group.ChatID, statsMessage+"\n"+stats)
 		bot.Send(msg)
@@ -265,6 +286,16 @@ func MonthlyReport(bot *tgbotapi.BotAPI) {
 		if len(group.Users) == 0 {
 			continue
 		}
+
+		// Skip groups with fewer than 4 members
+		if len(group.Users) < 4 {
+			log.Debug("Skipping monthly report for small group",
+				"group_id", group.ChatID,
+				"name", group.Title,
+				"member_count", len(group.Users))
+			continue
+		}
+
 		leader := monthlyLeader(group)
 		if leader.ID == 0 {
 			continue

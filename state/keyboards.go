@@ -29,12 +29,22 @@ func createAdminManagementEditMenu() tgbotapi.InlineKeyboardMarkup {
 
 func createGroupsKeyboard(adminUserId int64) tgbotapi.InlineKeyboardMarkup {
 	var groups []users.Group
-	switch adminUserId {
-	case 0:
+
+	// Special case: adminUserId == 0 means we explicitly want all groups (used by system or super admin functions)
+	if adminUserId == 0 {
 		groups = users.GetGroups()
-	default:
-		groups = users.GetManagedGroups(adminUserId)
+	} else {
+		// Check if the user is a super admin
+		user, err := users.GetUserById(adminUserId)
+		if err == nil && user.IsAdmin {
+			// Super admins see all groups
+			groups = users.GetGroups()
+		} else {
+			// Regular admins only see their managed groups
+			groups = users.GetManagedGroups(adminUserId)
+		}
 	}
+
 	row := []tgbotapi.InlineKeyboardButton{}
 	rows := [][]tgbotapi.InlineKeyboardButton{}
 	for _, group := range groups {
