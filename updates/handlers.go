@@ -170,16 +170,11 @@ func (update GroupReplyUpdate) handle() error {
 					sentry.CaptureException(err)
 				}
 
-				// Extract name for thank you message
-				thankName := update.Update.Message.From.FirstName
-				if update.Update.Message.From.UserName != "" {
-					thankName = "@" + update.Update.Message.From.UserName
-				}
-
-				// Thank the user for their message
+				user, err := users.GetUserFromMessage(update.Update.Message * tgbotapi.Message)
+				userName := user.GetName()
 				replyMsg := tgbotapi.NewMessage(
 					chatId,
-					fmt.Sprintf("Thanks for your weekly message, %s! It has been pinned until next week's winner is announced.", thankName),
+					fmt.Sprintf("Thanks for your weekly message, %s! It has been pinned until next week's winner is announced.", userName),
 				)
 				replyMsg.ReplyToMessageID = update.Update.Message.MessageID
 
