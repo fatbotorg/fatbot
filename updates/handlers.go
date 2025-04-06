@@ -3,7 +3,6 @@ package updates
 import (
 	"fatbot/users"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/log"
@@ -112,81 +111,39 @@ func (update PrivateUpdate) handle() error {
 }
 
 func (update GroupReplyUpdate) handle() error {
-	// Get the username or first name being addressed in the original message
+	// Get the original message text
 	originalText := update.Update.Message.ReplyToMessage.Text
-	// Extract the name from "🎤 [Name], as this week's first leader..."
-	parts := strings.Split(originalText, ",")
-	if len(parts) > 0 {
-		// Extract the mentioned user from the markdown format: "[Name](tg://user?id=12345)"
-		addressedText := strings.TrimPrefix(parts[0], "🎤 ")
 
-		// Debug logging
-		log.Debug("Processing weekly winner reply",
-			"original_text", originalText,
-			"addressed_text", addressedText,
-			"sender_id", update.Update.Message.From.ID)
+	// Check if this is a reply to the weekly leader message
+	if strings.Contains(originalText, "as this week's first leader") {
+		// Get the chat and user IDs
+		chatId := update.Update.Message.Chat.ID
+		userId := update.Update.Message.From.ID
 
-		// Try to extract the user ID from the tg://user?id= format if present
-		var addressedUserID int64
-		if strings.Contains(addressedText, "tg://user?id=") {
-			idStart := strings.Index(addressedText, "tg://user?id=") + len("tg://user?id=")
-			idEnd := strings.Index(addressedText[idStart:], ")")
-			if idEnd > 0 {
-				idStr := addressedText[idStart : idStart+idEnd]
-				if id, err := strconv.ParseInt(idStr, 10, 64); err == nil {
-					addressedUserID = id
-					log.Debug("Extracted user ID from mention", "user_id", addressedUserID)
-				}
-			}
-		}
-
-		// Get the user from the database to check if they've already replied
-		user, err := users.GetUserById(update.Update.Message.From.ID)
+		// Get the user from the database
+		user, err := users.GetUserById(userId)
 		if err != nil {
 			log.Error("Failed to get user by ID", "error", err)
 			sentry.CaptureException(err)
 			return nil
 		}
 
-		// First check if the user IDs match (most reliable)
-		isCorrectUser := addressedUserID > 0 && addressedUserID == update.Update.Message.From.ID
+		// Check if this user is the weekly leader for this group and hasn't already replied
+		isWeeklyLeader := user.IsWeeklyLeaderInGroup(chatId)
+		hasReplied := user.HasRepliedToWeeklyMessage(chatId)
 
-		// If we couldn't extract user ID or it doesn't match, fall back to name matching
-		if !isCorrectUser {
-			senderName := ""
-			if update.Update.Message.From.UserName != "" {
-				senderName = "@" + update.Update.Message.From.UserName
-			} else {
-				senderName = update.Update.Message.From.FirstName
-			}
+		log.Debug("Checking if user is weekly leader",
+			"user_id", userId,
+			"chat_id", chatId,
+			"is_weekly_leader", isWeeklyLeader,
+			"has_replied", hasReplied)
 
-			// Clean the addressed name (remove markdown formatting)
-			cleanAddressedName := addressedText
-			if strings.Contains(addressedText, "[") && strings.Contains(addressedText, "]") {
-				// Extract name from [Name](tg://user?id=12345)
-				nameStart := strings.Index(addressedText, "[") + 1
-				nameEnd := strings.Index(addressedText, "]")
-				if nameEnd > nameStart {
-					cleanAddressedName = addressedText[nameStart:nameEnd]
-				}
-			}
-
-			log.Debug("Comparing names",
-				"addressed_name", cleanAddressedName,
-				"sender_name", senderName)
-
-			// Check if names match
-			isCorrectUser = strings.Contains(cleanAddressedName, senderName) ||
-				strings.Contains(senderName, cleanAddressedName)
-		}
-
-		// Check if the person replying is the one being addressed and hasn't already replied
-		if isCorrectUser && !user.HasRepliedToWeeklyMessage() {
-			log.Info("Weekly winner replied to message, pinning their response")
+		if isWeeklyLeader && !hasReplied {
+			log.Info("Weekly leader replied to message, pinning their response")
 
 			// Unpin all existing messages first
 			unpinAllConfig := tgbotapi.UnpinAllChatMessagesConfig{
-				ChatID: update.Update.Message.Chat.ID,
+				ChatID: chatId,
 			}
 
 			_, err := update.Bot.Request(unpinAllConfig)
@@ -197,7 +154,7 @@ func (update GroupReplyUpdate) handle() error {
 
 			// Pin this message
 			pinChatMessageConfig := tgbotapi.PinChatMessageConfig{
-				ChatID:              update.Update.Message.Chat.ID,
+				ChatID:              chatId,
 				MessageID:           update.Update.Message.MessageID,
 				DisableNotification: false,
 			}
@@ -208,7 +165,7 @@ func (update GroupReplyUpdate) handle() error {
 				sentry.CaptureException(err)
 			} else {
 				// Register that the user has replied to the weekly message
-				if err := user.RegisterWeeklyMessageRepliedEvent(); err != nil {
+				if err := user.RegisterWeeklyMessageRepliedEvent(chatId); err != nil {
 					log.Error("Failed to register weekly message reply event", "error", err)
 					sentry.CaptureException(err)
 				}
@@ -221,7 +178,7 @@ func (update GroupReplyUpdate) handle() error {
 
 				// Thank the user for their message
 				replyMsg := tgbotapi.NewMessage(
-					update.Update.Message.Chat.ID,
+					chatId,
 					fmt.Sprintf("Thanks for your weekly message, %s! It has been pinned until next week's winner is announced.", thankName),
 				)
 				replyMsg.ReplyToMessageID = update.Update.Message.MessageID
@@ -232,15 +189,15 @@ func (update GroupReplyUpdate) handle() error {
 					sentry.CaptureException(err)
 				}
 			}
-		} else if isCorrectUser && user.HasRepliedToWeeklyMessage() {
+		} else if isWeeklyLeader && hasReplied {
 			// User has already replied, ignore this message
-			log.Info("Weekly winner already replied once, ignoring additional replies",
+			log.Info("Weekly leader already replied once, ignoring additional replies",
 				"user_id", user.ID,
 				"name", user.GetName())
 
 			// Optionally notify the user that they've already provided their weekly message
 			replyMsg := tgbotapi.NewMessage(
-				update.Update.Message.Chat.ID,
+				chatId,
 				fmt.Sprintf("You've already shared your weekly message, %s! Only your first reply is pinned.", user.GetName()),
 			)
 			replyMsg.ReplyToMessageID = update.Update.Message.MessageID
@@ -251,9 +208,8 @@ func (update GroupReplyUpdate) handle() error {
 				sentry.CaptureException(err)
 			}
 		} else {
-			log.Debug("Reply is not from the weekly winner",
-				"sender_id", update.Update.Message.From.ID,
-				"addressed_user_id", addressedUserID)
+			log.Debug("Reply is not from the weekly leader",
+				"sender_id", userId)
 		}
 	}
 	return nil
