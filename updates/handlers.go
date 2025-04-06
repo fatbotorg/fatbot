@@ -194,19 +194,6 @@ func (update GroupReplyUpdate) handle() error {
 			log.Info("Weekly leader already replied once, ignoring additional replies",
 				"user_id", user.ID,
 				"name", user.GetName())
-
-			// Optionally notify the user that they've already provided their weekly message
-			replyMsg := tgbotapi.NewMessage(
-				chatId,
-				fmt.Sprintf("You've already shared your weekly message, %s! Only your first reply is pinned.", user.GetName()),
-			)
-			replyMsg.ReplyToMessageID = update.Update.Message.MessageID
-
-			_, err = update.Bot.Send(replyMsg)
-			if err != nil {
-				log.Error("Failed to send already replied message", "error", err)
-				sentry.CaptureException(err)
-			}
 		} else {
 			log.Debug("Reply is not from the weekly leader",
 				"sender_id", userId)
