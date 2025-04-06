@@ -24,6 +24,48 @@ func initViper() {
 	viper.AutomaticEnv()
 }
 
+// setupBotCommands sets up the bot commands menu that appears next to the message line
+func setupBotCommands(bot *tgbotapi.BotAPI) {
+	// Define commands for regular users in private chats
+	userCommands := []tgbotapi.BotCommand{
+		{
+			Command:     "start",
+			Description: "Start using the bot",
+		},
+		{
+			Command:     "join",
+			Description: "Join a group",
+		},
+		{
+			Command:     "status",
+			Description: "Check your workout status",
+		},
+		{
+			Command:     "stats",
+			Description: "View workout statistics",
+		},
+		{
+			Command:     "help",
+			Description: "Show help information",
+		},
+		{
+			Command:     "admin",
+			Description: "Admin only: Access administrative functions",
+		},
+	}
+
+	// Setup commands for all private chats
+	privateScope := tgbotapi.NewBotCommandScopeAllPrivateChats()
+	privateChatCommands := tgbotapi.NewSetMyCommandsWithScope(privateScope, userCommands...)
+
+	if _, err := bot.Request(privateChatCommands); err != nil {
+		log.Error("Failed to set up private chat commands menu", "error", err)
+		sentry.CaptureException(err)
+	}
+
+	log.Info("Bot commands menu has been set up successfully")
+}
+
 func main() {
 	var bot *tgbotapi.BotAPI
 	var err error
@@ -55,6 +97,10 @@ func main() {
 		schedule.Init(bot)
 		bot.Debug = false
 		log.Infof("Authorized on account %s", bot.Self.UserName)
+
+		// Set up the bot commands menu
+		setupBotCommands(bot)
+
 		u := tgbotapi.NewUpdate(0)
 		u.Timeout = 60
 		updatesChannel = bot.GetUpdatesChan(u)
