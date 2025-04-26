@@ -58,10 +58,24 @@ func (user *User) RegisterWeeklyMessageRepliedEvent(groupId int64) error {
 func (user *User) HasRepliedToWeeklyMessage(groupId int64) bool {
 	db := db.DBCon
 	var events []Event
-	// Find all events from this week for this group
-	oneWeekAgo := time.Now().AddDate(0, 0, -7)
+
+	// First get the most recent weekly leader event
+	var lastLeaderEvent Event
+	db.Where("user_id = ? AND event = ? AND group_id = ?",
+		user.ID, WeeklyLeaderEventType, groupId).
+		Order("created_at DESC").
+		First(&lastLeaderEvent)
+
+	if lastLeaderEvent.ID == 0 {
+		// No weekly leader event found, so they haven't replied
+		return false
+	}
+
+	// Now check if there's a reply event after the last leader event
 	db.Where("user_id = ? AND event = ? AND group_id = ? AND created_at > ?",
-		user.ID, WeeklyMessageRepliedType, groupId, oneWeekAgo).Find(&events)
+		user.ID, WeeklyMessageRepliedType, groupId, lastLeaderEvent.CreatedAt).
+		Find(&events)
+
 	return len(events) > 0
 }
 
