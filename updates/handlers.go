@@ -170,7 +170,10 @@ func (update GroupReplyUpdate) handle() error {
 					sentry.CaptureException(err)
 				}
 
-				user, err := users.GetUserFromMessage(update.Update.Message * tgbotapi.Message)
+				user, err := users.GetUserFromMessage(update.Update.Message)
+				if err != nil {
+					return err
+				}
 				userName := user.GetName()
 				replyMsg := tgbotapi.NewMessage(
 					chatId,
