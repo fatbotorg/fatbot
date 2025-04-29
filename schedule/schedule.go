@@ -3,6 +3,7 @@ package schedule
 import (
 	"fmt"
 	"time"
+	"fatbot/users"
 
 	"github.com/charmbracelet/log"
 	"github.com/go-co-op/gocron"
@@ -18,6 +19,10 @@ func Init(bot *tgbotapi.BotAPI) {
 	if err != nil {
 		log.Fatalf("Bad timezone: %s", err)
 	}
+
+	// 🧪 DEBUG: Run active days updater once
+    users.UpdateAllUserRanks()
+
 	scheduler := gocron.NewScheduler(location)
 	if _, err := scheduler.Every(1).Hours().Do(func() { scanUsers(bot) }); err != nil {
 		log.Errorf("Strikes scheduler err: %s", err)

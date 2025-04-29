@@ -48,5 +48,3 @@ require (
 )
 
 replace github.com/mattn/go-sqlite3 => github.com/leso-kn/go-sqlite3 v0.0.0-20230710125852-03158dc838ed
-
-replace github.com/go-telegram-bot-api/telegram-bot-api/v5 => ./telegram-bot-apix/

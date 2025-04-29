@@ -81,17 +81,9 @@ func (update MediaUpdate) handle() error {
 		return err
 	}
 
-	config := tgbotapi.SetMessageReactionConfig{
-		ChatID:    update.Update.FromChat().ID,
-		MessageID: update.Update.Message.MessageID,
-		Reactions: []tgbotapi.ReactionType{{
-			Type:  "emoji",
-			Emoji: findReaction(labels),
-		}},
-	}
-	if _, err := update.Bot.Request(config); err != nil {
-		return err
-	}
+	// config := tgbotapi.SetMessageReactionConfig{ ... }
+	// update.Bot.Request(config)
+
 	return nil
 }
 
@@ -174,6 +166,7 @@ func (update GroupReplyUpdate) handle() error {
 				if err != nil {
 					return err
 				}
+
 				userName := user.GetName()
 				replyMsg := tgbotapi.NewMessage(
 					chatId,
