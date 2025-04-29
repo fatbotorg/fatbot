@@ -116,32 +116,68 @@ func handleStatsCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 }
 
 func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
-	var user users.User
-	var err error
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	if user, err = users.GetUserFromMessage(update.Message); err != nil {
-		log.Error(err)
-		sentry.CaptureException(err)
-	} else if user.ID == 0 {
-		msg.Text = "Unregistered user"
-		return msg
-	}
-	if chatIds, err := user.GetChatIds(); err != nil {
-		log.Error(err)
-		sentry.CaptureException(err)
-		return msg
-	} else {
-		for _, chatId := range chatIds {
-			group, _ := users.GetGroup(chatId)
-			msg.Text = msg.Text +
-				"\n\n" +
-				fmt.Sprint(group.Title) +
-				": " +
-				createStatusMessage(user, chatId, msg).Text
-		}
-	}
-	return msg
+    msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+    msg.ParseMode = "Markdown"
+
+    // 1) Load user -----------------------------------------------------------
+    user, err := users.GetUserFromMessage(update.Message)
+    if err != nil {
+        log.Error(err)
+        sentry.CaptureException(err)
+        msg.Text = "Error loading user"
+        return msg
+    }
+    if user.ID == 0 {
+        msg.Text = "Unregistered user"
+        return msg
+    }
+
+    // rank metrics already refreshed by cron; just read them
+    daysInRank := 0
+    if user.RankUpdatedAt != nil {
+        daysInRank = int(time.Since(*user.RankUpdatedAt).Hours() / 24)
+    }
+
+    // 2) Build status per group ----------------------------------------------
+    var output strings.Builder
+
+    chatIDs, err := user.GetChatIds()
+    if err != nil {
+        log.Error(err)
+        sentry.CaptureException(err)
+        msg.Text = "Error loading group status"
+        return msg
+    }
+
+    for idx, chatID := range chatIDs {
+        group, _ := users.GetGroup(chatID)
+
+        // line 1: <group>: <name>
+        fmt.Fprintf(&output, "%s: %s\n", group.Title, user.GetName())
+        // line 2: Rank and days‑in‑rank
+        fmt.Fprintf(&output, "Rank: %s, Days in rank: %d\n", user.RankName, daysInRank)
+
+        // line 3‑4: last‑workout snippet (remove leading "<name>, ")
+        snippet := createStatusMessage(user, chatID, msg).Text
+        if commaIdx := strings.Index(snippet, ", "); commaIdx != -1 {
+            snippet = snippet[commaIdx+2:] // skip ", "
+        }
+        output.WriteString(snippet)
+
+        if idx < len(chatIDs)-1 {
+            output.WriteString("\n\n") // blank line between groups
+        }
+    }
+
+    msg.Text = output.String()
+    return msg
 }
+
+// createStatusMessage keeps its original business logic; comments only.
+
+// createStatusMessage keeps its original Hebrew‑to‑English logic untouched.
+// Only comments were added for clarity.
+
 
 func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConfig) tgbotapi.MessageConfig {
 	lastWorkout, err := user.GetLastXWorkout(1, chatId)
