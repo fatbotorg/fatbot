@@ -1,9 +1,9 @@
 package schedule
 
 import (
+	"fatbot/users"
 	"fmt"
 	"time"
-	"fatbot/users"
 
 	"github.com/charmbracelet/log"
 	"github.com/go-co-op/gocron"
@@ -35,11 +35,11 @@ func Init(bot *tgbotapi.BotAPI) {
 	if _, err := scheduler.Every(1).MonthLastDay().At(reportTime).Do(func() { MonthlyReport(bot) }); err != nil {
 		log.Errorf("Monthly report scheduler err: %s", err)
 	}
-    if _, err := scheduler.Every(1).Day().At("08:00").Do(func() {
-        users.UpdateAllUserRanks()
-    }); err != nil {
-        log.Errorf("Rank updater scheduler err: %s", err)
-    }
+	if _, err := scheduler.Every(1).Day().At("08:00").Do(func() {
+		users.UpdateAllUserRanks()
+	}); err != nil {
+		log.Errorf("Rank updater scheduler err: %s", err)
+	}
 
 	scheduler.StartAsync()
 }

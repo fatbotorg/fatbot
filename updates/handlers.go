@@ -17,7 +17,6 @@ func (update CommandUpdate) handle() error {
 	return nil
 }
 
-
 func (update UnknownGroupUpdate) handle() error {
 	bot := update.Bot
 	chatId := update.Update.FromChat().ID
