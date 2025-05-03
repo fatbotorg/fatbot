@@ -58,14 +58,6 @@ func InitDB() error {
 	return nil
 }
 
-func (user *User) IsCurrentlyBanned() bool {
-	if len(user.Events) == 0 {
-		return false
-	}
-	lastEvent := user.Events[len(user.Events)-1]
-	return lastEvent.Event == BanEventType
-}
-
 func GetRankByName(name string) (Rank, bool) {
 	for _, rank := range Ranks {
 		if rank.Name == name {
