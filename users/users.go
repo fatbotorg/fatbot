@@ -96,7 +96,7 @@ func (user *User) UpdateRankIfNeeded() error {
 		return err
 	}
 
-	log.Infof("Start Rank Calculation for User %s (ID: %d)", user.GetName(), user.ID)
+	log.Debugf("Start Rank Calculation for User %s (ID: %d)", user.GetName(), user.ID)
 
 	// Identify if the user had a Ban followed by a Rejoin
 	var lastBan *Event
@@ -117,7 +117,7 @@ func (user *User) UpdateRankIfNeeded() error {
 
 	// If there is a Rejoin after a Ban, reset RankUpdatedAt to the Rejoin date
 	if lastBan != nil && lastRejoin != nil && lastRejoin.CreatedAt.After(lastBan.CreatedAt) {
-		log.Infof("User %s has rejoined after ban. Resetting RankUpdatedAt to rejoin date: %s", user.GetName(), lastRejoin.CreatedAt.Format("2006-01-02"))
+		log.Debugf("User %s has rejoined after ban. Resetting RankUpdatedAt to rejoin date: %s", user.GetName(), lastRejoin.CreatedAt.Format("2006-01-02"))
 		user.RankUpdatedAt = &lastRejoin.CreatedAt
 		if err := db.DBCon.Save(&user).Error; err != nil {
 			return err
@@ -142,14 +142,14 @@ func (user *User) UpdateRankIfNeeded() error {
 
 	if lastBan != nil && (lastRejoin == nil || lastRejoin.CreatedAt.Before(lastBan.CreatedAt)) {
 		// User is banned and has not rejoined yet -> only MinDays are counted
-		log.Infof("User %s is currently banned. Using MinDays for effective days: %d", user.GetName(), currentRank.MinDays)
+		log.Debugf("User %s is currently banned. Using MinDays for effective days: %d", user.GetName(), currentRank.MinDays)
 		effectiveDays = currentRank.MinDays
 	} else {
 		// Normal case: user is active -> calculate days since RankUpdatedAt
 		effectiveDays = int(time.Since(*user.RankUpdatedAt).Hours() / 24)
 	}
 
-	log.Infof("Effective days for user %s: %d", user.GetName(), effectiveDays)
+	log.Debugf("Effective days for user %s: %d", user.GetName(), effectiveDays)
 
 	promoted := false
 
@@ -157,12 +157,12 @@ func (user *User) UpdateRankIfNeeded() error {
 	for {
 		nextRank := GetNextRank(currentRank)
 		if nextRank == nil {
-			log.Infof("User %s already has the highest rank '%s'", user.GetName(), user.RankName)
+			log.Debugf("User %s already has the highest rank '%s'", user.GetName(), user.RankName)
 			break
 		}
 
 		daysNeededForNextRank := nextRank.MinDays - currentRank.MinDays
-		log.Infof("Days needed to go from '%s' to '%s': %d days", currentRank.Name, nextRank.Name, daysNeededForNextRank)
+		log.Debugf("Days needed to go from '%s' to '%s': %d days", currentRank.Name, nextRank.Name, daysNeededForNextRank)
 
 		if effectiveDays >= daysNeededForNextRank {
 			log.Infof("Promoting user %s from '%s' to '%s'", user.GetName(), currentRank.Name, nextRank.Name)
@@ -172,7 +172,7 @@ func (user *User) UpdateRankIfNeeded() error {
 			effectiveDays -= daysNeededForNextRank
 			promoted = true
 
-			log.Infof("After promotion, effective days remaining for user %s: %d", user.GetName(), effectiveDays)
+			log.Debugf("After promotion, effective days remaining for user %s: %d", user.GetName(), effectiveDays)
 
 		} else {
 			break
@@ -187,7 +187,7 @@ func (user *User) UpdateRankIfNeeded() error {
 		}
 		log.Infof("User %s rank updated successfully", user.GetName())
 	} else {
-		log.Infof("No rank change needed for user %s", user.GetName())
+		log.Debugf("No rank change needed for user %s", user.GetName())
 	}
 
 	return nil
