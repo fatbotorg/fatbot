@@ -77,11 +77,11 @@ func GetRankByName(name string) (Rank, bool) {
 
 func GetNextRank(current Rank) (Rank, bool) {
 	for i, rank := range Ranks {
-	    if rank.Name == current.Name && i+1 < len(Ranks) {
-		    return Ranks[i+1], true
-        }
-    }
-    return Rank{}, false
+		if rank.Name == current.Name && i+1 < len(Ranks) {
+			return Ranks[i+1], true
+		}
+	}
+	return Rank{}, false
 }
 
 func (user *User) UpdateRankIfNeeded() error {
@@ -157,8 +157,8 @@ func (user *User) UpdateRankIfNeeded() error {
 	for {
 		nextRank, ok := GetNextRank(*currentRank)
 		if !ok {
-		    log.Debugf("User %s already has the highest rank '%s'", user.GetName(), currentRank.Name)
-		    break
+			log.Debugf("User %s already has the highest rank '%s'", user.GetName(), currentRank.Name)
+			break
 		}
 
 		daysNeededForNextRank := nextRank.MinDays - currentRank.MinDays
