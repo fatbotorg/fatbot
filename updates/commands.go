@@ -176,7 +176,7 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 			// Get rank status
 			rankInfo, err := createRankStatusMessage(&user)
 			if err != nil {
-				rankInfo = "Could not retrieve rank info."
+				rankInfo = ""
 			}
 
 			groupStatus := createStatusMessage(user, chatId, msg).Text
