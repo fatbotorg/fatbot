@@ -176,8 +176,6 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 			// Get rank status
 			rankInfo, err := createRankStatusMessage(&user)
 			if err != nil {
-				log.Error(err)
-				sentry.CaptureException(err)
 				rankInfo = "Could not retrieve rank info."
 			}
 
