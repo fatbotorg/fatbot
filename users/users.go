@@ -5,6 +5,7 @@ import (
 	"fatbot/db"
 	"fmt"
 	"time"
+	"fatbot/ranks"
 
 	"github.com/charmbracelet/log"
 	"github.com/getsentry/sentry-go"
@@ -58,23 +59,6 @@ func InitDB() error {
 	return nil
 }
 
-func GetRankByName(name string) (Rank, bool) {
-	for _, rank := range Ranks {
-		if rank.Name == name {
-			return rank, true
-		}
-	}
-	return Rank{}, false
-}
-
-func GetNextRank(current Rank) (Rank, bool) {
-	for i, rank := range Ranks {
-		if rank.Name == current.Name && i+1 < len(Ranks) {
-			return Ranks[i+1], true
-		}
-	}
-	return Rank{}, false
-}
 
 func (user *User) UpdateRankIfNeeded() error {
 	// Load user events (Ban, Rejoin, etc.)
@@ -123,10 +107,11 @@ func (user *User) UpdateRankIfNeeded() error {
 	}
 
 	// Find the current rank
-	currentRank, ok := GetRankByName(user.RankName)
+	currentRank, ok := ranks.GetRankByName(user.RankName)
+
 	if !ok {
 		log.Warnf("Unknown current rank '%s' for user %s. Defaulting to first rank.", user.RankName, user.GetName())
-		currentRank = Ranks[0]
+		currentRank = ranks.GetRanks()[0]
 	}
 
 	// Calculate effective days
@@ -147,7 +132,7 @@ func (user *User) UpdateRankIfNeeded() error {
 
 	// Promote the user through ranks if enough days have passed
 	for {
-		nextRank, ok := GetNextRank(*currentRank)
+		nextRank, ok := ranks.GetNextRank(*currentRank)
 		if !ok {
 			log.Debugf("User %s already has the highest rank '%s'", user.GetName(), currentRank.Name)
 			break
@@ -201,7 +186,7 @@ func (user *User) EnsureRankUpdatedAtExists() error {
 		// Found a rejoin event -> use its date
 		user.RankUpdatedAt = &lastRejoin.CreatedAt
 		if user.RankName == "" {
-			user.RankName = Ranks[0].Name
+			user.RankName = ranks.GetRanks()[0].Name
 		}
 		if err := db.DBCon.Save(&user).Error; err != nil {
 			log.Errorf("Failed to save RankUpdatedAt after rejoin for user %s: %v", user.GetName(), err)
@@ -225,7 +210,7 @@ func (user *User) EnsureRankUpdatedAtExists() error {
 
 	user.RankUpdatedAt = &firstWorkout.CreatedAt
 	if user.RankName == "" {
-		user.RankName = Ranks[0].Name
+		user.RankName = ranks.GetRanks()[0].Name
 	}
 	if err := db.DBCon.Save(&user).Error; err != nil {
 		log.Errorf("Failed to save RankUpdatedAt after workout for user %s: %v", user.GetName(), err)
@@ -612,6 +597,10 @@ func (user User) Rejoin(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	if err := user.UpdateOnProbation(true); err != nil {
 		return fmt.Errorf("Issue updating probation %s: %s", user.GetName(), err)
 	}
+	if err := user.RegisterRejoinEvent(); err != nil {
+		log.Errorf("Error while registering rejoin event: %s", err)
+	}
+
 	return nil
 }
 

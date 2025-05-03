@@ -6,7 +6,7 @@ type Rank struct {
 	MinDays int
 }
 
-var Ranks = []Rank{
+var defaultRanks = []Rank{
 	{"NonExistent", "🕳️", 0},
 	{"Disastrous", "🚨", 36},
 	{"Wretched", "", 73},
@@ -28,4 +28,28 @@ var Ranks = []Rank{
 	{"Magical", "🤙", 657},
 	{"Utopian", "🧞", 693},
 	{"Divine", "🕐", 730},
+}
+
+func GetRanks() []Rank {
+	result := make([]Rank, len(defaultRanks))
+	copy(result, defaultRanks)
+	return result
+}
+
+func GetRankByName(name string) (Rank, bool) {
+	for _, rank := range defaultRanks {
+		if rank.Name == name {
+			return rank, true
+		}
+	}
+	return Rank{}, false
+}
+
+func GetNextRank(current Rank) (Rank, bool) {
+	for i, rank := range defaultRanks {
+		if rank.Name == current.Name && i+1 < len(defaultRanks) {
+			return defaultRanks[i+1], true
+		}
+	}
+	return Rank{}, false
 }
