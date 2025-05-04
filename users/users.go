@@ -5,7 +5,6 @@ import (
 	"fatbot/db"
 	"fmt"
 	"time"
-	"fatbot/ranks"
 
 	"github.com/charmbracelet/log"
 	"github.com/getsentry/sentry-go"
@@ -61,96 +60,51 @@ func InitDB() error {
 
 
 func (user *User) UpdateRankIfNeeded() error {
-	// Load user events (Ban, Rejoin, etc.)
-	if err := user.LoadEvents(); err != nil {
-		log.Warnf("Could not load events for user %s: %v", user.GetName(), err)
-		return err
+	// Skip rank update for inactive users
+	if !user.Active {
+    	log.SetLevel(log.DebugLevel)
+		log.Debugf("User %s is inactive. Skipping rank update.", user.GetName())
+		return nil
 	}
 
-	// Make sure user has a FirstWorkout recorded
+	// Make sure RankUpdatedAt exists
 	if err := user.EnsureRankUpdatedAtExists(); err != nil {
 		return err
 	}
 
 	log.Debugf("Start Rank Calculation for User %s (ID: %d)", user.GetName(), user.ID)
 
-	// Identify if the user had a Ban followed by a Rejoin
-	var lastBan *Event
-	var lastRejoin *Event
-
-	for i := len(user.Events) - 1; i >= 0; i-- {
-		event := user.Events[i]
-		if event.Event == BanEventType && lastBan == nil {
-			lastBan = &event
-		}
-		if event.Event == RejoinedGroupEventType && lastRejoin == nil {
-			lastRejoin = &event
-		}
-		if lastBan != nil && lastRejoin != nil {
-			break
-		}
-	}
-
-	// If there is a Rejoin after a Ban, reset RankUpdatedAt to the Rejoin date
-	if lastBan != nil && lastRejoin != nil && lastRejoin.CreatedAt.After(lastBan.CreatedAt) {
-		log.Debugf("User %s has rejoined after ban. Resetting RankUpdatedAt to rejoin date: %s", user.GetName(), lastRejoin.CreatedAt.Format("2006-01-02"))
-		user.RankUpdatedAt = &lastRejoin.CreatedAt
-		if err := db.DBCon.Save(&user).Error; err != nil {
-			return err
-		}
-	}
-
-	// Ensure RankUpdatedAt exists
-	if user.RankUpdatedAt == nil {
-		log.Warnf("User %s has no RankUpdatedAt – cannot proceed with rank calculation.", user.GetName())
-		return nil
-	}
-
 	// Find the current rank
-	currentRank, ok := ranks.GetRankByName(user.RankName)
-
+	currentRank, ok := GetRankByName(user.RankName)
 	if !ok {
 		log.Warnf("Unknown current rank '%s' for user %s. Defaulting to first rank.", user.RankName, user.GetName())
-		currentRank = ranks.GetRanks()[0]
+		currentRank = GetRanks()[0]
 	}
 
-	// Calculate effective days
-	var effectiveDays int
-
-	if lastBan != nil && (lastRejoin == nil || lastRejoin.CreatedAt.Before(lastBan.CreatedAt)) {
-		// User is banned and has not rejoined yet -> only MinDays are counted
-		log.Debugf("User %s is currently banned. Using MinDays for effective days: %d", user.GetName(), currentRank.MinDays)
-		effectiveDays = currentRank.MinDays
-	} else {
-		// Normal case: user is active -> calculate days since RankUpdatedAt
-		effectiveDays = int(time.Since(*user.RankUpdatedAt).Hours() / 24)
-	}
-
+	// Calculate effective days since RankUpdatedAt
+	effectiveDays := int(time.Since(*user.RankUpdatedAt).Hours() / 24)
 	log.Debugf("Effective days for user %s: %d", user.GetName(), effectiveDays)
 
 	promoted := false
 
 	// Promote the user through ranks if enough days have passed
 	for {
-		nextRank, ok := ranks.GetNextRank(*currentRank)
+		nextRank, ok := GetNextRank(currentRank)
 		if !ok {
 			log.Debugf("User %s already has the highest rank '%s'", user.GetName(), currentRank.Name)
 			break
 		}
 
-		daysNeededForNextRank := nextRank.MinDays - currentRank.MinDays
-		log.Debugf("Days needed to go from '%s' to '%s': %d days", currentRank.Name, nextRank.Name, daysNeededForNextRank)
+		daysNeeded := nextRank.MinDays - currentRank.MinDays
+		log.Debugf("Days needed to go from '%s' to '%s': %d", currentRank.Name, nextRank.Name, daysNeeded)
 
-		if effectiveDays >= daysNeededForNextRank {
+		if effectiveDays >= daysNeeded {
 			log.Infof("Promoting user %s from '%s' to '%s'", user.GetName(), currentRank.Name, nextRank.Name)
 			user.RankName = nextRank.Name
 			user.RankUpdatedAt = ptrTimeNow()
 			currentRank = nextRank
-			effectiveDays -= daysNeededForNextRank
+			effectiveDays -= daysNeeded
 			promoted = true
-
-			log.Debugf("After promotion, effective days remaining for user %s: %d", user.GetName(), effectiveDays)
-
 		} else {
 			break
 		}
@@ -170,6 +124,7 @@ func (user *User) UpdateRankIfNeeded() error {
 	return nil
 }
 
+
 func (user *User) EnsureRankUpdatedAtExists() error {
 	if user.RankUpdatedAt != nil {
 		return nil
@@ -186,7 +141,7 @@ func (user *User) EnsureRankUpdatedAtExists() error {
 		// Found a rejoin event -> use its date
 		user.RankUpdatedAt = &lastRejoin.CreatedAt
 		if user.RankName == "" {
-			user.RankName = ranks.GetRanks()[0].Name
+			user.RankName = GetRanks()[0].Name
 		}
 		if err := db.DBCon.Save(&user).Error; err != nil {
 			log.Errorf("Failed to save RankUpdatedAt after rejoin for user %s: %v", user.GetName(), err)
@@ -210,7 +165,7 @@ func (user *User) EnsureRankUpdatedAtExists() error {
 
 	user.RankUpdatedAt = &firstWorkout.CreatedAt
 	if user.RankName == "" {
-		user.RankName = ranks.GetRanks()[0].Name
+		user.RankName = GetRanks()[0].Name
 	}
 	if err := db.DBCon.Save(&user).Error; err != nil {
 		log.Errorf("Failed to save RankUpdatedAt after workout for user %s: %v", user.GetName(), err)
@@ -223,7 +178,7 @@ func (user *User) EnsureRankUpdatedAtExists() error {
 
 // 🔄 Run rank update for all users in chatId 0
 func UpdateAllUserRanks() {
-	for _, user := range GetUsers(0) {
+	for _, user := range GetUsers(-1) {
 		err := user.UpdateRankIfNeeded()
 		if err != nil {
 			log.Errorf("Failed to update rank for user %s: %v", user.GetName(), err)

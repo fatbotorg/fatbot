@@ -120,15 +120,15 @@ func createRankStatusMessage(user *users.User) (string, error) {
 		return "No workout history yet.", nil
 	}
 
-	currentRank := users.GetRankByName(user.RankName)
-	if currentRank == nil {
-		return "Unknown rank.", nil
-	}
+	currentRank, ok := users.GetRankByName(user.RankName)
+    if !ok {
+        return "Unknown rank.", nil
+    }
 
-	nextRank := users.GetNextRank(currentRank)
-	if nextRank == nil {
-		return fmt.Sprintf("Current Rank: %s (highest rank!)", user.RankName), nil
-	}
+    nextRank, ok := users.GetNextRank(currentRank)
+    if !ok {
+        return fmt.Sprintf("Current Rank: %s (highest rank!)", user.RankName), nil
+    }
 
 	daysSinceUpdate := int(time.Since(*user.RankUpdatedAt).Hours() / 24)
 	daysNeededForNextRank := nextRank.MinDays - currentRank.MinDays
