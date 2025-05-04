@@ -58,11 +58,10 @@ func InitDB() error {
 	return nil
 }
 
-
 func (user *User) UpdateRankIfNeeded() error {
 	// Skip rank update for inactive users
 	if !user.Active {
-    	log.SetLevel(log.DebugLevel)
+		log.SetLevel(log.DebugLevel)
 		log.Debugf("User %s is inactive. Skipping rank update.", user.GetName())
 		return nil
 	}
@@ -72,6 +71,11 @@ func (user *User) UpdateRankIfNeeded() error {
 		return err
 	}
 
+	if user.RankUpdatedAt == nil {
+		log.Debugf("User %s has no RankUpdatedAt – skipping rank calculation.", user.GetName())
+		return nil
+	}
+
 	log.Debugf("Start Rank Calculation for User %s (ID: %d)", user.GetName(), user.ID)
 
 	// Find the current rank
@@ -79,6 +83,13 @@ func (user *User) UpdateRankIfNeeded() error {
 	if !ok {
 		log.Warnf("Unknown current rank '%s' for user %s. Defaulting to first rank.", user.RankName, user.GetName())
 		currentRank = GetRanks()[0]
+
+		// Save default rank to the user if missing
+		user.RankName = currentRank.Name
+		if err := db.DBCon.Save(&user).Error; err != nil {
+			log.Errorf("Failed to save default rank for user %s: %v", user.GetName(), err)
+			return err
+		}
 	}
 
 	// Calculate effective days since RankUpdatedAt
@@ -124,7 +135,6 @@ func (user *User) UpdateRankIfNeeded() error {
 	return nil
 }
 
-
 func (user *User) EnsureRankUpdatedAtExists() error {
 	if user.RankUpdatedAt != nil {
 		return nil
@@ -159,7 +169,6 @@ func (user *User) EnsureRankUpdatedAtExists() error {
 		First(&firstWorkout).Error
 
 	if err != nil {
-		log.Warnf("User %s has no workouts to set RankUpdatedAt", user.GetName())
 		return nil // No workouts either
 	}
 
@@ -543,15 +552,28 @@ func (user User) Rejoin(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 			return banErr
 		}
 	}
+
 	if err := user.InviteExistingUser(bot); err != nil {
 		return fmt.Errorf("Issue with inviting %s: %s", user.GetName(), err)
 	}
+
 	if err := user.UpdateActive(true); err != nil {
 		return fmt.Errorf("Issue updating active %s: %s", user.GetName(), err)
 	}
+
+	// 🆕 Update RankUpdatedAt on rejoin
+	now := time.Now()
+	user.RankUpdatedAt = &now
+
+	if err := db.DBCon.Save(&user).Error; err != nil {
+		return fmt.Errorf("failed to update RankUpdatedAt on rejoin: %w", err)
+	}
+	log.Debugf("User %s rejoined – RankUpdatedAt set to %s", user.GetName(), now.Format("2006-01-02"))
+
 	if err := user.UpdateOnProbation(true); err != nil {
 		return fmt.Errorf("Issue updating probation %s: %s", user.GetName(), err)
 	}
+
 	if err := user.RegisterRejoinEvent(); err != nil {
 		log.Errorf("Error while registering rejoin event: %s", err)
 	}
