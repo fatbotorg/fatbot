@@ -58,14 +58,34 @@ func InitDB() error {
 	return nil
 }
 
-func (user *User) UpdateRankIfNeeded() error {
-	// Skip rank update for inactive users
-	if !user.Active {
-		log.SetLevel(log.DebugLevel)
-		log.Debugf("User %s is inactive. Skipping rank update.", user.GetName())
-		return nil
+func (user *User) GetLastRejoinEvent() (*Event, error) {
+	var lastRejoin Event
+	err := db.DBCon.
+		Where("user_id = ? AND event = ?", user.ID, RejoinedGroupEventType).
+		Order("created_at DESC").
+		First(&lastRejoin).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return &lastRejoin, nil
+}
+
+func (user *User) GetFirstWorkout() (*Workout, error) {
+	var workout Workout
+	err := db.DBCon.
+		Where("user_id = ? AND deleted_at IS NULL", user.ID).
+		Order("created_at ASC").
+		First(&workout).Error
+
+	if err != nil {
+		return nil, err
 	}
 
+	return &workout, nil
+}
+
+func (user *User) UpdateRankIfNeeded() error {
 	// Make sure RankUpdatedAt exists
 	if err := user.EnsureRankUpdatedAtExists(); err != nil {
 		return err
@@ -96,59 +116,41 @@ func (user *User) UpdateRankIfNeeded() error {
 	effectiveDays := int(time.Since(*user.RankUpdatedAt).Hours() / 24)
 	log.Debugf("Effective days for user %s: %d", user.GetName(), effectiveDays)
 
-	promoted := false
-
-	// Promote the user through ranks if enough days have passed
-	for {
-		nextRank, ok := GetNextRank(currentRank)
-		if !ok {
-			log.Debugf("User %s already has the highest rank '%s'", user.GetName(), currentRank.Name)
-			break
-		}
-
-		daysNeeded := nextRank.MinDays - currentRank.MinDays
-		log.Debugf("Days needed to go from '%s' to '%s': %d", currentRank.Name, nextRank.Name, daysNeeded)
-
-		if effectiveDays >= daysNeeded {
-			log.Infof("Promoting user %s from '%s' to '%s'", user.GetName(), currentRank.Name, nextRank.Name)
-			user.RankName = nextRank.Name
-			user.RankUpdatedAt = ptrTimeNow()
-			currentRank = nextRank
-			effectiveDays -= daysNeeded
-			promoted = true
-		} else {
-			break
-		}
+	// Promote the user one rank if enough days have passed
+	nextRank, ok := GetNextRank(currentRank)
+	if !ok {
+		log.Debugf("User %s already has the highest rank '%s'", user.GetName(), currentRank.Name)
+		return nil
 	}
 
-	// Save the user only if a promotion happened
-	if promoted {
+	daysNeeded := nextRank.MinDays - currentRank.MinDays
+	log.Debugf("Days needed to go from '%s' to '%s': %d", currentRank.Name, nextRank.Name, daysNeeded)
+
+	if effectiveDays >= daysNeeded {
+		log.Infof("Promoting user %s from '%s' to '%s'", user.GetName(), currentRank.Name, nextRank.Name)
+		user.RankName = nextRank.Name
+		user.RankUpdatedAt = ptrTimeNow()
 		if err := db.DBCon.Save(&user).Error; err != nil {
 			log.Errorf("Failed to save promoted user %s: %v", user.GetName(), err)
 			return err
 		}
 		log.Debugf("User %s rank updated successfully", user.GetName())
 	} else {
-		log.Debugf("No rank change needed for user %s", user.GetName())
+		log.Debugf("User %s doesn't have enough days for promotion", user.GetName())
 	}
 
 	return nil
 }
+
 
 func (user *User) EnsureRankUpdatedAtExists() error {
 	if user.RankUpdatedAt != nil {
 		return nil
 	}
 
-	// Try to find the latest rejoin event
-	var lastRejoin Event
-	err := db.DBCon.
-		Where("user_id = ? AND event = ?", user.ID, RejoinedGroupEventType).
-		Order("created_at DESC").
-		First(&lastRejoin).Error
-
+	// Try to get the last rejoin event
+	lastRejoin, err := user.GetLastRejoinEvent()
 	if err == nil {
-		// Found a rejoin event -> use its date
 		user.RankUpdatedAt = &lastRejoin.CreatedAt
 		if user.RankName == "" {
 			user.RankName = GetRanks()[0].Name
@@ -162,12 +164,7 @@ func (user *User) EnsureRankUpdatedAtExists() error {
 	}
 
 	// No rejoin found, fallback to first workout
-	var firstWorkout Workout
-	err = db.DBCon.
-		Where("user_id = ? AND deleted_at IS NULL", user.ID).
-		Order("created_at ASC").
-		First(&firstWorkout).Error
-
+	firstWorkout, err := user.GetFirstWorkout()
 	if err != nil {
 		return nil // No workouts either
 	}
@@ -185,9 +182,10 @@ func (user *User) EnsureRankUpdatedAtExists() error {
 	return nil
 }
 
+
 // 🔄 Run rank update for all users in chatId 0
 func UpdateAllUserRanks() {
-	for _, user := range GetUsers(-1) {
+	for _, user := range GetUsers(0) {
 		err := user.UpdateRankIfNeeded()
 		if err != nil {
 			log.Errorf("Failed to update rank for user %s: %v", user.GetName(), err)
