@@ -197,7 +197,6 @@ func (user *User) CreateDummyWorkout() {
 			log.Error("failed to create dummy workout", err, "user", user.GetName())
 		}
 	}
-	return
 }
 
 func (user *User) UpdateWorkout(update tgbotapi.Update, lastWorkout Workout) (Workout, error) {
