@@ -70,6 +70,12 @@ type ChangeAdminsMenu struct {
 type RemoveUserMenu struct {
 	MenuBase
 }
+type UpdateRanksMenu struct {
+	MenuBase
+}
+type ManageImmunityMenu struct {
+	MenuBase
+}
 
 type Menu interface {
 	CreateMenu(userId int64) MenuBase
@@ -88,6 +94,8 @@ var menuMap = map[string]Menu{
 	"showadmins":        ShowAdminsMenu{},
 	"editadmins":        ChangeAdminsMenu{},
 	"removeuser":        RemoveUserMenu{},
+	"updateranks":       UpdateRanksMenu{},
+	"manageimmunity":    ManageImmunityMenu{},
 }
 
 func (menu ManageAdminsMenu) CreateMenu(userId int64) MenuBase {
@@ -214,27 +222,31 @@ func (menu ShowUsersMenu) CreateMenu(userId int64) MenuBase {
 func (menu RemoveUserMenu) CreateMenu(userId int64) MenuBase {
 	chooseGroup := groupStepBase
 	chooseGroup.Keyboard = createGroupsKeyboard(userId)
-
-	// Create a custom step for remove user that shows both active and inactive users
-	allUsersStep := userStep
-	allUsersStep.Name = "chooseanyuser"
-	allUsersStep.Message = "Choose User (Active or Inactive)"
-
-	confirmStep := Step{
-		Name:     "confirm",
-		Kind:     KeyboardStepKind,
-		Message:  "Are you sure you want to remove this user? This action cannot be undone.",
-		Keyboard: createConfirmationKeyboard(),
-		Result:   OptionResult,
+	return MenuBase{
+		Name:  "removeuser",
+		Label: "Remove User",
+		Steps: []Step{chooseGroup, userStep},
 	}
+}
 
-	themenu := MenuBase{
-		Name:           "removeuser",
-		Label:          "Remove User",
-		Steps:          []Step{chooseGroup, allUsersStep, confirmStep},
+func (menu UpdateRanksMenu) CreateMenu(userId int64) MenuBase {
+	return MenuBase{
+		Name:           "updateranks",
+		Label:          "Update All Ranks",
+		Steps:          []Step{},
 		SuperAdminOnly: true,
 	}
-	return themenu
+}
+
+func (menu ManageImmunityMenu) CreateMenu(userId int64) MenuBase {
+	chooseGroup := groupStepBase
+	chooseGroup.Keyboard = createGroupsKeyboard(userId)
+	return MenuBase{
+		Name:           "manageimmunity",
+		Label:          "Manage User Immunity",
+		Steps:          []Step{chooseGroup, userStep},
+		SuperAdminOnly: true,
+	}
 }
 
 func (step *Step) PopulateKeyboard(data int64) {
