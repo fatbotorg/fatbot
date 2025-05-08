@@ -130,7 +130,7 @@ func (user *User) UpdateRankIfNeeded() error {
 			}
 		} else {
 			log.Warnf("Unknown current rank '%s' for user %s. Defaulting to first rank.", user.RankName, user.GetName())
-			currentRank = GetRanks()[0]
+			currentRank = ranks[0]
 			user.RankName = currentRank.Name
 			if err := db.DBCon.Save(&user).Error; err != nil {
 				log.Errorf("Failed to save default rank for user %s: %v", user.GetName(), err)
