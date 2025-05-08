@@ -107,9 +107,11 @@ func (user *User) UpdateRankIfNeeded() error {
 	if !ok {
 		// If no rank name but we have RankUpdatedAt, calculate the appropriate rank based on days
 		if user.RankName == "" {
+			// Cache ranks to avoid repeated function calls
+			ranks := GetRanks()
 			// Find the highest rank that matches the days threshold
-			for i := len(GetRanks()) - 1; i >= 0; i-- {
-				rank := GetRanks()[i]
+			for i := len(ranks) - 1; i >= 0; i-- {
+				rank := ranks[i]
 				if effectiveDays >= rank.MinDays {
 					currentRank = rank
 					ok = true
@@ -118,7 +120,7 @@ func (user *User) UpdateRankIfNeeded() error {
 			}
 			if !ok {
 				// If no rank matches, use the first rank
-				currentRank = GetRanks()[0]
+				currentRank = ranks[0]
 			}
 			log.Infof("Calculated initial rank '%s' for user %s based on %d days", currentRank.Name, user.GetName(), effectiveDays)
 			user.RankName = currentRank.Name
