@@ -310,7 +310,7 @@ func (menu ManageImmunityMenu) PerformAction(params ActionData) error {
 		return err
 	}
 	// Toggle immunity
-	user.SetImmunity(!user.Immuned)
+	user.SetImmunity(true)
 	msg := tgbotapi.NewMessage(params.Update.FromChat().ID, fmt.Sprintf("User %s immunity has been %s", user.GetName(), map[bool]string{true: "enabled", false: "disabled"}[user.Immuned]))
 	params.Bot.Send(msg)
 	return nil
