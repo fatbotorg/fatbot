@@ -98,23 +98,44 @@ func (user *User) UpdateRankIfNeeded() error {
 
 	log.Debugf("Start Rank Calculation for User %s (ID: %d)", user.GetName(), user.ID)
 
-	// Find the current rank
-	currentRank, ok := GetRankByName(user.RankName)
-	if !ok {
-		log.Warnf("Unknown current rank '%s' for user %s. Defaulting to first rank.", user.RankName, user.GetName())
-		currentRank = GetRanks()[0]
-
-		// Save default rank to the user if missing
-		user.RankName = currentRank.Name
-		if err := db.DBCon.Save(&user).Error; err != nil {
-			log.Errorf("Failed to save default rank for user %s: %v", user.GetName(), err)
-			return err
-		}
-	}
-
 	// Calculate effective days since RankUpdatedAt
 	effectiveDays := int(time.Since(*user.RankUpdatedAt).Hours() / 24)
 	log.Debugf("Effective days for user %s: %d", user.GetName(), effectiveDays)
+
+	// Find the current rank
+	currentRank, ok := GetRankByName(user.RankName)
+	if !ok {
+		// If no rank name but we have RankUpdatedAt, calculate the appropriate rank based on days
+		if user.RankName == "" {
+			// Find the highest rank that matches the days threshold
+			for i := len(GetRanks()) - 1; i >= 0; i-- {
+				rank := GetRanks()[i]
+				if effectiveDays >= rank.MinDays {
+					currentRank = rank
+					ok = true
+					break
+				}
+			}
+			if !ok {
+				// If no rank matches, use the first rank
+				currentRank = GetRanks()[0]
+			}
+			log.Infof("Calculated initial rank '%s' for user %s based on %d days", currentRank.Name, user.GetName(), effectiveDays)
+			user.RankName = currentRank.Name
+			if err := db.DBCon.Save(&user).Error; err != nil {
+				log.Errorf("Failed to save calculated rank for user %s: %v", user.GetName(), err)
+				return err
+			}
+		} else {
+			log.Warnf("Unknown current rank '%s' for user %s. Defaulting to first rank.", user.RankName, user.GetName())
+			currentRank = GetRanks()[0]
+			user.RankName = currentRank.Name
+			if err := db.DBCon.Save(&user).Error; err != nil {
+				log.Errorf("Failed to save default rank for user %s: %v", user.GetName(), err)
+				return err
+			}
+		}
+	}
 
 	// Promote the user one rank if enough days have passed
 	nextRank, ok := GetNextRank(currentRank)
@@ -141,7 +162,6 @@ func (user *User) UpdateRankIfNeeded() error {
 
 	return nil
 }
-
 
 func (user *User) EnsureRankUpdatedAtExists() error {
 	if user.RankUpdatedAt != nil {
@@ -181,7 +201,6 @@ func (user *User) EnsureRankUpdatedAtExists() error {
 	log.Infof("Initialized RankUpdatedAt for user %s to first workout date: %s", user.GetName(), firstWorkout.CreatedAt.Format("2006-01-02"))
 	return nil
 }
-
 
 // 🔄 Run rank update for all users in chatId 0
 func UpdateAllUserRanks() {
