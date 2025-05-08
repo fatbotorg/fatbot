@@ -245,10 +245,17 @@ func (menu RemoveUserMenu) CreateMenu(userId int64) MenuBase {
 }
 
 func (menu UpdateRanksMenu) CreateMenu(userId int64) MenuBase {
+	confirmStep := Step{
+		Name:     "confirm",
+		Kind:     KeyboardStepKind,
+		Message:  "Are you sure you want to update all ranks? This may take a while.",
+		Keyboard: createConfirmationKeyboard(),
+		Result:   OptionResult,
+	}
 	return MenuBase{
 		Name:           "updateranks",
 		Label:          "Update All Ranks",
-		Steps:          []Step{},
+		Steps:          []Step{confirmStep},
 		SuperAdminOnly: true,
 	}
 }
