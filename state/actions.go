@@ -288,6 +288,30 @@ func (menu RemoveUserMenu) PerformAction(params ActionData) error {
 			return err
 		}
 	}
+	return nil
+}
 
+func (menu UpdateRanksMenu) PerformAction(params ActionData) error {
+	defer DeleteStateEntry(params.State.ChatId)
+	users.UpdateAllUserRanks()
+	msg := tgbotapi.NewMessage(params.Update.FromChat().ID, "All user ranks have been updated.")
+	params.Bot.Send(msg)
+	return nil
+}
+
+func (menu ManageImmunityMenu) PerformAction(params ActionData) error {
+	defer DeleteStateEntry(params.State.ChatId)
+	telegramUserId, err := params.State.getTelegramUserId()
+	if err != nil {
+		return err
+	}
+	user, err := users.GetUserById(telegramUserId)
+	if err != nil {
+		return err
+	}
+	// Toggle immunity
+	user.SetImmunity(!user.Immuned)
+	msg := tgbotapi.NewMessage(params.Update.FromChat().ID, fmt.Sprintf("User %s immunity has been %s", user.GetName(), map[bool]string{true: "enabled", false: "disabled"}[user.Immuned]))
+	params.Bot.Send(msg)
 	return nil
 }
