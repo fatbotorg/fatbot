@@ -115,17 +115,56 @@ func handleStatsCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	return msg
 }
 
+func createRankStatusMessage(user *users.User) (string, error) {
+	if user.RankUpdatedAt == nil {
+		return "No workout history yet.", nil
+	}
+
+	currentRank, ok := users.GetRankByName(user.RankName)
+    if !ok {
+        return "Unknown rank.", nil
+    }
+
+    nextRank, ok := users.GetNextRank(currentRank)
+    if !ok {
+        return fmt.Sprintf("Current Rank: %s (highest rank!)", user.RankName), nil
+    }
+
+	daysSinceUpdate := int(time.Since(*user.RankUpdatedAt).Hours() / 24)
+	daysNeededForNextRank := nextRank.MinDays - currentRank.MinDays
+
+	if daysNeededForNextRank <= 0 {
+		return fmt.Sprintf("Current Rank: %s (ready for next rank!)", user.RankName), nil
+	}
+
+	remainingDays := daysNeededForNextRank - daysSinceUpdate
+	if remainingDays < 0 {
+		remainingDays = 0
+	}
+
+	return fmt.Sprintf(
+		"Current Rank: %s\nDays until next rank (%s): %d",
+		currentRank.Name,
+		nextRank.Name,
+		remainingDays,
+	), nil
+}
+
 func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	var user users.User
 	var err error
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+
 	if user, err = users.GetUserFromMessage(update.Message); err != nil {
 		log.Error(err)
 		sentry.CaptureException(err)
+		msg.Text = "Failed to load user."
+		return msg
 	} else if user.ID == 0 {
-		msg.Text = "Unregistered user"
+		msg.Text = "Unregistered user."
 		return msg
 	}
+
 	if chatIds, err := user.GetChatIds(); err != nil {
 		log.Error(err)
 		sentry.CaptureException(err)
@@ -133,13 +172,20 @@ func handleStatusCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	} else {
 		for _, chatId := range chatIds {
 			group, _ := users.GetGroup(chatId)
-			msg.Text = msg.Text +
-				"\n\n" +
-				fmt.Sprint(group.Title) +
-				": " +
-				createStatusMessage(user, chatId, msg).Text
+
+			// Get rank status
+			rankInfo, err := createRankStatusMessage(&user)
+			if err != nil {
+				rankInfo = ""
+			}
+
+			groupStatus := createStatusMessage(user, chatId, msg).Text
+
+			msg.Text += "\n\n" +
+				fmt.Sprintf("%s: %s\n%s", group.Title, rankInfo, groupStatus)
 		}
 	}
+
 	return msg
 }
 

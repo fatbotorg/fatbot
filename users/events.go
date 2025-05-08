@@ -14,6 +14,7 @@ const (
 	LastDayNotificationEventType eventType = "lastDayNotification"
 	WeeklyLeaderEventType        eventType = "weeklyLeader"
 	WeeklyMessageRepliedType     eventType = "weeklyMessageReplied"
+	RejoinedGroupEventType       eventType = "rejoinedGroup" // New: user returned to the system
 )
 
 type Event struct {
@@ -55,6 +56,12 @@ func (user *User) RegisterWeeklyMessageRepliedEvent(groupId int64) error {
 	return user.registerEvent(WeeklyMessageRepliedType, groupId)
 }
 
+// Register a "rejoin" event (user rejoined the system)
+func (user *User) RegisterRejoinEvent() error {
+	return user.registerEvent(RejoinedGroupEventType, 0)
+}
+
+// Check if the user replied to the weekly message in a specific group in the last 7 days
 func (user *User) HasRepliedToWeeklyMessage(groupId int64) bool {
 	db := db.DBCon
 	var events []Event

@@ -24,10 +24,14 @@ type User struct {
 	IsAdmin        bool
 	OnProbation    bool
 	Immuned        bool
-	Workouts       []Workout
-	Events         []Event
-	Groups         []*Group `gorm:"many2many:user_groups;"`
-	GroupsAdmin    []*Group `gorm:"many2many:groups_admins;"`
+
+	RankName      string     // Current rank name (e.g., "Disastrous")
+	RankUpdatedAt *time.Time // Timestamp of last rank update
+
+	Workouts    []Workout
+	Events      []Event
+	Groups      []*Group `gorm:"many2many:user_groups;"`
+	GroupsAdmin []*Group `gorm:"many2many:groups_admins;"`
 }
 
 type Blacklist struct {
@@ -43,10 +47,150 @@ func (e *NoSuchUserError) Error() string {
 	return fmt.Sprintf("unknown user with id %d", e.userId)
 }
 
+func ptrTimeNow() *time.Time {
+	now := time.Now()
+	return &now
+}
+
 func InitDB() error {
 	db := db.DBCon
 	db.AutoMigrate(&User{}, &Group{}, &Workout{}, &Event{}, &Blacklist{})
 	return nil
+}
+
+func (user *User) GetLastRejoinEvent() (*Event, error) {
+	var lastRejoin Event
+	err := db.DBCon.
+		Where("user_id = ? AND event = ?", user.ID, RejoinedGroupEventType).
+		Order("created_at DESC").
+		First(&lastRejoin).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return &lastRejoin, nil
+}
+
+func (user *User) GetFirstWorkout() (*Workout, error) {
+	var workout Workout
+	err := db.DBCon.
+		Where("user_id = ? AND deleted_at IS NULL", user.ID).
+		Order("created_at ASC").
+		First(&workout).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &workout, nil
+}
+
+func (user *User) UpdateRankIfNeeded() error {
+	// Make sure RankUpdatedAt exists
+	if err := user.EnsureRankUpdatedAtExists(); err != nil {
+		return err
+	}
+
+	if user.RankUpdatedAt == nil {
+		log.Debugf("User %s has no RankUpdatedAt – skipping rank calculation.", user.GetName())
+		return nil
+	}
+
+	log.Debugf("Start Rank Calculation for User %s (ID: %d)", user.GetName(), user.ID)
+
+	// Find the current rank
+	currentRank, ok := GetRankByName(user.RankName)
+	if !ok {
+		log.Warnf("Unknown current rank '%s' for user %s. Defaulting to first rank.", user.RankName, user.GetName())
+		currentRank = GetRanks()[0]
+
+		// Save default rank to the user if missing
+		user.RankName = currentRank.Name
+		if err := db.DBCon.Save(&user).Error; err != nil {
+			log.Errorf("Failed to save default rank for user %s: %v", user.GetName(), err)
+			return err
+		}
+	}
+
+	// Calculate effective days since RankUpdatedAt
+	effectiveDays := int(time.Since(*user.RankUpdatedAt).Hours() / 24)
+	log.Debugf("Effective days for user %s: %d", user.GetName(), effectiveDays)
+
+	// Promote the user one rank if enough days have passed
+	nextRank, ok := GetNextRank(currentRank)
+	if !ok {
+		log.Debugf("User %s already has the highest rank '%s'", user.GetName(), currentRank.Name)
+		return nil
+	}
+
+	daysNeeded := nextRank.MinDays - currentRank.MinDays
+	log.Debugf("Days needed to go from '%s' to '%s': %d", currentRank.Name, nextRank.Name, daysNeeded)
+
+	if effectiveDays >= daysNeeded {
+		log.Infof("Promoting user %s from '%s' to '%s'", user.GetName(), currentRank.Name, nextRank.Name)
+		user.RankName = nextRank.Name
+		user.RankUpdatedAt = ptrTimeNow()
+		if err := db.DBCon.Save(&user).Error; err != nil {
+			log.Errorf("Failed to save promoted user %s: %v", user.GetName(), err)
+			return err
+		}
+		log.Debugf("User %s rank updated successfully", user.GetName())
+	} else {
+		log.Debugf("User %s doesn't have enough days for promotion", user.GetName())
+	}
+
+	return nil
+}
+
+
+func (user *User) EnsureRankUpdatedAtExists() error {
+	if user.RankUpdatedAt != nil {
+		return nil
+	}
+
+	// Try to get the last rejoin event
+	lastRejoin, err := user.GetLastRejoinEvent()
+	if err == nil {
+		user.RankUpdatedAt = &lastRejoin.CreatedAt
+		if user.RankName == "" {
+			user.RankName = GetRanks()[0].Name
+		}
+		if err := db.DBCon.Save(&user).Error; err != nil {
+			log.Errorf("Failed to save RankUpdatedAt after rejoin for user %s: %v", user.GetName(), err)
+			return err
+		}
+		log.Infof("Initialized RankUpdatedAt for user %s to rejoin date: %s", user.GetName(), lastRejoin.CreatedAt.Format("2006-01-02"))
+		return nil
+	}
+
+	// No rejoin found, fallback to first workout
+	firstWorkout, err := user.GetFirstWorkout()
+	if err != nil {
+		return nil // No workouts either
+	}
+
+	user.RankUpdatedAt = &firstWorkout.CreatedAt
+	if user.RankName == "" {
+		user.RankName = GetRanks()[0].Name
+	}
+	if err := db.DBCon.Save(&user).Error; err != nil {
+		log.Errorf("Failed to save RankUpdatedAt after workout for user %s: %v", user.GetName(), err)
+		return err
+	}
+
+	log.Infof("Initialized RankUpdatedAt for user %s to first workout date: %s", user.GetName(), firstWorkout.CreatedAt.Format("2006-01-02"))
+	return nil
+}
+
+
+// 🔄 Run rank update for all users in chatId 0
+func UpdateAllUserRanks() {
+	for _, user := range GetUsers(0) {
+		err := user.UpdateRankIfNeeded()
+		if err != nil {
+			log.Errorf("Failed to update rank for user %s: %v", user.GetName(), err)
+		}
+	}
 }
 
 func (user *User) LoadGroups() error {
@@ -406,15 +550,32 @@ func (user User) Rejoin(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 			return banErr
 		}
 	}
+
 	if err := user.InviteExistingUser(bot); err != nil {
 		return fmt.Errorf("Issue with inviting %s: %s", user.GetName(), err)
 	}
+
 	if err := user.UpdateActive(true); err != nil {
 		return fmt.Errorf("Issue updating active %s: %s", user.GetName(), err)
 	}
+
+	// 🆕 Update RankUpdatedAt on rejoin
+	now := time.Now()
+	user.RankUpdatedAt = &now
+
+	if err := db.DBCon.Save(&user).Error; err != nil {
+		return fmt.Errorf("failed to update RankUpdatedAt on rejoin: %w", err)
+	}
+	log.Debugf("User %s rejoined – RankUpdatedAt set to %s", user.GetName(), now.Format("2006-01-02"))
+
 	if err := user.UpdateOnProbation(true); err != nil {
 		return fmt.Errorf("Issue updating probation %s: %s", user.GetName(), err)
 	}
+
+	if err := user.RegisterRejoinEvent(); err != nil {
+		log.Errorf("Error while registering rejoin event: %s", err)
+	}
+
 	return nil
 }
 
