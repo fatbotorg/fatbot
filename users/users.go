@@ -64,7 +64,6 @@ func (user *User) GetLastRejoinEvent() (*Event, error) {
 		Where("user_id = ? AND event = ?", user.ID, RejoinedGroupEventType).
 		Order("created_at DESC").
 		First(&lastRejoin).Error
-
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +76,6 @@ func (user *User) GetFirstWorkout() (*Workout, error) {
 		Where("user_id = ? AND deleted_at IS NULL", user.ID).
 		Order("created_at ASC").
 		First(&workout).Error
-
 	if err != nil {
 		return nil, err
 	}
@@ -106,9 +104,8 @@ func (user *User) UpdateRankIfNeeded() error {
 	currentRank, ok := GetRankByName(user.RankName)
 	if !ok {
 		// If no rank name but we have RankUpdatedAt, calculate the appropriate rank based on days
+		ranks := GetRanks()
 		if user.RankName == "" {
-			// Cache ranks to avoid repeated function calls
-			ranks := GetRanks()
 			// Find the highest rank that matches the days threshold
 			for i := len(ranks) - 1; i >= 0; i-- {
 				rank := ranks[i]
