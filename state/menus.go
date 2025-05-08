@@ -222,11 +222,26 @@ func (menu ShowUsersMenu) CreateMenu(userId int64) MenuBase {
 func (menu RemoveUserMenu) CreateMenu(userId int64) MenuBase {
 	chooseGroup := groupStepBase
 	chooseGroup.Keyboard = createGroupsKeyboard(userId)
-	return MenuBase{
+
+	// Create a custom step for remove user that shows both active and inactive users
+	allUsersStep := userStep
+	allUsersStep.Name = "chooseanyuser"
+	allUsersStep.Message = "Choose User (Active or Inactive)"
+
+	confirmStep := Step{
+		Name:     "confirm",
+		Kind:     KeyboardStepKind,
+		Message:  "Are you sure you want to remove this user? This action cannot be undone.",
+		Keyboard: createConfirmationKeyboard(),
+		Result:   OptionResult,
+	}
+
+	themenu := MenuBase{
 		Name:  "removeuser",
 		Label: "Remove User",
-		Steps: []Step{chooseGroup, userStep},
+		Steps: []Step{chooseGroup, allUsersStep, confirmStep},
 	}
+	return themenu
 }
 
 func (menu UpdateRanksMenu) CreateMenu(userId int64) MenuBase {
