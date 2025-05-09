@@ -25,8 +25,9 @@ type User struct {
 	OnProbation    bool
 	Immuned        bool
 
-	RankName      string     // Current rank name (e.g., "Disastrous")
-	RankUpdatedAt *time.Time // Timestamp of last rank update
+	// RankName      string
+	Rank          int
+	RankUpdatedAt *time.Time
 
 	Workouts    []Workout
 	Events      []Event
