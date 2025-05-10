@@ -113,10 +113,17 @@ func handleWorkoutUpload(update MediaUpdate, labels []string) (tgbotapi.MessageC
 			streakMessage = fmt.Sprintf("%d in a row! %s %s", currentWorkout.Streak, streakSigns, users.GetRandomStreakMessage())
 		}
 
+		ranks := users.GetRanks()
+		userRank := ranks[user.Rank]
+
 		message = fmt.Sprintf("%s %s\nYour rank: %s\nLast workout: %s (%s)\nThis week: %d\n%s",
 			user.GetName(),
 			ai.GetAiResponse(labels),
-			user.RankName,
+			fmt.Sprintf("%s %s (%d/%d)",
+				userRank.Name,
+				userRank.Emoji,
+				user.Rank,
+				len(ranks)),
 			lastWorkout.CreatedAt.Weekday(),
 			timeAgo,
 			len(user.Workouts),

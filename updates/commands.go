@@ -86,6 +86,7 @@ func handleNewGroupCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	}
 	return msg
 }
+
 func handleStatsCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	var user users.User
 	var err error
@@ -119,28 +120,18 @@ func createRankStatusMessage(user *users.User) (string, error) {
 	if user.RankUpdatedAt == nil {
 		return "No workout history yet.", nil
 	}
+	ranks := users.GetRanks()
+	currentRank := ranks[user.Rank]
 
-	currentRank, ok := users.GetRankByName(user.RankName)
-    if !ok {
-        return "Unknown rank.", nil
-    }
-
-    nextRank, ok := users.GetNextRank(currentRank)
-    if !ok {
-        return fmt.Sprintf("Current Rank: %s (highest rank!)", user.RankName), nil
-    }
+	nextRank, ok := ranks[user.Rank+1]
+	if !ok {
+		return fmt.Sprintf("Current Rank: %s (highest rank!)",
+			currentRank.Name), nil
+	}
 
 	daysSinceUpdate := int(time.Since(*user.RankUpdatedAt).Hours() / 24)
 	daysNeededForNextRank := nextRank.MinDays - currentRank.MinDays
-
-	if daysNeededForNextRank <= 0 {
-		return fmt.Sprintf("Current Rank: %s (ready for next rank!)", user.RankName), nil
-	}
-
 	remainingDays := daysNeededForNextRank - daysSinceUpdate
-	if remainingDays < 0 {
-		remainingDays = 0
-	}
 
 	return fmt.Sprintf(
 		"Current Rank: %s\nDays until next rank (%s): %d",
@@ -237,7 +228,7 @@ func sendLinkJoinForAdminApproval(fatBotUpdate FatBotUpdate, group users.Group) 
 	userId := fatBotUpdate.Update.FromChat().ID
 	name := getNameFromUpdate(fatBotUpdate.Update)
 	adminMessage := tgbotapi.NewMessage(0, fmt.Sprintf("%s wants to join using a link to %s, please approve", name, group.Title))
-	var approvalKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+	approvalKeyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Approve", fmt.Sprintf("%d %d %s %s", group.ChatID, userId, name, fatBotUpdate.Update.SentFrom().UserName)),
 			tgbotapi.NewInlineKeyboardButtonData("Block", fmt.Sprintf("%s %d", "block", userId)),
