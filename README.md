@@ -1,4 +1,4 @@
-# Fat Bot - more updates
+# Fat Bot - even more updates
 
 The Telegram bot that keeps you lean
 ---
