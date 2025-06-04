@@ -34,18 +34,21 @@ func scanUsers(bot *tgbotapi.BotAPI) error {
 				log.Errorf("Err getting last workout for user %s: %s", user.GetName(), err)
 				sentry.CaptureException(err)
 			}
-			diffHours := int(totalDays*24 - time.Now().Sub(lastWorkout.CreatedAt).Hours())
-			if diffHours == 24 {
-				msg := tgbotapi.NewMessage(group.ChatID, fmt.Sprintf("[%s](tg://user?id=%d) you have 24 hours left",
-					user.GetName(),
-					user.TelegramUserID))
+
+			_, daysDiff := users.IsLastWorkoutOverdue(lastWorkout.CreatedAt)
+			if daysDiff == 4 && time.Now().Hour() == 19 {
+				msg := tgbotapi.NewMessage(
+					group.ChatID, fmt.Sprintf("[%s](tg://user?id=%d) you have one day left to workout",
+						user.GetName(),
+						user.TelegramUserID))
 				msg.ParseMode = "MarkdownV2"
 				bot.Send(msg)
 				if err := user.RegisterLastDayNotificationEvent(); err != nil {
 					log.Errorf("Error while registering ban event: %s", err)
 					sentry.CaptureException(err)
 				}
-			} else if diffHours < 0 {
+			} else if lastWorkoutOverdue, _ := users.
+				IsLastWorkoutOverdue(lastWorkout.CreatedAt); lastWorkoutOverdue {
 				if user.Immuned {
 					user.SetImmunity(false)
 					user.CreateDummyWorkout()
