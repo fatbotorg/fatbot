@@ -191,15 +191,20 @@ func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConf
 		log.Warn("no last workout")
 		msg.Text = "I don't have your last workout yet."
 	} else {
-		currentTime := time.Now()
-		diff := currentTime.Sub(lastWorkout.CreatedAt)
-		days := int(5 - diff.Hours()/24)
-		msg.Text = fmt.Sprintf("%s, your last workout was on %s\nYou have %d days and %d hours left.",
-			user.GetName(),
-			lastWorkout.CreatedAt.Weekday(),
-			days,
-			120-int(diff.Hours())-24*days-1,
-		)
+		// Get the start of the day for both times to compare just the days
+		isLastWorkoutOverdue, daysDiff := users.IsLastWorkoutOverdue(lastWorkout.CreatedAt)
+
+		if isLastWorkoutOverdue {
+			msg.Text = fmt.Sprintf("%s, your last workout was on %s\nYou are overdue for your workout!",
+				user.GetName(),
+				lastWorkout.CreatedAt.Weekday())
+		} else {
+			daysLeft := 5 - daysDiff
+			msg.Text = fmt.Sprintf("%s, your last workout was on %s\nYou have %d days left to workout.",
+				user.GetName(),
+				lastWorkout.CreatedAt.Weekday(),
+				daysLeft)
+		}
 	}
 	return msg
 }
