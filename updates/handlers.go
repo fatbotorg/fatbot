@@ -17,8 +17,15 @@ func (update CommandUpdate) handle() error {
 	return nil
 }
 
+func (update PollUpdate) handle() error {
+	return handlePollUpdate(update.Update, update.Bot)
+}
+
 func (update UnknownGroupUpdate) handle() error {
 	bot := update.Bot
+	if update.Update.FromChat() == nil {
+		return nil
+	}
 	chatId := update.Update.FromChat().ID
 	userId := update.Update.SentFrom().ID
 	user, err := users.GetUserById(userId)
@@ -198,4 +205,52 @@ func (update GroupReplyUpdate) handle() error {
 		}
 	}
 	return nil
+}
+
+func (update FatBotUpdate) handle() error {
+	if update.Update.Message != nil {
+		if update.Update.Message.IsCommand() {
+			if isAdminCommand(update.Update.Message.Command()) {
+				return handleAdminCommandUpdate(update)
+			}
+			msg, err := handleCommand(update)
+			if err != nil {
+				return err
+			}
+			if msg.Text != "" {
+				if _, err := update.Bot.Send(msg); err != nil {
+					return err
+				}
+			}
+		} else if update.Update.Message.Photo != nil {
+			mediaUpdate := MediaUpdate{update}
+			return mediaUpdate.handle()
+		} else if update.Update.FromChat().IsPrivate() {
+			privateUpdate := PrivateUpdate{update}
+			return privateUpdate.handle()
+		}
+	} else if update.Update.Poll != nil {
+		log.Debug("GOT poll event : %s", update.Update.Poll)
+		return handlePollUpdate(update.Update, update.Bot)
+	}
+	return nil
+}
+
+func handleCommand(update FatBotUpdate) (tgbotapi.MessageConfig, error) {
+	msg := tgbotapi.NewMessage(update.Update.Message.Chat.ID, "")
+	switch update.Update.Message.Command() {
+	case "start":
+		msg.Text = "Welcome to FatBot! Use /join to join a group."
+	case "join":
+		return handleJoinCommand(update)
+	case "status":
+		msg = handleStatusCommand(update.Update)
+	case "stats":
+		msg = handleStatsCommand(update.Update)
+	case "help":
+		msg.Text = "Available commands:\n/start - Start using the bot\n/join - Join a group\n/status - Check your workout status\n/stats - View workout statistics\n/help - Show this help message"
+	default:
+		msg.Text = "Unknown command. Use /help to see available commands."
+	}
+	return msg, nil
 }
