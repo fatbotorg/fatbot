@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/charmbracelet/log"
+	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -175,7 +176,7 @@ func (menu PushWorkoutMenu) PerformAction(params ActionData) error {
 
 func (menu DeleteLastWorkoutMenu) PerformAction(params ActionData) error {
 	defer DeleteStateEntry(params.State.ChatId)
-	groupChatId, err := params.State.getGroupChatId()
+	groupChatId, _ := params.State.getGroupChatId()
 	userId, _ := strconv.ParseInt(params.Data, 10, 64)
 	user, err := users.GetUserById(userId)
 	if err != nil {
@@ -347,11 +348,11 @@ func (menu DisputeWorkoutMenu) PerformAction(params ActionData) error {
 	}
 
 	// Create a poll in the group
-	poll := tgbotapi.NewPoll(groupChatId, fmt.Sprintf("Dispute workout by %s from %s?", user.GetName(), lastWorkout.CreatedAt.Format("2006-01-02 15:04:05")))
-	poll.Options = []string{"Yes", "No"}
+	poll := tgbotapi.NewPoll(groupChatId, fmt.Sprintf("Cancel workout by %s from %s?", user.GetName(), lastWorkout.CreatedAt.Format("2006-01-02 15:04:05")))
+	poll.Options = []string{"No", "Yes"}
 	poll.IsAnonymous = false
 	poll.Type = "quiz"
-	poll.CorrectOptionID = 0 // This is required for quiz polls but we don't use it
+	// poll.CorrectOptionID = 0 // This is required for quiz polls but we don't use it
 	poll.Explanation = "Vote to decide if this workout should be cancelled"
 
 	// Send the poll
@@ -369,6 +370,13 @@ func (menu DisputeWorkoutMenu) PerformAction(params ActionData) error {
 		message.MessageID,
 	); err != nil {
 		return err
+	}
+
+	// Store poll-to-chat mapping in Redis
+	if err := PollMapping.StorePollChat(message.Poll.ID, groupChatId); err != nil {
+		log.Error("Failed to store poll-to-chat mapping", "error", err)
+		sentry.CaptureException(err)
+		// Don't return error here as the poll is already created and stored in DB
 	}
 
 	// Notify the target user
