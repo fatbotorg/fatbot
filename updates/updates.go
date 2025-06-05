@@ -44,13 +44,18 @@ type PrivateUpdate struct {
 type GroupReplyUpdate struct {
 	FatBotUpdate
 }
+type PollUpdate struct {
+	FatBotUpdate
+}
 
 func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
-	switch true {
-	case fatBotUpdate.isUnknownGroupUpdate():
-		return UnknownGroupUpdate{FatBotUpdate: fatBotUpdate}, nil
+	switch {
+	case fatBotUpdate.isPollUpdate():
+		return PollUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isBlacklistUpdate():
 		return BlackListUpdate{FatBotUpdate: fatBotUpdate}, nil
+	case fatBotUpdate.isUnknownGroupUpdate():
+		return UnknownGroupUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isCallbackUpdate():
 		return CallbackUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isCommandUpdate():
