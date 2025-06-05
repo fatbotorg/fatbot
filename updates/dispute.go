@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"fatbot/state"
 	"fatbot/users"
 	"fmt"
 	"strconv"
@@ -15,7 +16,7 @@ const (
 	DisputePollTimeout = 3600
 )
 
-func handleDisputeCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotapi.MessageConfig, error) {
+func handleDisputeEvent(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotapi.MessageConfig, error) {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 
 	// Check if user is admin
@@ -97,7 +98,7 @@ func handleDisputeCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotap
 		return msg, err
 	}
 
-	// Store poll information
+	// Store poll information in database
 	if err := users.CreateWorkoutDisputePoll(
 		sentPoll.Poll.ID,
 		group.ID,
@@ -111,19 +112,32 @@ func handleDisputeCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI) (tgbotap
 		return msg, err
 	}
 
+	// Store poll-to-chat mapping in Redis
+	if err := state.PollMapping.StorePollChat(sentPoll.Poll.ID, update.Message.Chat.ID); err != nil {
+		log.Error("Failed to store poll-to-chat mapping", "error", err)
+		sentry.CaptureException(err)
+		// Don't return error here as the poll is already created and stored in DB
+	}
+
 	msg.Text = fmt.Sprintf("Created dispute poll for %s's workout.", targetUser.GetName())
 	return msg, nil
 }
 
-func handlePollAnswer(update tgbotapi.PollAnswer, bot *tgbotapi.BotAPI) error {
+func handlePollUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	// Get poll information
-	poll, err := users.GetWorkoutDisputePoll(update.PollID)
+	poll, err := users.GetWorkoutDisputePoll(update.Poll.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get poll information: %v", err)
 	}
 
+	// Get chat ID from Redis
+	chatID, err := state.PollMapping.GetPollChat(update.Poll.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get chat ID from Redis: %v", err)
+	}
+
 	// Get the current poll state from Telegram
-	pollState, err := bot.StopPoll(tgbotapi.NewStopPoll(int64(poll.GroupID), poll.MessageID))
+	pollState, err := bot.StopPoll(tgbotapi.NewStopPoll(chatID, poll.MessageID))
 	if err != nil {
 		return fmt.Errorf("failed to get poll state: %v", err)
 	}
@@ -144,26 +158,29 @@ func handlePollAnswer(update tgbotapi.PollAnswer, bot *tgbotapi.BotAPI) error {
 	log.Debug("vote calculation", "active_users", activeUsersCount, "required_votes", requiredVotes)
 
 	// Calculate votes for each option
-	yesVotes := pollState.Options[0].VoterCount
-	noVotes := pollState.Options[1].VoterCount
+	noVotes := pollState.Options[0].VoterCount
+	yesVotes := pollState.Options[1].VoterCount
 
 	// If we have enough votes for either option, process the decision
-	if yesVotes >= requiredVotes || noVotes >= requiredVotes {
+	if noVotes >= requiredVotes || yesVotes >= requiredVotes {
 		// Get target user
 		targetUser, err := poll.GetTargetUser()
 		if err != nil {
 			return fmt.Errorf("failed to get target user: %v", err)
 		}
 
-		if noVotes >= requiredVotes {
+		if yesVotes >= requiredVotes {
 			// Majority voted to cancel the workout
 			workout, err := poll.GetWorkout()
 			if err != nil {
 				return fmt.Errorf("failed to get workout: %v", err)
 			}
 
-			if _, err := targetUser.RollbackLastWorkout(group.ChatID); err != nil {
-				return fmt.Errorf("failed to rollback workout: %v", err)
+			_, err = targetUser.RollbackLastWorkout(group.ChatID)
+			if err != nil {
+				if _, nwe := err.(*users.NoWorkoutsError); !nwe {
+					return err
+				}
 			}
 
 			// Announce result
@@ -196,6 +213,12 @@ func handlePollAnswer(update tgbotapi.PollAnswer, bot *tgbotapi.BotAPI) error {
 			if _, err := bot.Send(msg); err != nil {
 				return fmt.Errorf("failed to send group message: %v", err)
 			}
+		}
+
+		// Clean up Redis entry after poll is processed
+		if err := state.PollMapping.ClearPollChat(update.Poll.ID); err != nil {
+			log.Error("Failed to clean up poll-to-chat mapping", "error", err)
+			// Don't return error here as the poll is already processed
 		}
 	}
 

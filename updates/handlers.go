@@ -17,8 +17,19 @@ func (update CommandUpdate) handle() error {
 	return nil
 }
 
+func (update PollUpdate) handle() error {
+	return handlePollUpdate(update.Update, update.Bot)
+	// if update.Update.PollAnswer != nil {
+	// 	return handlePollAnswer(*update.Update.PollAnswer, update.Bot)
+	// }
+	// return nil
+}
+
 func (update UnknownGroupUpdate) handle() error {
 	bot := update.Bot
+	if update.Update.FromChat() == nil {
+		return nil
+	}
 	chatId := update.Update.FromChat().ID
 	userId := update.Update.SentFrom().ID
 	user, err := users.GetUserById(userId)
@@ -201,9 +212,7 @@ func (update GroupReplyUpdate) handle() error {
 }
 
 func (update FatBotUpdate) handle() error {
-	log.Debug("UPDATESSSSSSSSS")
 	if update.Update.Message != nil {
-		log.Debug(update.Update.Message)
 		if update.Update.Message.IsCommand() {
 			if isAdminCommand(update.Update.Message.Command()) {
 				return handleAdminCommandUpdate(update)
@@ -224,9 +233,9 @@ func (update FatBotUpdate) handle() error {
 			privateUpdate := PrivateUpdate{update}
 			return privateUpdate.handle()
 		}
-	} else if update.Update.PollAnswer != nil {
-		log.Debug("GOT poll asnwer : %s", update.Update.PollAnswer.OptionIDs)
-		return handlePollAnswer(*update.Update.PollAnswer, update.Bot)
+	} else if update.Update.Poll != nil {
+		log.Debug("GOT poll event : %s", update.Update.Poll)
+		return handlePollUpdate(update.Update, update.Bot)
 	}
 	return nil
 }
@@ -249,3 +258,54 @@ func handleCommand(update FatBotUpdate) (tgbotapi.MessageConfig, error) {
 	}
 	return msg, nil
 }
+
+// func isUnknownGroupUpdate(update tgbotapi.Update) bool {
+// 	if update.Message != nil {
+// 		if update.Message.Chat.Type == "private" {
+// 			return false
+// 		}
+// 		group, err := users.GetGroup(update.Message.Chat.ID)
+// 		if err != nil {
+// 			return true
+// 		}
+// 		return group.ID == 0 // Check if group exists by checking if ID is set
+// 	}
+// 	if update.Poll != nil {
+// 		// For poll updates, check if the poll belongs to a known group
+// 		chatID, err := pollMapping.GetPollChat(update.Poll.ID)
+// 		if err != nil {
+// 			// If we can't get the chat ID from Redis, treat it as unknown
+// 			return true
+// 		}
+// 		group, err := users.GetGroup(chatID)
+// 		if err != nil {
+// 			return true
+// 		}
+// 		return group.ID == 0 // Check if group exists by checking if ID is set
+// 	}
+// 	if update.FromChat() == nil {
+// 		return false
+// 	}
+// 	// For other update types, check if they have a chat ID
+// 	if update.CallbackQuery != nil {
+// 		group, err := users.GetGroup(update.CallbackQuery.Message.Chat.ID)
+// 		if err != nil {
+// 			return true
+// 		}
+// 		return group.ID == 0 // Check if group exists by checking if ID is set
+// 	}
+// 	if update.PollAnswer != nil {
+// 		// For poll answers, check if the poll belongs to a known group
+// 		chatID, err := pollMapping.GetPollChat(update.PollAnswer.PollID)
+// 		if err != nil {
+// 			// If we can't get the chat ID from Redis, treat it as unknown
+// 			return true
+// 		}
+// 		group, err := users.GetGroup(chatID)
+// 		if err != nil {
+// 			return true
+// 		}
+// 		return group.ID == 0 // Check if group exists by checking if ID is set
+// 	}
+// 	return true
+// }
