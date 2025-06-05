@@ -3,6 +3,8 @@ package updates
 import (
 	"fatbot/users"
 	"strings"
+
+	"github.com/charmbracelet/log"
 )
 
 func (fatBotUpdate FatBotUpdate) isCommandUpdate() bool {
@@ -28,7 +30,9 @@ func (fatBotUpdate FatBotUpdate) isCallbackUpdate() bool {
 }
 
 func (fatBotUpdate FatBotUpdate) isUnknownGroupUpdate() bool {
+	// BUG: tagigng the bot creates a fault
 	update := fatBotUpdate.Update
+	log.Debugf("%+v", update)
 	return !users.IsApprovedChatID(update.FromChat().ID) && !update.FromChat().IsPrivate()
 }
 

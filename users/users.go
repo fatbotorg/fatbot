@@ -55,7 +55,7 @@ func ptrTimeNow() *time.Time {
 
 func InitDB() error {
 	db := db.DBCon
-	db.AutoMigrate(&User{}, &Group{}, &Workout{}, &Event{}, &Blacklist{})
+	db.AutoMigrate(&User{}, &Group{}, &Workout{}, &Event{}, &Blacklist{}, &WorkoutDisputePoll{})
 	return nil
 }
 
@@ -521,4 +521,28 @@ func (user User) RemoveFromDatabase() error {
 	}
 
 	return nil
+}
+
+func (user *User) IsGroupAdmin(groupId uint) bool {
+	db := db.DBCon
+	var group Group
+	if err := db.Preload("Admins").First(&group, groupId).Error; err != nil {
+		return false
+	}
+	for _, admin := range group.Admins {
+		if admin.ID == user.ID {
+			return true
+		}
+	}
+	return false
+}
+
+func GetUserByUsername(username string) (User, error) {
+	db := db.DBCon
+	var user User
+	err := db.Where("username = ?", username).First(&user).Error
+	if err != nil {
+		return User{}, err
+	}
+	return user, nil
 }

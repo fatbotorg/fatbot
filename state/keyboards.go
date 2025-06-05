@@ -8,7 +8,7 @@ import (
 )
 
 func createAdminManagementMenu() tgbotapi.InlineKeyboardMarkup {
-	var adminKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+	adminKeyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("List", "showadmins"),
 			tgbotapi.NewInlineKeyboardButtonData("Edit", "editadmins"),
@@ -18,7 +18,7 @@ func createAdminManagementMenu() tgbotapi.InlineKeyboardMarkup {
 }
 
 func createAdminManagementEditMenu() tgbotapi.InlineKeyboardMarkup {
-	var adminKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+	adminKeyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Add Admin", "addadmin"),
 			tgbotapi.NewInlineKeyboardButtonData("Remove Admin", "removeadmin"),
@@ -65,7 +65,7 @@ func createGroupsKeyboard(adminUserId int64) tgbotapi.InlineKeyboardMarkup {
 	backButton := tgbotapi.NewInlineKeyboardButtonData("<- Back", "adminmenuback")
 	backRow = append(backRow, backButton)
 	rows = append(rows, backRow)
-	var keyboard = tgbotapi.NewInlineKeyboardMarkup(rows...)
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(rows...)
 	return keyboard
 }
 
@@ -75,7 +75,6 @@ func createUsersKeyboard(chatId int64, active bool) tgbotapi.InlineKeyboardMarku
 		usersList = users.GetUsers(chatId)
 	} else {
 		usersList = users.GetInactiveUsers(chatId)
-
 	}
 	row := []tgbotapi.InlineKeyboardButton{}
 	rows := [][]tgbotapi.InlineKeyboardButton{}
@@ -94,7 +93,7 @@ func createUsersKeyboard(chatId int64, active bool) tgbotapi.InlineKeyboardMarku
 	backButton := tgbotapi.NewInlineKeyboardButtonData("<- Back", "adminmenuback")
 	backRow = append(backRow, backButton)
 	rows = append(rows, backRow)
-	var keyboard = tgbotapi.NewInlineKeyboardMarkup(rows...)
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(rows...)
 	return keyboard
 }
 
@@ -133,12 +132,12 @@ func createAllUsersKeyboard(chatId int64) tgbotapi.InlineKeyboardMarkup {
 	backRow = append(backRow, backButton)
 	rows = append(rows, backRow)
 
-	var keyboard = tgbotapi.NewInlineKeyboardMarkup(rows...)
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(rows...)
 	return keyboard
 }
 
 func createConfirmationKeyboard() tgbotapi.InlineKeyboardMarkup {
-	var keyboard = tgbotapi.NewInlineKeyboardMarkup(
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Yes", "yes"),
 			tgbotapi.NewInlineKeyboardButtonData("No", "no"),
@@ -162,7 +161,8 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 	var removeUser RemoveUserMenu
 	var updateRanks UpdateRanksMenu
 	var manageImmunity ManageImmunityMenu
-	var menus = []MenuBase{
+	var disputeWorkout DisputeWorkoutMenu
+	menus := []MenuBase{
 		rename.CreateMenu(0),
 		pushWorkout.CreateMenu(0),
 		deleteLastWorkout.CreateMenu(0),
@@ -174,6 +174,7 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 		removeUser.CreateMenu(0),
 		updateRanks.CreateMenu(0),
 		manageImmunity.CreateMenu(0),
+		disputeWorkout.CreateMenu(0),
 	}
 
 	row := []tgbotapi.InlineKeyboardButton{}
@@ -192,6 +193,6 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 		}
 	}
 	rows = append(rows, row)
-	var keyboard = tgbotapi.NewInlineKeyboardMarkup(rows...)
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(rows...)
 	return keyboard
 }
