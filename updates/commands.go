@@ -31,39 +31,21 @@ func recordAdminAttempt(userId int64) int {
 	return adminAttempts[userId]
 }
 
-func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
-	update := fatBotUpdate.Update
-	bot := fatBotUpdate.Bot
-	if !update.FromChat().IsPrivate() {
+func handleCommandUpdate(update FatBotUpdate) error {
+	if !update.Update.FromChat().IsPrivate() {
 		return nil
 	}
-	if isAdminCommand(update.Message.Command()) {
-		return handleAdminCommandUpdate(fatBotUpdate)
+	if isAdminCommand(update.Update.Message.Command()) {
+		return handleAdminCommandUpdate(update)
 	}
-	var err error
-	var msg tgbotapi.MessageConfig
-	msg.Text = "Unknown command"
-	switch update.Message.Command() {
-	case "join", "start":
-		msg, err = handleJoinCommand(fatBotUpdate)
-		if err != nil {
+	msg, err := handleCommand(update)
+	if err != nil {
+		return err
+	}
+	if msg.Text != "" {
+		if _, err := update.Bot.Send(msg); err != nil {
 			return err
 		}
-	case "status":
-		msg = handleStatusCommand(update)
-	case "stats":
-		msg = handleStatsCommand(update)
-	case "help":
-		msg.ChatID = update.FromChat().ID
-		msg.Text = "Join the group using: /join\nCheck your status using: /status"
-	default:
-		msg.ChatID = update.FromChat().ID
-	}
-	if msg.Text == "" {
-		return nil
-	}
-	if _, err := bot.Send(msg); err != nil {
-		return err
 	}
 	return nil
 }

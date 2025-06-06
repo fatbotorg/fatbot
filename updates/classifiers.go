@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"fatbot/state"
 	"fatbot/users"
 	"strings"
 )
@@ -29,8 +30,63 @@ func (fatBotUpdate FatBotUpdate) isCallbackUpdate() bool {
 
 func (fatBotUpdate FatBotUpdate) isUnknownGroupUpdate() bool {
 	update := fatBotUpdate.Update
+
+	if update.Poll != nil {
+		chatID, err := state.PollMapping.GetPollChat(update.Poll.ID)
+		if err != nil {
+			return true
+		}
+		group, err := users.GetGroup(chatID)
+		if err != nil {
+			return true
+		}
+		return group.ChatID == 0
+	}
 	return !users.IsApprovedChatID(update.FromChat().ID) && !update.FromChat().IsPrivate()
 }
+
+// func (fatBotUpdate FatBotUpdate) isUnknownGroupUpdate() bool {
+// 	update := fatBotUpdate.Update
+// 	if update.Message != nil {
+// 		if update.Message.Chat.Type == "private" {
+// 			return false
+// 		}
+// 		group, err := users.GetGroup(update.Message.Chat.ID)
+// 		if err != nil {
+// 			return true
+// 		}
+// 		return group.ID == 0 // Check if group exists by checking if ID is set
+// 	}
+// 	if update.Poll != nil {
+// 		chatID, err := state.PollMapping.GetPollChat(update.Poll.ID)
+// 		if err != nil {
+// 			return true
+// 		}
+// 		group, err := users.GetGroup(chatID)
+// 		if err != nil {
+// 			return true
+// 		}
+// 		return group.ID == 0 // Check if group exists by checking if ID is set
+// 	}
+// 	if update.FromChat() == nil {
+// 		return false
+// 	}
+// 	// For other update types, check if they have a chat ID
+// 	if update.PollAnswer != nil {
+// 		// For poll answers, check if the poll belongs to a known group
+// 		chatID, err := state.PollMapping.GetPollChat(update.PollAnswer.PollID)
+// 		if err != nil {
+// 			// If we can't get the chat ID from Redis, treat it as unknown
+// 			return true
+// 		}
+// 		group, err := users.GetGroup(chatID)
+// 		if err != nil {
+// 			return true
+// 		}
+// 		return group.ID == 0 // Check if group exists by checking if ID is set
+// 	}
+// 	return true
+// }
 
 func (fatBotUpdate FatBotUpdate) isBlacklistUpdate() bool {
 	return users.BlackListed(fatBotUpdate.Update.SentFrom().ID)
@@ -67,4 +123,9 @@ func (fatBotUpdate FatBotUpdate) isGroupReplyUpdate() bool {
 	}
 
 	return true
+}
+
+func (fatBotUpdate FatBotUpdate) isPollUpdate() bool {
+	update := fatBotUpdate.Update
+	return update.Poll != nil || update.PollAnswer != nil
 }
