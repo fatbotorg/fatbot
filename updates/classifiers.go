@@ -1,7 +1,6 @@
 package updates
 
 import (
-	"fatbot/state"
 	"fatbot/users"
 	"strings"
 )
@@ -31,12 +30,13 @@ func (fatBotUpdate FatBotUpdate) isCallbackUpdate() bool {
 func (fatBotUpdate FatBotUpdate) isUnknownGroupUpdate() bool {
 	update := fatBotUpdate.Update
 
-	if update.Poll != nil {
-		chatID, err := state.PollMapping.GetPollChat(update.Poll.ID)
+	if update.PollAnswer != nil {
+		// Get poll information from database
+		poll, err := users.GetWorkoutDisputePoll(update.PollAnswer.PollID)
 		if err != nil {
 			return true
 		}
-		group, err := users.GetGroup(chatID)
+		group, err := poll.GetGroup()
 		if err != nil {
 			return true
 		}
@@ -83,6 +83,8 @@ func (fatBotUpdate FatBotUpdate) isGroupReplyUpdate() bool {
 }
 
 func (fatBotUpdate FatBotUpdate) isPollUpdate() bool {
+	// log.Debug("Checking if poll update")
 	update := fatBotUpdate.Update
+	// log.Debugf("%+v", update.Poll, update.PollAnswer)
 	return update.Poll != nil || update.PollAnswer != nil
 }

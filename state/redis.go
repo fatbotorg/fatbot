@@ -1,9 +1,7 @@
 package state
 
 import (
-	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/charmbracelet/log"
 	"github.com/gomodule/redigo/redis"
@@ -81,36 +79,3 @@ func clearString(key string) error {
 	}
 	return nil
 }
-
-// PollChatMapping handles Redis operations for poll-to-chat mappings
-type PollChatMapping struct{}
-
-// StorePollChat stores the mapping between a poll ID and its chat ID
-func (p *PollChatMapping) StorePollChat(pollID string, chatID int64) error {
-	key := fmt.Sprintf("poll:%s", pollID)
-	return set(key, fmt.Sprintf("%d", chatID))
-}
-
-// GetPollChat retrieves the chat ID for a given poll ID
-func (p *PollChatMapping) GetPollChat(pollID string) (int64, error) {
-	key := fmt.Sprintf("poll:%s", pollID)
-	chatIDStr, err := get(key)
-	if err != nil {
-		return 0, err
-	}
-	return strconv.ParseInt(chatIDStr, 10, 64)
-}
-
-// ClearPollChat removes the poll-to-chat mapping
-func (p *PollChatMapping) ClearPollChat(pollID string) error {
-	key := fmt.Sprintf("poll:%s", pollID)
-	return clearString(key)
-}
-
-// NewPollChatMapping creates a new PollChatMapping instance
-func NewPollChatMapping() *PollChatMapping {
-	return &PollChatMapping{}
-}
-
-// Global instance for use across packages
-var PollMapping = NewPollChatMapping()

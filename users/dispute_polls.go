@@ -83,21 +83,21 @@ func GetGroupByID(groupID uint) (*Group, error) {
 	return &group, nil
 }
 
-// IsGroupAdmin checks if a user is an admin of a specific group
-func (user *User) IsGroupAdmin(groupID uint) bool {
-	db := db.DBCon
-
-	// Load the user's managed groups
-	if err := db.Preload("GroupsAdmin").Find(&user).Error; err != nil {
-		return false
-	}
-
-	// Check if the user is admin of the specific group
-	for _, adminGroup := range user.GroupsAdmin {
-		if adminGroup.ID == groupID {
-			return true
-		}
-	}
-
-	return false
-}
+// // IsGroupAdmin checks if a user is an admin of a specific group
+// func (user *User) IsGroupAdmin(groupID uint) bool {
+// 	db := db.DBCon
+//
+// 	// Load the user's managed groups
+// 	if err := db.Preload("GroupsAdmin").Find(&user).Error; err != nil {
+// 		return false
+// 	}
+//
+// 	// Check if the user is admin of the specific group
+// 	for _, adminGroup := range user.GroupsAdmin {
+// 		if adminGroup.ID == groupID {
+// 			return true
+// 		}
+// 	}
+//
+// 	return false
+// }

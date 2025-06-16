@@ -283,7 +283,7 @@ func (menu DisputeWorkoutMenu) CreateMenu(userId int64) MenuBase {
 	return MenuBase{
 		Name:  "disputeworkout",
 		Label: "Dispute Workout",
-		Steps: []Step{chooseGroup},
+		Steps: []Step{chooseGroup, userStep},
 	}
 }
 

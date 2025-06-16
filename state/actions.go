@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/charmbracelet/log"
-	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -351,9 +350,9 @@ func (menu DisputeWorkoutMenu) PerformAction(params ActionData) error {
 	poll := tgbotapi.NewPoll(groupChatId, fmt.Sprintf("Cancel workout by %s from %s?", user.GetName(), lastWorkout.CreatedAt.Format("2006-01-02 15:04:05")))
 	poll.Options = []string{"No", "Yes"}
 	poll.IsAnonymous = false
-	poll.Type = "quiz"
-	// poll.CorrectOptionID = 0 // This is required for quiz polls but we don't use it
+	poll.Type = "regular"
 	poll.Explanation = "Vote to decide if this workout should be cancelled"
+	poll.OpenPeriod = 3600
 
 	// Send the poll
 	message, err := params.Bot.Send(poll)
@@ -372,18 +371,16 @@ func (menu DisputeWorkoutMenu) PerformAction(params ActionData) error {
 		return err
 	}
 
-	// Store poll-to-chat mapping in Redis
-	if err := PollMapping.StorePollChat(message.Poll.ID, groupChatId); err != nil {
-		log.Error("Failed to store poll-to-chat mapping", "error", err)
-		sentry.CaptureException(err)
-		// Don't return error here as the poll is already created and stored in DB
-	}
-
 	// Notify the target user
 	userMsg := tgbotapi.NewMessage(telegramUserId,
 		fmt.Sprintf("Your workout from %s is being disputed. A poll has been created in the group to decide the outcome.",
 			lastWorkout.CreatedAt.Format("2006-01-02 15:04:05")))
 	params.Bot.Send(userMsg)
+
+	// Send confirmation to admin
+	adminMsg := tgbotapi.NewMessage(params.Update.FromChat().ID,
+		fmt.Sprintf("Dispute poll created for %s's workout. The poll will close in 1 hour or when enough votes are reached.", user.GetName()))
+	params.Bot.Send(adminMsg)
 
 	return nil
 }

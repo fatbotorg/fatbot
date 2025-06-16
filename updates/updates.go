@@ -73,7 +73,7 @@ func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 
 func HandleUpdates(fatBotUpdate FatBotUpdate) error {
 	update := fatBotUpdate.Update
-	if update.SentFrom() == nil {
+	if update.SentFrom() == nil && update.Poll != nil {
 		return nil
 	}
 	if updateType, err := fatBotUpdate.classify(); err != nil {

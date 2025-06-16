@@ -18,6 +18,7 @@ func (update CommandUpdate) handle() error {
 }
 
 func (update PollUpdate) handle() error {
+	log.Debug("poll !jupdate")
 	return handlePollUpdate(update.Update, update.Bot)
 }
 
