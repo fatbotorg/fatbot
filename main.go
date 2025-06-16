@@ -20,7 +20,6 @@ func initViper() {
 	err := viper.ReadInConfig()
 	if err != nil {
 		log.Fatalf("fatal error config file: %s!", err)
-		log.Fatal("another log line")
 	}
 	viper.AutomaticEnv()
 }
