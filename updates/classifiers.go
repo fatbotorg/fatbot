@@ -42,6 +42,10 @@ func (fatBotUpdate FatBotUpdate) isUnknownGroupUpdate() bool {
 		}
 		return group.ChatID == 0
 	}
+	if update.FromChat() == nil {
+		return true
+	}
+
 	return !users.IsApprovedChatID(update.FromChat().ID) && !update.FromChat().IsPrivate()
 }
 
