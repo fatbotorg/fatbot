@@ -65,3 +65,17 @@ func clear(key int64) error {
 	}
 	return nil
 }
+
+func clearString(key string) error {
+	c, err := dial()
+	if err != nil {
+		log.Errorf("del dial err: %s", err)
+		return err
+	}
+	_, err = c.Do("DEL", key)
+	if err != nil {
+		log.Errorf("del err: %s", err)
+		return err
+	}
+	return nil
+}

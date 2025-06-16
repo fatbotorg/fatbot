@@ -19,7 +19,7 @@ func initViper() {
 	viper.AddConfigPath(".")
 	err := viper.ReadInConfig()
 	if err != nil {
-		log.Fatalf("fatal error config file: %s", err)
+		log.Fatalf("fatal error config file: %s!", err)
 	}
 	viper.AutomaticEnv()
 }

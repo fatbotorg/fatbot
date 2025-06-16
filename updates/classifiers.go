@@ -29,6 +29,19 @@ func (fatBotUpdate FatBotUpdate) isCallbackUpdate() bool {
 
 func (fatBotUpdate FatBotUpdate) isUnknownGroupUpdate() bool {
 	update := fatBotUpdate.Update
+
+	if update.PollAnswer != nil {
+		// Get poll information from database
+		poll, err := users.GetWorkoutDisputePoll(update.PollAnswer.PollID)
+		if err != nil {
+			return true
+		}
+		group, err := poll.GetGroup()
+		if err != nil {
+			return true
+		}
+		return group.ChatID == 0
+	}
 	return !users.IsApprovedChatID(update.FromChat().ID) && !update.FromChat().IsPrivate()
 }
 
@@ -67,4 +80,11 @@ func (fatBotUpdate FatBotUpdate) isGroupReplyUpdate() bool {
 	}
 
 	return true
+}
+
+func (fatBotUpdate FatBotUpdate) isPollUpdate() bool {
+	// log.Debug("Checking if poll update")
+	update := fatBotUpdate.Update
+	// log.Debugf("%+v", update.Poll, update.PollAnswer)
+	return update.Poll != nil || update.PollAnswer != nil
 }

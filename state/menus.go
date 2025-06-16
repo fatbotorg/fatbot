@@ -13,8 +13,10 @@ type MenuBase struct {
 	ParentMenu     bool
 }
 
-type stepKind string
-type stepResult string
+type (
+	stepKind   string
+	stepResult string
+)
 
 const (
 	Delimiter                 = ":"
@@ -76,6 +78,9 @@ type UpdateRanksMenu struct {
 type ManageImmunityMenu struct {
 	MenuBase
 }
+type DisputeWorkoutMenu struct {
+	MenuBase
+}
 
 type Menu interface {
 	CreateMenu(userId int64) MenuBase
@@ -96,6 +101,7 @@ var menuMap = map[string]Menu{
 	"removeuser":        RemoveUserMenu{},
 	"updateranks":       UpdateRanksMenu{},
 	"manageimmunity":    ManageImmunityMenu{},
+	"disputeworkout":    DisputeWorkoutMenu{},
 }
 
 func (menu ManageAdminsMenu) CreateMenu(userId int64) MenuBase {
@@ -268,6 +274,16 @@ func (menu ManageImmunityMenu) CreateMenu(userId int64) MenuBase {
 		Label:          "Manage User Immunity",
 		Steps:          []Step{chooseGroup, userStep},
 		SuperAdminOnly: true,
+	}
+}
+
+func (menu DisputeWorkoutMenu) CreateMenu(userId int64) MenuBase {
+	chooseGroup := groupStepBase
+	chooseGroup.Keyboard = createGroupsKeyboard(userId)
+	return MenuBase{
+		Name:  "disputeworkout",
+		Label: "Dispute Workout",
+		Steps: []Step{chooseGroup, userStep},
 	}
 }
 

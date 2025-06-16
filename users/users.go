@@ -55,7 +55,7 @@ func ptrTimeNow() *time.Time {
 
 func InitDB() error {
 	db := db.DBCon
-	db.AutoMigrate(&User{}, &Group{}, &Workout{}, &Event{}, &Blacklist{})
+	db.AutoMigrate(&User{}, &Group{}, &Workout{}, &Event{}, &Blacklist{}, &WorkoutDisputePoll{})
 	return nil
 }
 

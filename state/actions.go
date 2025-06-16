@@ -175,7 +175,7 @@ func (menu PushWorkoutMenu) PerformAction(params ActionData) error {
 
 func (menu DeleteLastWorkoutMenu) PerformAction(params ActionData) error {
 	defer DeleteStateEntry(params.State.ChatId)
-	groupChatId, err := params.State.getGroupChatId()
+	groupChatId, _ := params.State.getGroupChatId()
 	userId, _ := strconv.ParseInt(params.Data, 10, 64)
 	user, err := users.GetUserById(userId)
 	if err != nil {
@@ -313,5 +313,74 @@ func (menu ManageImmunityMenu) PerformAction(params ActionData) error {
 	user.SetImmunity(true)
 	msg := tgbotapi.NewMessage(params.Update.FromChat().ID, fmt.Sprintf("User %s immunity has been %s", user.GetName(), map[bool]string{true: "enabled", false: "disabled"}[user.Immuned]))
 	params.Bot.Send(msg)
+	return nil
+}
+
+func (menu DisputeWorkoutMenu) PerformAction(params ActionData) error {
+	defer DeleteStateEntry(params.State.ChatId)
+	telegramUserId, err := params.State.getTelegramUserId()
+	if err != nil {
+		return err
+	}
+	groupChatId, err := params.State.getGroupChatId()
+	if err != nil {
+		return err
+	}
+
+	user, err := users.GetUserById(telegramUserId)
+	if err != nil {
+		return err
+	}
+
+	// Get the user's last workout
+	lastWorkout, err := user.GetLastXWorkout(1, groupChatId)
+	if err != nil {
+		msg := tgbotapi.NewMessage(params.Update.FromChat().ID, "No workout found for this user.")
+		params.Bot.Send(msg)
+		return nil
+	}
+
+	// Get the group to get its ID
+	group, err := users.GetGroup(groupChatId)
+	if err != nil {
+		return err
+	}
+
+	// Create a poll in the group
+	poll := tgbotapi.NewPoll(groupChatId, fmt.Sprintf("Cancel workout by %s from %s?", user.GetName(), lastWorkout.CreatedAt.Format("2006-01-02 15:04:05")))
+	poll.Options = []string{"No", "Yes"}
+	poll.IsAnonymous = false
+	poll.Type = "regular"
+	poll.Explanation = "Vote to decide if this workout should be cancelled"
+	poll.OpenPeriod = 3600
+
+	// Send the poll
+	message, err := params.Bot.Send(poll)
+	if err != nil {
+		return err
+	}
+
+	// Store poll information
+	if err := users.CreateWorkoutDisputePoll(
+		message.Poll.ID,
+		uint(group.ID),
+		uint(user.ID),
+		lastWorkout.ID,
+		message.MessageID,
+	); err != nil {
+		return err
+	}
+
+	// Notify the target user
+	userMsg := tgbotapi.NewMessage(telegramUserId,
+		fmt.Sprintf("Your workout from %s is being disputed. A poll has been created in the group to decide the outcome.",
+			lastWorkout.CreatedAt.Format("2006-01-02 15:04:05")))
+	params.Bot.Send(userMsg)
+
+	// Send confirmation to admin
+	adminMsg := tgbotapi.NewMessage(params.Update.FromChat().ID,
+		fmt.Sprintf("Dispute poll created for %s's workout. The poll will close in 1 hour or when enough votes are reached.", user.GetName()))
+	params.Bot.Send(adminMsg)
+
 	return nil
 }
