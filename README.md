@@ -3,8 +3,6 @@
 The Telegram bot that keeps you lean
 ---
 
-let's add a comment
-
 ![alt text](http://omer.hamerman.co.s3.amazonaws.com/putin.png)
 
 ### Usage as a user
