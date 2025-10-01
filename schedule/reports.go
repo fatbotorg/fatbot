@@ -381,7 +381,7 @@ func findCloseContenders(stats []WeeklyStats, maxWorkouts int) []string {
 	for _, s := range stats {
 		gap := maxWorkouts - s.ThisWeekWorkouts
 		
-		if gap == 0 && maxWorkouts > 0 {
+		if gap == 0 {
 			contenders = append(contenders, 
 				fmt.Sprintf("• %s: Leading! One more workout seals it 🏆\n", s.User.GetName()))
 		} else if gap == 1 {
