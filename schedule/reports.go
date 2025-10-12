@@ -219,11 +219,8 @@ func createQuickChart(chartConfig string) *quickchartgo.Chart {
 }
 
 func ReportStandings(bot *tgbotapi.BotAPI) {
-	// create stats message and send it to all groups
-	statsMessage := "Here are the current standings:"
 	groups := users.GetGroups()
 	for _, group := range groups {
-		// Skip groups with fewer than 4 members
 		groupWithUsers := users.GetGroupWithUsers(group.ChatID)
 
 		if len(groupWithUsers.Users) < 4 {
@@ -234,8 +231,8 @@ func ReportStandings(bot *tgbotapi.BotAPI) {
 			continue
 		}
 
-		stats := CreateStatsMessage(group.ChatID)
-		msg := tgbotapi.NewMessage(group.ChatID, statsMessage+"\n"+stats)
+		message := buildPowerRankingsMessage(groupWithUsers)
+		msg := tgbotapi.NewMessage(group.ChatID, message)
 		bot.Send(msg)
 	}
 }
@@ -256,6 +253,147 @@ func CreateStatsMessage(chatId int64) string {
 			workoutsStr
 	}
 	return message
+}
+
+type WeeklyStats struct {
+	User              users.User
+	ThisWeekWorkouts  int
+	LastWeekWorkouts  int
+	Improvement       int
+	DaysLeftToWin     string
+}
+
+func buildPowerRankingsMessage(group users.Group) string {
+	stats := collectWeeklyStats(group)
+	
+	if len(stats) == 0 {
+		return "📊 Mid-Week Power Rankings 📊\n\nNo workout data available yet this week."
+	}
+
+	sort.Slice(stats, func(i, j int) bool {
+		if stats[i].ThisWeekWorkouts == stats[j].ThisWeekWorkouts {
+			return stats[i].Improvement > stats[j].Improvement
+		}
+		return stats[i].ThisWeekWorkouts > stats[j].ThisWeekWorkouts
+	})
+
+	message := "📊 Mid-Week Power Rankings 📊\n\n"
+	message += "🏆 Current Leaderboard:\n"
+	
+	maxWorkouts := stats[0].ThisWeekWorkouts
+	leadersCount := 0
+	for _, s := range stats {
+		if s.ThisWeekWorkouts == maxWorkouts {
+			leadersCount++
+		}
+	}
+
+	for i, s := range stats {
+		var position string
+		if i == 0 {
+			position = "🥇"
+		} else if i == 1 {
+			position = "🥈"
+		} else if i == 2 {
+			position = "🥉"
+		} else {
+			position = fmt.Sprintf("%d.", i+1)
+		}
+		
+		improvementStr := ""
+		if s.Improvement > 0 {
+			improvementStr = fmt.Sprintf(" 📈+%d", s.Improvement)
+		} else if s.Improvement < 0 {
+			improvementStr = fmt.Sprintf(" 📉%d", s.Improvement)
+		}
+		
+		message += fmt.Sprintf("%s %s: %d workouts%s\n", 
+			position, s.User.GetName(), s.ThisWeekWorkouts, improvementStr)
+	}
+
+	comebackPlayer := findComebackPlayer(stats)
+	if comebackPlayer != nil {
+		message += fmt.Sprintf("\n🔥 Comeback Player: %s (+%d vs last week!)\n", 
+			comebackPlayer.User.GetName(), comebackPlayer.Improvement)
+	}
+
+	if leadersCount > 1 && maxWorkouts > 0 {
+		message += fmt.Sprintf("\n⚡ CLOSE RACE! %d players tied at %d workouts!\n", 
+			leadersCount, maxWorkouts)
+	}
+
+	closeContenders := findCloseContenders(stats, maxWorkouts)
+	if len(closeContenders) > 0 {
+		message += "\n💪 Win Probability:\n"
+		for _, contender := range closeContenders {
+			message += contender
+		}
+	}
+
+	return message
+}
+
+func collectWeeklyStats(group users.Group) []WeeklyStats {
+	var stats []WeeklyStats
+	
+	for _, user := range group.Users {
+		thisWeekWorkouts := user.GetPastWeekWorkouts(group.ChatID)
+		lastWeekWorkouts := user.GetPreviousWeekWorkouts(group.ChatID)
+		
+		improvement := len(thisWeekWorkouts) - len(lastWeekWorkouts)
+		
+		stats = append(stats, WeeklyStats{
+			User:             user,
+			ThisWeekWorkouts: len(thisWeekWorkouts),
+			LastWeekWorkouts: len(lastWeekWorkouts),
+			Improvement:      improvement,
+		})
+	}
+	
+	return stats
+}
+
+func findComebackPlayer(stats []WeeklyStats) *WeeklyStats {
+	var bestComeback *WeeklyStats
+	maxImprovement := 0
+	
+	for i := range stats {
+		if stats[i].Improvement > maxImprovement && stats[i].Improvement >= 2 {
+			maxImprovement = stats[i].Improvement
+			bestComeback = &stats[i]
+		}
+	}
+	
+	return bestComeback
+}
+
+func findCloseContenders(stats []WeeklyStats, maxWorkouts int) []string {
+	if maxWorkouts == 0 {
+		return nil
+	}
+	
+	var contenders []string
+	daysLeft := 7 - int(time.Now().Weekday())
+	if daysLeft <= 0 || daysLeft >= 5 {
+		return nil
+	}
+	
+	for _, s := range stats {
+		gap := maxWorkouts - s.ThisWeekWorkouts
+		
+		if gap == 0 {
+			contenders = append(contenders, 
+				fmt.Sprintf("• %s: Leading! One more workout seals it 🏆\n", s.User.GetName()))
+		} else if gap == 1 {
+			contenders = append(contenders, 
+				fmt.Sprintf("• %s: 1 workout behind - still in the game! 🎯\n", s.User.GetName()))
+		} else if gap == 2 && daysLeft >= 2 {
+			contenders = append(contenders, 
+				fmt.Sprintf("• %s: 2 workouts needed - you've got time! ⏰\n", s.User.GetName()))
+		}
+	}
+	
+	return contenders
 }
 
 func monthlyLeader(group users.Group) users.User {
