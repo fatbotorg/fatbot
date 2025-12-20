@@ -166,7 +166,8 @@ func collectUsersData(group users.Group) (usersWorkouts, previousWeekWorkouts []
 		userPreviousWeekWorkouts := user.GetPreviousWeekWorkouts(group.ChatID)
 		previousWeekWorkouts = append(previousWeekWorkouts, fmt.Sprint(len(userPreviousWeekWorkouts)))
 		
-		if err := user.LoadWorkoutsThisCycle(group.ChatID); err != nil {
+		// Use ReportCycle (last 7 days) instead of ThisCycle (which resets to 0 on report day)
+		if err := user.LoadWorkoutsReportCycle(group.ChatID); err != nil {
 			log.Error("Error loading workouts for user", "user_id", user.ID, "error", err)
 			sentry.CaptureException(err)
 			continue // Skip this user if workouts cannot be loaded

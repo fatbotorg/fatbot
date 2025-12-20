@@ -53,6 +53,11 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 		msg = handleStatusCommand(update)
 	case "stats":
 		msg = handleStatsCommand(update)
+	case "whoop":
+		msg, err = HandleWhoopCommand(fatBotUpdate)
+		if err != nil {
+			return err
+		}
 	case "help":
 		msg.ChatID = update.FromChat().ID
 		msg.Text = "Join the group using: /join\nCheck your status using: /status"

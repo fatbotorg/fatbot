@@ -29,6 +29,11 @@ type User struct {
 	Rank          int
 	RankUpdatedAt *time.Time
 
+	WhoopID           string
+	WhoopAccessToken  string
+	WhoopRefreshToken string
+	WhoopTokenExpiry  time.Time
+
 	Workouts    []Workout
 	Events      []Event
 	Groups      []*Group `gorm:"many2many:user_groups;"`

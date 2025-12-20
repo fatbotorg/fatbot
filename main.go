@@ -5,7 +5,9 @@ import (
 	"fatbot/schedule"
 	"fatbot/updates"
 	"fatbot/users"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -17,6 +19,7 @@ import (
 func initViper() {
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	err := viper.ReadInConfig()
 	if err != nil {
 		log.Fatalf("fatal error config file: %s!", err)
@@ -43,6 +46,10 @@ func setupBotCommands(bot *tgbotapi.BotAPI) {
 		{
 			Command:     "stats",
 			Description: "View workout statistics",
+		},
+		{
+			Command:     "whoop",
+			Description: "Connect Whoop Account",
 		},
 		{
 			Command:     "help",
@@ -97,6 +104,18 @@ func main() {
 		schedule.Init(bot)
 		bot.Debug = false
 		log.Infof("Authorized on account %s", bot.Self.UserName)
+
+		go func() {
+			http.HandleFunc("/whoop-callback", updates.HandleWhoopCallback)
+			port := os.Getenv("PORT")
+			if port == "" {
+				port = "8080"
+			}
+			log.Infof("Starting HTTP server on port %s", port)
+			if err := http.ListenAndServe(":"+port, nil); err != nil {
+				log.Errorf("HTTP server failed: %s", err)
+			}
+		}()
 
 		// Set up the bot commands menu
 		setupBotCommands(bot)

@@ -23,6 +23,9 @@ func Init(bot *tgbotapi.BotAPI) {
 	if _, err := scheduler.Every(1).Hours().Do(func() { scanUsers(bot) }); err != nil {
 		log.Errorf("Strikes scheduler err: %s", err)
 	}
+	if _, err := scheduler.Every(2).Minutes().Do(func() { SyncWhoopWorkouts(bot) }); err != nil {
+		log.Errorf("Whoop sync scheduler err: %s", err)
+	}
 	if _, err := scheduler.Every(1).Day().Saturday().At(reportTime).Do(func() { CreateChart(bot) }); err != nil {
 		log.Errorf("Reports scheduler err: %s", err)
 	}
