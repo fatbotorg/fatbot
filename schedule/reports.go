@@ -337,7 +337,8 @@ func collectWeeklyStats(group users.Group) []WeeklyStats {
 	var stats []WeeklyStats
 	
 	for _, user := range group.Users {
-		thisWeekWorkouts := user.GetPastWeekWorkouts(group.ChatID)
+		user.LoadWorkoutsThisCycle(group.ChatID)
+		thisWeekWorkouts := user.Workouts
 		lastWeekWorkouts := user.GetPreviousWeekWorkouts(group.ChatID)
 		
 		improvement := len(thisWeekWorkouts) - len(lastWeekWorkouts)
