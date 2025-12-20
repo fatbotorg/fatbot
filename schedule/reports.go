@@ -163,10 +163,10 @@ func collectUsersData(group users.Group) (usersWorkouts, previousWeekWorkouts []
 	for _, user := range group.Users {
 		userPreviousWeekWorkouts := user.GetPreviousWeekWorkouts(group.ChatID)
 		previousWeekWorkouts = append(previousWeekWorkouts, fmt.Sprint(len(userPreviousWeekWorkouts)))
-		userPastWeekWorkouts := user.GetPastWeekWorkouts(group.ChatID)
-		usersWorkouts = append(usersWorkouts, fmt.Sprint(len(userPastWeekWorkouts)))
+		user.LoadWorkoutsThisCycle(group.ChatID)
+		usersWorkouts = append(usersWorkouts, fmt.Sprint(len(user.Workouts)))
 
-		workoutCount := len(userPastWeekWorkouts)
+		workoutCount := len(user.Workouts)
 		if workoutCount == 0 {
 			continue
 		}
