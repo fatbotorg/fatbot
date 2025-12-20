@@ -9,6 +9,7 @@ primary_region = "lhr"
 [env]
 DBPATH = "/data/fat.db"
 ENVIRONMENT = "production"
+WHOOP_REDIRECT_URI = "https://fatbot.fly.dev/whoop-callback"
 
 [mounts]
 source="fat_data"
