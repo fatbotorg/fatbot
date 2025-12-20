@@ -160,10 +160,17 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 
 func collectUsersData(group users.Group) (usersWorkouts, previousWeekWorkouts []string, leaders []Leader) {
 	var maxWorkouts int = 0
-	for _, user := range group.Users {
+	for i := range group.Users {
+		user := &group.Users[i] // Get a pointer to the user in the slice
+		
 		userPreviousWeekWorkouts := user.GetPreviousWeekWorkouts(group.ChatID)
 		previousWeekWorkouts = append(previousWeekWorkouts, fmt.Sprint(len(userPreviousWeekWorkouts)))
-		user.LoadWorkoutsThisCycle(group.ChatID)
+		
+		if err := user.LoadWorkoutsThisCycle(group.ChatID); err != nil {
+			log.Error("Error loading workouts for user", "user_id", user.ID, "error", err)
+			sentry.CaptureException(err)
+			continue // Skip this user if workouts cannot be loaded
+		}
 		usersWorkouts = append(usersWorkouts, fmt.Sprint(len(user.Workouts)))
 
 		workoutCount := len(user.Workouts)
@@ -180,7 +187,7 @@ func collectUsersData(group users.Group) (usersWorkouts, previousWeekWorkouts []
 		// If this user has the current maximum workouts, add them as a leader
 		if workoutCount == maxWorkouts {
 			leaders = append(leaders, Leader{
-				User:     user,
+				User:     *user, // Dereference the pointer for the struct field
 				Workouts: workoutCount,
 			})
 		}
@@ -336,15 +343,22 @@ func buildPowerRankingsMessage(group users.Group) string {
 func collectWeeklyStats(group users.Group) []WeeklyStats {
 	var stats []WeeklyStats
 	
-	for _, user := range group.Users {
-		user.LoadWorkoutsThisCycle(group.ChatID)
-		thisWeekWorkouts := user.Workouts
+	for i := range group.Users {
+		user := &group.Users[i] // Get a pointer to the user in the slice
+		
 		lastWeekWorkouts := user.GetPreviousWeekWorkouts(group.ChatID)
+		
+		if err := user.LoadWorkoutsThisCycle(group.ChatID); err != nil {
+			log.Error("Error loading workouts for user", "user_id", user.ID, "error", err)
+			sentry.CaptureException(err)
+			continue // Skip this user if workouts cannot be loaded
+		}
+		thisWeekWorkouts := user.Workouts
 		
 		improvement := len(thisWeekWorkouts) - len(lastWeekWorkouts)
 		
 		stats = append(stats, WeeklyStats{
-			User:             user,
+			User:             *user, // Dereference the pointer for the struct field
 			ThisWeekWorkouts: len(thisWeekWorkouts),
 			LastWeekWorkouts: len(lastWeekWorkouts),
 			Improvement:      improvement,

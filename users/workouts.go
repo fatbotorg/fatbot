@@ -97,24 +97,6 @@ func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
 	return nil
 }
 
-func (user *User) GetPastWeekWorkouts(chatId int64) []Workout {
-	db := db.DBCon
-	timezone := viper.GetString("timezone")
-	location, _ := time.LoadLocation(timezone)
-	lastWeek := time.Now().In(location).Add(time.Duration(-7) * time.Hour * 24)
-	group, err := GetGroup(chatId)
-	if err != nil {
-		log.Error(err)
-		sentry.CaptureException(err)
-		return []Workout{}
-	}
-	if err := db.Model(&User{}).
-		Preload("Workouts", "created_at > ? AND group_id = ? AND flagged = ?", lastWeek, group.ID, false).
-		Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
-	}
-	return user.Workouts
-}
-
 func (user *User) GetPreviousWeekWorkouts(chatId int64) []Workout {
 	db := db.DBCon
 	timezone := viper.GetString("timezone")
