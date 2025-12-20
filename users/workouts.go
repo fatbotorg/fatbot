@@ -28,6 +28,7 @@ type Workout struct {
 	PhotoMessageID int
 	Flagged        bool
 	Streak         int
+	WhoopID        string
 }
 
 func getLastCycleExactTime() time.Time {
@@ -93,6 +94,31 @@ func (user *User) LoadWorkoutsThisCycle(chatId int64) error {
 			group.ID,
 			false,
 		).Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
+	}
+	return nil
+}
+
+func (user *User) LoadWorkoutsReportCycle(chatId int64) error {
+	// The report runs at the start of a new cycle, so we want the PREVIOUS cycle.
+	// getLastCycleExactTime() returns the start of the CURRENT cycle (e.g., Sat 20:00 Today).
+	cycleFinish := getLastCycleExactTime()
+	cycleStart := cycleFinish.AddDate(0, 0, -7)
+
+	group, err := GetGroup(chatId)
+	if err != nil {
+		return err
+	}
+	db := db.DBCon
+	if err := db.Model(&User{}).
+		Preload(
+			"Workouts",
+			"created_at > ? AND created_at <= ? AND group_id = ? AND flagged = ?",
+			cycleStart,
+			cycleFinish,
+			group.ID,
+			false,
+		).Find(&user, "telegram_user_id = ?", user.TelegramUserID).Error; err != nil {
+		return err
 	}
 	return nil
 }
@@ -163,6 +189,12 @@ func isTodayOrWasYesterday(someDate time.Time) bool {
 		return workout == 1 || workout == 365
 	}
 	return today-1 == workout || today == workout
+}
+
+func IsSameDay(date1, date2 time.Time) bool {
+	y1, m1, d1 := date1.Date()
+	y2, m2, d2 := date2.Date()
+	return y1 == y2 && m1 == m2 && d1 == d2
 }
 
 func (user *User) CreateDummyWorkout() {
