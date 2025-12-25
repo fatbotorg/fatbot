@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy | FatBot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #fdf6e3;
+            --fg: #2d3436;
+            --accent-1: #a29bfe;
+            --accent-2: #55efc4;
+            --accent-3: #ffeaa7;
+            --border: 3px solid var(--fg);
+            --shadow: 5px 5px 0px var(--fg);
+            --radius: 12px;
+        }
+
+        body {
+            background-color: var(--accent-2); /* Mint Green background for Privacy page */
+            color: var(--fg);
+            font-family: 'DM Sans', sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--bg);
+            border: var(--border);
+            box-shadow: var(--shadow);
+            padding: 50px;
+            border-radius: var(--radius);
+        }
+
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2.5rem;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            margin-top: 30px;
+            border-bottom: 2px dashed var(--fg);
+            padding-bottom: 5px;
+            display: inline-block;
+        }
+
+        .meta {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 30px;
+            display: block;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .back-btn {
+            display: inline-block;
+            background: var(--fg);
+            color: #fff;
+            padding: 12px 25px;
+            text-decoration: none;
+            font-weight: 700;
+            border-radius: 50px;
+            margin-top: 40px;
+            transition: transform 0.2s;
+            border: 2px solid var(--fg);
+        }
+
+        .back-btn:hover {
+            background: var(--accent-3);
+            color: var(--fg);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        footer {
+            margin-top: 40px;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+            font-size: 0.85rem;
+            color: #777;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Privacy Policy</h1>
+    <span class="meta">Last Updated: December 23, 2025</span>
+
+    <p>Your privacy is important. This policy explains what we collect and how we use it to help you stay active.</p>
+
+    <section>
+        <h2>1. Information We Collect</h2>
+        <p>To operate the bot effectively, we collect the following limited information:</p>
+        <ul>
+            <li><strong>Telegram User Info:</strong> ID, Username, and Display Name (to identify you in the group).</li>
+            <li><strong>Workout Media:</strong> Photos and videos you upload to the bot for verification.</li>
+            <li><strong>Integration Data:</strong> If you connect Strava or Whoop, we receive workout summaries (duration, calories, type).</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>2. How We Use Your Data</h2>
+        <ul>
+            <li>To track your compliance with the 5-day workout rule.</li>
+            <li>To generate weekly group reports and leaderboards.</li>
+            <li>To verify workout authenticity using OpenAI (for image analysis).</li>
+            <li>To send you reminders before deadlines.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>3. Data Sharing</h2>
+        <p>We only share data in two specific ways:</p>
+        <ul>
+            <li><strong>OpenAI:</strong> Images are sent to OpenAI for automated analysis to confirm they are valid workouts.</li>
+            <li><strong>Group Transparency:</strong> Your workout stats and leaderboard position are visible to other members of your Telegram group.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>4. Your Rights</h2>
+        <p>You can stop using the bot at any time by leaving the Telegram group. If you wish for your historical data to be deleted, please contact the bot administrator directly.</p>
+    </section>
+
+    <a href="index.html" class="back-btn">← Back to Home</a>
+
+    <footer>
+        &copy; 2025 FatBot. All rights reserved.
+    </footer>
+</div>
+
+</body>
+</html>
