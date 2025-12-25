@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FatBot | Stay Hard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #fdf6e3;
+            --fg: #2d3436;
+            --accent-1: #a29bfe; /* Soft Periwinkle */
+            --accent-2: #55efc4; /* Mint Green */
+            --accent-3: #ffeaa7; /* Soft Yellow */
+            --border: 3px solid var(--fg);
+            --shadow: 5px 5px 0px var(--fg);
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--accent-1);
+            color: var(--fg);
+            font-family: 'DM Sans', sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--bg);
+            border: var(--border);
+            box-shadow: var(--shadow);
+            padding: 50px;
+            border-radius: var(--radius);
+        }
+
+        h1, h2, h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            margin-top: 0;
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            margin-bottom: 10px;
+            color: var(--fg);
+            text-transform: uppercase;
+        }
+
+        .hero {
+            text-align: center;
+            padding-bottom: 60px;
+            margin-bottom: 40px;
+            border-bottom: 2px dashed var(--fg);
+        }
+
+        .tagline {
+            font-size: 1.25rem;
+            background: var(--accent-3);
+            display: inline-block;
+            padding: 5px 15px;
+            border: 2px solid var(--fg);
+            border-radius: 50px;
+            margin-bottom: 20px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .description {
+            font-size: 1.2rem;
+            max-width: 650px;
+            margin: 0 auto 40px auto;
+            font-weight: 500;
+        }
+
+        .btn {
+            display: inline-block;
+            background: var(--fg);
+            color: #fff;
+            padding: 25px 60px;
+            font-size: 2rem;
+            font-weight: 900;
+            text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+            border: var(--border);
+            text-transform: uppercase;
+            box-shadow: 8px 8px 0px var(--accent-2);
+        }
+
+        .btn:hover {
+            transform: translate(-4px, -4px);
+            background: var(--accent-2);
+            color: var(--fg);
+            box-shadow: 12px 12px 0px var(--fg);
+        }
+
+        .btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: none;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 50px;
+        }
+
+        .card {
+            border: var(--border);
+            padding: 25px;
+            background: #fff;
+            border-radius: var(--radius);
+            transition: transform 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow);
+        }
+
+        .card h3 {
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .steps-section {
+            background: #fff;
+            padding: 30px;
+            border-radius: var(--radius);
+            border: var(--border);
+            position: relative;
+        }
+
+        .steps-section h2 {
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .step-num {
+            background: var(--accent-1);
+            color: var(--fg);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-right: 15px;
+            border: 2px solid var(--fg);
+            flex-shrink: 0;
+        }
+
+        footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        footer a {
+            color: var(--fg);
+            text-decoration: underline;
+            font-weight: 500;
+        }
+        
+        footer a:hover {
+            color: var(--accent-1);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header class="hero">
+        <span class="tagline">No Days Off</span>
+        <h1>Callous Your Mind.<br>Build Your Body.</h1>
+        <p class="description">FatBot doesn't care about your excuses. It cares about results. Upload proof of work every 5 days or get kicked out. We don't negotiate with weakness.</p>
+        <a href="https://t.me/your_bot_username_here" class="btn">Get After It</a>
+    </header>
+
+    <div class="grid">
+        <div class="card" style="background-color: #fff0f6;">
+            <span class="card-icon">🩸</span>
+            <h3>The Standard</h3>
+            <p>One rule: Upload every 5 days. Miss a day? You're banned. No appeals. No complaining.</p>
+        </div>
+        <div class="card" style="background-color: #f0faff;">
+            <span class="card-icon">🪞</span>
+            <h3>Accountability Mirror</h3>
+            <p>Surround yourself with savages. If you slack, the group sees it. If you quit, you're gone.</p>
+        </div>
+        <div class="card" style="background-color: #f0fff4;">
+            <span class="card-icon">📈</span>
+            <h3>The Truth</h3>
+            <p>Weekly reports expose the fakers. Numbers don't lie. Are you carrying the boat or dragging it?</p>
+        </div>
+        <div class="card" style="background-color: #fff4e6;">
+            <span class="card-icon">⚔️</span>
+            <h3>Taking Souls</h3>
+            <p>Compete with the best. Outwork everyone. There is no finish line. Own the leaderboard.</p>
+        </div>
+    </div>
+
+    <section class="steps-section">
+        <h2>The Path</h2>
+        
+        <div class="step-item">
+            <span class="step-num">1</span>
+            <p><strong>COMMIT:</strong> Invite FatBot. Give it admin power. Surrender your comfort.</p>
+        </div>
+        <div class="step-item">
+            <span class="step-num">2</span>
+            <p><strong>EXECUTE:</strong> Post a workout photo with "workout". Do the work.</p>
+        </div>
+        <div class="step-item">
+            <span class="step-num">3</span>
+            <p><strong>REPEAT:</strong> Do it again. And again. Consistency is the only currency.</p>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2025 FatBot. <a href="privacy.html">Privacy Policy</a></p>
+    </footer>
+</div>
+
+</body>
+</html>
