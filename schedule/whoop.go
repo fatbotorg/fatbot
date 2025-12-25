@@ -37,6 +37,17 @@ func SyncWhoopWorkouts(bot *tgbotapi.BotAPI) {
 				continue
 			}
 
+			// Check for duplicate image workout
+			// Users usually upload AFTER the workout, so we check from Start-60m to End+60m
+			margin := 60 * time.Minute
+			existing, err := user.GetWorkoutInTimeRange(record.Start.Add(-margin), record.End.Add(margin))
+			if err == nil && existing.ID != 0 && existing.WhoopID == "" {
+				log.Infof("Skipping Whoop workout %s for user %s: matched existing workout %d", record.ID, user.GetName(), existing.ID)
+				existing.WhoopID = record.ID
+				db.DBCon.Save(&existing)
+				continue
+			}
+
 			// Filter: Ignore short workouts (< 25 mins) or low strain (< 4.0)
 			duration := record.End.Sub(record.Start)
 			if duration < 25*time.Minute || record.Score.Strain < 4.0 {
@@ -105,6 +116,7 @@ func SyncWhoopWorkouts(bot *tgbotapi.BotAPI) {
 						streak,
 					))
 					bot.Send(msg)
+					
 				} else {
 					// --- BONUS WORKOUT LOGIC ---
 					// 1. Fetch Cycle to get Daily Strain
@@ -159,6 +171,9 @@ func SyncWhoopWorkouts(bot *tgbotapi.BotAPI) {
 					db.DBCon.Create(&workout)
 				}
 			}
+			// Send PM to user to record video note - ONCE per workout
+			pm := tgbotapi.NewMessage(user.TelegramUserID, fmt.Sprintf("Great job on your %s workout! 🏋️\n\nReply to this message with a video note to send it to all your groups.", record.SportName))
+			bot.Send(pm)
 		}
 	}
 }

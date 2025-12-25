@@ -208,6 +208,44 @@ func (update GroupReplyUpdate) handle() error {
 	return nil
 }
 
+func (update VideoNoteUpdate) handle() error {
+	msg := update.Update.Message
+	if msg.ReplyToMessage == nil {
+		return nil
+	}
+
+	// Check if the reply is to the specific prompt
+	if strings.Contains(msg.ReplyToMessage.Text, "Reply to this message with a video note") {
+		chatId := update.Update.FromChat().ID
+		
+		// Broadcast to all user's groups
+		user, err := users.GetUserById(chatId)
+		if err != nil {
+			return err
+		}
+		if err := user.LoadGroups(); err != nil {
+			return err
+		}
+
+		count := 0
+		for _, group := range user.Groups {
+			forwardMsg := tgbotapi.NewForward(group.ChatID, chatId, msg.MessageID)
+			if _, err := update.Bot.Send(forwardMsg); err != nil {
+				log.Errorf("Failed to forward video note to group %d: %s", group.ChatID, err)
+			} else {
+				count++
+			}
+		}
+
+		// Reply to user
+		reply := tgbotapi.NewMessage(chatId, fmt.Sprintf("Sent to %d groups!", count))
+		if _, err := update.Bot.Send(reply); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (update FatBotUpdate) handle() error {
 	if update.Update.Message != nil {
 		if update.Update.Message.IsCommand() {
@@ -226,6 +264,9 @@ func (update FatBotUpdate) handle() error {
 		} else if update.Update.Message.Photo != nil {
 			mediaUpdate := MediaUpdate{update}
 			return mediaUpdate.handle()
+		} else if update.Update.Message.VideoNote != nil {
+			videoNoteUpdate := VideoNoteUpdate{update}
+			return videoNoteUpdate.handle()
 		} else if update.Update.FromChat().IsPrivate() {
 			privateUpdate := PrivateUpdate{update}
 			return privateUpdate.handle()

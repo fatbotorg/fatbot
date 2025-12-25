@@ -14,6 +14,10 @@ func (fatBotUpdate FatBotUpdate) isMediaUpdate() bool {
 	return (update.Message != nil) && (len(update.Message.Photo) > 0 || update.Message.Video != nil)
 }
 
+func (fatBotUpdate FatBotUpdate) isVideoNoteUpdate() bool {
+	return fatBotUpdate.Update.Message != nil && fatBotUpdate.Update.Message.VideoNote != nil
+}
+
 func (fatBotUpdate FatBotUpdate) isPrivateUpdate() bool {
 	return fatBotUpdate.Update.FromChat().IsPrivate()
 }
