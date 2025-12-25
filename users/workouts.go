@@ -263,3 +263,10 @@ func (user *User) GetLastXWorkout(lastx int, chatId int64) (Workout, error) {
 	}
 	return user.Workouts[len(user.Workouts)-lastx], nil
 }
+
+func (user *User) GetWorkoutInTimeRange(start, end time.Time) (Workout, error) {
+	db := db.DBCon
+	var workout Workout
+	err := db.Where("user_id = ? AND created_at BETWEEN ? AND ?", user.ID, start, end).First(&workout).Error
+	return workout, err
+}

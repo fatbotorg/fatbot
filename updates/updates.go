@@ -38,6 +38,9 @@ type CallbackUpdate struct {
 type MediaUpdate struct {
 	FatBotUpdate
 }
+type VideoNoteUpdate struct {
+	FatBotUpdate
+}
 type PrivateUpdate struct {
 	FatBotUpdate
 }
@@ -62,6 +65,8 @@ func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 		return CommandUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isMediaUpdate():
 		return MediaUpdate{FatBotUpdate: fatBotUpdate}, nil
+	case fatBotUpdate.isVideoNoteUpdate():
+		return VideoNoteUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isGroupReplyUpdate():
 		return GroupReplyUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isPrivateUpdate():
