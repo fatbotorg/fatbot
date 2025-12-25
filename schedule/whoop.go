@@ -38,8 +38,9 @@ func SyncWhoopWorkouts(bot *tgbotapi.BotAPI) {
 			}
 
 			// Check for duplicate image workout
-			window := 60 * time.Minute
-			existing, err := user.GetWorkoutInTimeRange(record.Start.Add(-window), record.Start.Add(window))
+			// Users usually upload AFTER the workout, so we check from Start-60m to End+60m
+			margin := 60 * time.Minute
+			existing, err := user.GetWorkoutInTimeRange(record.Start.Add(-margin), record.End.Add(margin))
 			if err == nil && existing.ID != 0 && existing.WhoopID == "" {
 				log.Infof("Skipping Whoop workout %s for user %s: matched existing workout %d", record.ID, user.GetName(), existing.ID)
 				existing.WhoopID = record.ID
