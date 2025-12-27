@@ -65,6 +65,33 @@ func (update CallbackUpdate) handle() error {
 
 func (update MediaUpdate) handle() error {
 	if update.Update.FromChat().IsPrivate() {
+		msg := update.Update.Message
+		if msg.ReplyToMessage != nil && strings.Contains(msg.ReplyToMessage.Text, "Reply to this message with a photo") {
+			chatId := update.Update.FromChat().ID
+			user, err := users.GetUserById(chatId)
+			if err != nil {
+				return err
+			}
+			if err := user.LoadGroups(); err != nil {
+				return err
+			}
+
+			count := 0
+			for _, group := range user.Groups {
+				// We can't forward a photo directly if we want to change caption or context, but Forward is simplest.
+				// However, standard forwarding keeps the original sender.
+				// To mimic the "Video Note" broadcasting behavior:
+				forwardMsg := tgbotapi.NewForward(group.ChatID, chatId, msg.MessageID)
+				if _, err := update.Bot.Send(forwardMsg); err != nil {
+					log.Errorf("Failed to forward photo to group %d: %s", group.ChatID, err)
+				} else {
+					count++
+				}
+			}
+			reply := tgbotapi.NewMessage(chatId, fmt.Sprintf("Sent photo to %d groups!", count))
+			update.Bot.Send(reply)
+			return nil
+		}
 		return nil
 	}
 	caption := update.Update.Message.Caption

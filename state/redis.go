@@ -39,6 +39,22 @@ func set(key, value string) error {
 	return nil
 }
 
+func SetWithTTL(key, value string, ttl int) error {
+	c, err := dial()
+	if err != nil {
+		log.Errorf("set dial err: %s", err)
+		return err
+	}
+	defer c.Close()
+
+	_, err = c.Do("SET", key, value, "EX", ttl)
+	if err != nil {
+		log.Errorf("setex err: %s", err)
+		return err
+	}
+	return nil
+}
+
 func get(key string) (string, error) {
 	c, err := dial()
 	if err != nil {
@@ -50,6 +66,10 @@ func get(key string) (string, error) {
 		return "", err
 	}
 	return s, nil
+}
+
+func Get(key string) (string, error) {
+	return get(key)
 }
 
 func clear(key int64) error {
@@ -66,7 +86,7 @@ func clear(key int64) error {
 	return nil
 }
 
-func clearString(key string) error {
+func ClearString(key string) error {
 	c, err := dial()
 	if err != nil {
 		log.Errorf("del dial err: %s", err)

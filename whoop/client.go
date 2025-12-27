@@ -208,3 +208,32 @@ func GetCycleCollection(accessToken string, start time.Time) (*CycleResponse, er
 	}
 	return &cycleResponse, nil
 }
+
+func GetWorkoutById(accessToken string, workoutID string) (*WorkoutData, error) {
+	u, _ := url.Parse(WorkoutURL + "/" + workoutID)
+
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		log.Errorf("Whoop API Error (GetById): %s Body: %s", resp.Status, string(body))
+		return nil, fmt.Errorf("failed to fetch workout: %s", resp.Status)
+	}
+
+	var workoutData WorkoutData
+	if err := json.NewDecoder(resp.Body).Decode(&workoutData); err != nil {
+		return nil, err
+	}
+	return &workoutData, nil
+}

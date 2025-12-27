@@ -116,9 +116,14 @@ func handleWorkoutUpload(update MediaUpdate, labels []string) (tgbotapi.MessageC
 		ranks := users.GetRanks()
 		userRank := ranks[user.Rank]
 
+		aiResponse := ai.GetAiResponse(labels)
+		if aiResponse == "" {
+			aiResponse = "Great work!"
+		}
+
 		message = fmt.Sprintf("%s %s\nYour rank: %s\nLast workout: %s (%s)\nThis week: %d\n%s",
 			user.GetName(),
-			ai.GetAiResponse(labels),
+			aiResponse,
 			fmt.Sprintf("%s %s (%d/%d)",
 				userRank.Name,
 				userRank.Emoji,

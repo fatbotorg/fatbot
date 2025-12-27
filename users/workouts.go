@@ -246,6 +246,20 @@ func (workout *Workout) IsOlderThan(minutes int) bool {
 	return diffInMinutes > minutes
 }
 
+func (user *User) GetLastWorkout() (Workout, error) {
+	db := db.DBCon
+	err := db.Model(&User{}).Preload("Workouts", func(db *gorm.DB) *gorm.DB {
+		return db.Order("created_at DESC").Limit(1)
+	}).Find(&user).Error
+	if err != nil {
+		return Workout{}, err
+	}
+	if len(user.Workouts) > 0 {
+		return user.Workouts[0], nil
+	}
+	return Workout{}, &NoWorkoutsError{Name: user.GetName()}
+}
+
 func (user *User) GetLastXWorkout(lastx int, chatId int64) (Workout, error) {
 	db := db.DBCon
 	group, err := GetGroup(chatId)
