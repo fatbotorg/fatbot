@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var (
@@ -21,7 +22,17 @@ func GetDB() *gorm.DB {
 	if path == "" {
 		path = "fat.db"
 	}
+	newLogger := logger.New(
+		log.Default(),
+		logger.Config{
+			SlowThreshold:             time.Second,
+			LogLevel:                  logger.Warn,
+			IgnoreRecordNotFoundError: true,
+			Colorful:                  false,
+		},
+	)
 	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{
+		Logger: newLogger,
 		NowFunc: func() time.Time {
 			return time.Now().In(location)
 		},

@@ -191,7 +191,7 @@ func SyncWhoopWorkouts(bot *tgbotapi.BotAPI) {
 				bot.Send(newMsg)
 			}
 			// Send PM to user to record video note - ONCE per workout
-			pm := tgbotapi.NewMessage(user.TelegramUserID, fmt.Sprintf("Great job on your %s workout! 🏋️\n\nReply to this message with a video note to send it to all your groups.", record.SportName))
+			pm := tgbotapi.NewMessage(user.TelegramUserID, fmt.Sprintf("Great job on your %s workout! 🏋️\n\nReply to this message with a photo to send it to all your groups.", record.SportName))
 			bot.Send(pm)
 		}
 	}
