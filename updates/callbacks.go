@@ -1,11 +1,15 @@
 package updates
 
 import (
+	"fatbot/ai"
+	"fatbot/db"
 	"fatbot/state"
 	"fatbot/users"
+	"fatbot/whoop"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/getsentry/sentry-go"
@@ -216,6 +220,10 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 		if err := handleNewJoinCallback(fatBotUpdate); err != nil {
 			return err
 		}
+	} else if strings.HasPrefix(fatBotUpdate.Update.CallbackData(), "whoop:") {
+		if err := handleWhoopBonusCallback(fatBotUpdate); err != nil {
+			return err
+		}
 	} else {
 		err := handleStatefulCallback(fatBotUpdate)
 		if err != nil {
@@ -245,6 +253,171 @@ func handleNewJoinCallback(fatBotUpdate FatBotUpdate) error {
 	}
 	_, err := fatBotUpdate.Bot.Send(msg)
 	return err
+}
+
+func handleWhoopBonusCallback(fatBotUpdate FatBotUpdate) error {
+	data := fatBotUpdate.Update.CallbackData()
+	parts := strings.Split(data, ":")
+	action := parts[1] // yes or no
+	whoopID := parts[2]
+	bot := fatBotUpdate.Bot
+	user, err := users.GetUserById(fatBotUpdate.Update.CallbackQuery.From.ID)
+	if err != nil {
+		return err
+	}
+
+	// Clean up pending state
+	state.ClearString("whoop:pending:" + whoopID)
+
+	// Update message to remove buttons
+	edit := tgbotapi.NewEditMessageReplyMarkup(
+		fatBotUpdate.Update.CallbackQuery.Message.Chat.ID,
+		fatBotUpdate.Update.CallbackQuery.Message.MessageID,
+		tgbotapi.InlineKeyboardMarkup{InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{}},
+	)
+	bot.Request(edit)
+
+	if action == "no" {
+		// Mark as ignored
+		state.SetWithTTL("whoop:ignored:"+whoopID, "1", 604800) // 7 days
+
+		// Fetch details just to show the message
+		accessToken, err := user.GetValidWhoopAccessToken()
+		if err != nil {
+			return err
+		}
+		workout, err := whoop.GetWorkoutById(accessToken, whoopID)
+		if err != nil {
+			return err
+		}
+		duration := workout.End.Sub(workout.Start)
+
+		if err := user.LoadGroups(); err != nil {
+			return err
+		}
+		for _, group := range user.Groups {
+			msg := tgbotapi.NewMessage(group.ChatID, fmt.Sprintf(
+				"🏃 %s added a bonus activity: %s\n\nStrain: %.1f\nCalories: %.0f\nAvg HR: %d\nDuration: %.0f min\n\n(This activity is not counted as another workout.)",
+				user.GetName(),
+				workout.SportName,
+				workout.Score.Strain,
+				workout.Score.Kilojoule/4.184,
+				workout.Score.AverageHeartRate,
+				duration.Minutes(),
+			))
+			bot.Send(msg)
+		}
+		bot.Send(tgbotapi.NewMessage(user.TelegramUserID, "Got it. I've announced it as a bonus activity without stats."))
+		return nil
+	}
+
+	if action == "yes" {
+		// Process as normal workout
+		accessToken, err := user.GetValidWhoopAccessToken()
+		if err != nil {
+			return err
+		}
+		record, err := whoop.GetWorkoutById(accessToken, whoopID)
+		if err != nil {
+			return err
+		}
+		duration := record.End.Sub(record.Start)
+
+		if err := user.LoadGroups(); err != nil {
+			return err
+		}
+
+		for _, group := range user.Groups {
+			// Calculate streak (same logic as in schedule/whoop.go)
+			lastWorkout, err := user.GetLastXWorkout(1, group.ChatID)
+			streak := 0
+			if err == nil {
+				streak = lastWorkout.Streak // Maintain streak
+			} else {
+				streak = 1
+			}
+
+			workout := users.Workout{
+				UserID:  user.ID,
+				GroupID: group.ID,
+				WhoopID: record.ID,
+				Streak:  streak,
+			}
+			db.DBCon.Create(&workout)
+
+			// Standard Message
+			msg := tgbotapi.NewMessage(group.ChatID, fmt.Sprintf(
+				"🏋️ %s just completed a %s workout!\n\nStrain: %.1f\nCalories: %.0f\nAvg HR: %d\nDuration: %.0f min\n\nStreak: %d",
+				user.GetName(),
+				record.SportName,
+				record.Score.Strain,
+				record.Score.Kilojoule/4.184, // KJ to Kcal
+				record.Score.AverageHeartRate,
+				duration.Minutes(),
+				streak,
+			))
+			bot.Send(msg)
+
+			// David Goggins Message
+			if err := user.LoadWorkoutsThisCycle(group.ChatID); err != nil {
+				log.Errorf("Failed to load workouts for user %s: %s", user.GetName(), err)
+			}
+			ranks := users.GetRanks()
+			var userRank users.Rank
+			if user.Rank >= 0 && user.Rank < len(ranks) {
+				userRank = ranks[user.Rank]
+			} else {
+				if len(ranks) > 0 {
+					userRank = ranks[0]
+				}
+			}
+
+			aiResponse := ai.GetAiWhoopResponse(record.SportName, record.Score.Strain, record.Score.Kilojoule/4.184, record.Score.AverageHeartRate, duration.Minutes())
+			if aiResponse == "" {
+				aiResponse = "Great work!"
+			}
+
+			// TimeAgo logic
+			timeAgo := ""
+			if !lastWorkout.CreatedAt.IsZero() {
+				hours := time.Now().Sub(lastWorkout.CreatedAt).Hours()
+				if int(hours/24) == 0 {
+					timeAgo = fmt.Sprintf("%d hours ago", int(hours))
+				} else {
+					days := int(hours / 24)
+					timeAgo = fmt.Sprintf("%d days and %d hours ago", days, int(hours)-days*24)
+				}
+			}
+
+			streakMessage := ""
+			if streak > 0 {
+				streakSigns := ""
+				for i := 0; i < streak; i++ {
+					streakSigns += "👑"
+				}
+				streakMessage = fmt.Sprintf("%d in a row! %s %s", streak, streakSigns, users.GetRandomStreakMessage())
+			}
+
+			message := fmt.Sprintf("%s %s\nYour rank: %s\nLast workout: %s (%s)\nThis week: %d\n%s",
+				user.GetName(),
+				aiResponse,
+				fmt.Sprintf("%s %s (%d/%d)",
+					userRank.Name,
+					userRank.Emoji,
+					user.Rank,
+					len(ranks)),
+				lastWorkout.CreatedAt.Weekday(),
+				timeAgo,
+				len(user.Workouts),
+				streakMessage,
+			)
+
+			newMsg := tgbotapi.NewMessage(group.ChatID, message)
+			bot.Send(newMsg)
+		}
+		bot.Send(tgbotapi.NewMessage(user.TelegramUserID, "Done! Workout registered and posted."))
+	}
+	return nil
 }
 
 func handleAdminJoinApproval(bot *tgbotapi.BotAPI, dataSlice []string, userId int64) (messageText string, err error) {

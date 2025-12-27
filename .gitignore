@@ -3,3 +3,4 @@ fatbot
 *.png
 *.env
 *.envrc
+dump.rdb
