@@ -4,6 +4,8 @@ import (
 	"fatbot/users"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 func TestCollectWeeklyStats(t *testing.T) {
@@ -16,20 +18,20 @@ func TestCollectWeeklyStats(t *testing.T) {
 		ChatID: 123,
 		Users: []users.User{
 			{
-				ID:             1,
+				Model:          gorm.Model{ID: 1},
 				TelegramUserID: 101,
 				Name:           "User A",
 				Workouts: []users.Workout{
-					{CreatedAt: time.Now().AddDate(0, 0, -1)}, // 1 day ago
-					{CreatedAt: time.Now().AddDate(0, 0, -8)}, // 8 days ago
+					{Model: gorm.Model{CreatedAt: time.Now().AddDate(0, 0, -1)}}, // 1 day ago
+					{Model: gorm.Model{CreatedAt: time.Now().AddDate(0, 0, -8)}}, // 8 days ago
 				},
 			},
 			{
-				ID:             2,
+				Model:          gorm.Model{ID: 2},
 				TelegramUserID: 102,
 				Name:           "User B",
 				Workouts: []users.Workout{
-					{CreatedAt: time.Now().AddDate(0, 0, -2)}, // 2 days ago
+					{Model: gorm.Model{CreatedAt: time.Now().AddDate(0, 0, -2)}}, // 2 days ago
 				},
 			},
 		},

@@ -1,6 +1,7 @@
 package schedule
 
 import (
+	"fatbot/ai"
 	"fatbot/db"
 	"fatbot/users"
 	"fatbot/whoop"
@@ -116,7 +117,72 @@ func SyncWhoopWorkouts(bot *tgbotapi.BotAPI) {
 						streak,
 					))
 					bot.Send(msg)
-					
+
+					// --- Additional Message (Image Upload Style) ---
+					if err := user.LoadWorkoutsThisCycle(group.ChatID); err != nil {
+						log.Errorf("Failed to load workouts for user %s: %s", user.GetName(), err)
+					}
+
+					ranks := users.GetRanks()
+					// Check bounds for rank to avoid panic
+					var userRank users.Rank
+					if user.Rank >= 0 && user.Rank < len(ranks) {
+						userRank = ranks[user.Rank]
+					} else {
+						// Fallback or handle error. Using first rank or default?
+						// Assuming 0 is a valid default if index is out of bounds, though unlikely if logic is sound.
+						if len(ranks) > 0 {
+							userRank = ranks[0]
+						}
+					}
+
+					timeAgo := ""
+					if !lastWorkout.CreatedAt.IsZero() {
+						hours := time.Now().Sub(lastWorkout.CreatedAt).Hours()
+						if int(hours/24) == 0 {
+							timeAgo = fmt.Sprintf("%d hours ago", int(hours))
+						} else {
+							days := int(hours / 24)
+							timeAgo = fmt.Sprintf("%d days and %d hours ago", days, int(hours)-days*24)
+						}
+					}
+
+					var streakMessage string
+					if streak > 0 {
+						streakSigns := ""
+						for i := 0; i < streak; i++ {
+							streakSigns += "👑"
+						}
+						streakMessage = fmt.Sprintf("%d in a row! %s %s", streak, streakSigns, users.GetRandomStreakMessage())
+					}
+
+					aiResponse := ai.GetAiWhoopResponse(record.SportName, record.Score.Strain, record.Score.Kilojoule/4.184, record.Score.AverageHeartRate, duration.Minutes())
+					if aiResponse == "" {
+						aiResponse = "Great work!"
+					}
+
+					var message string
+					if lastWorkout.CreatedAt.IsZero() {
+						message = fmt.Sprintf("%s nice work!\nThis is your first workout", user.GetName())
+					} else {
+						message = fmt.Sprintf("%s %s\nYour rank: %s\nLast workout: %s (%s)\nThis week: %d\n%s",
+							user.GetName(),
+							aiResponse,
+							fmt.Sprintf("%s %s (%d/%d)",
+								userRank.Name,
+								userRank.Emoji,
+								user.Rank,
+								len(ranks)),
+							lastWorkout.CreatedAt.Weekday(),
+							timeAgo,
+							len(user.Workouts),
+							streakMessage,
+						)
+					}
+
+					newMsg := tgbotapi.NewMessage(group.ChatID, message)
+					bot.Send(newMsg)
+
 				} else {
 					// --- BONUS WORKOUT LOGIC ---
 					// 1. Fetch Cycle to get Daily Strain
