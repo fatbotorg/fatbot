@@ -108,6 +108,18 @@
             box-shadow: none;
         }
 
+        .btn-secondary {
+            background: #fff;
+            color: var(--fg);
+            box-shadow: 8px 8px 0px var(--accent-3);
+            margin-left: 15px;
+        }
+
+        .btn-secondary:hover {
+            background: var(--accent-3);
+            box-shadow: 12px 12px 0px var(--fg);
+        }
+
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -198,8 +210,11 @@
     <header class="hero">
         <span class="tagline">No Days Off</span>
         <h1>Callous Your Mind.<br>Build Your Body.</h1>
-        <p class="description">FatBot doesn't care about your excuses. It cares about results. Upload proof of work every 5 days or get kicked out. We don't negotiate with weakness.</p>
-        <a href="https://t.me/your_bot_username_here" class="btn">Get After It</a>
+        <p class="description">FatBot doesn't care about your excuses. It cares about results. This is the only bot proven to keep workouts on track, integrating seamlessly with Whoop and Apple devices. Upload proof of work every 5 days or get kicked out. We don't negotiate with weakness.</p>
+        <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+            <a href="https://t.me/shotershmenimbot" class="btn">Get After It</a>
+            <a href="https://github.com/fatbotorg/fatbot/blob/main/README.md" class="btn btn-secondary">Read Docs</a>
+        </div>
     </header>
 
     <div class="grid">
