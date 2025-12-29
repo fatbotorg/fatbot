@@ -182,7 +182,7 @@ func (user *User) PushWorkout(days, chatId int64) error {
 	return nil
 }
 
-func isTodayOrWasYesterday(someDate time.Time) bool {
+func IsTodayOrWasYesterday(someDate time.Time) bool {
 	today := time.Now().YearDay()
 	workout := someDate.YearDay()
 	if today == 1 {
@@ -223,7 +223,7 @@ func (user *User) UpdateWorkout(update tgbotapi.Update, lastWorkout Workout) (Wo
 	}
 
 	var streak int
-	if isTodayOrWasYesterday(lastWorkout.CreatedAt) {
+	if IsTodayOrWasYesterday(lastWorkout.CreatedAt) {
 		if lastWorkout.Streak > 0 {
 			streak = lastWorkout.Streak + 1
 		} else {
