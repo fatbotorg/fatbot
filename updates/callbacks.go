@@ -1,15 +1,14 @@
 package updates
 
 import (
-	"fatbot/ai"
 	"fatbot/db"
+	"fatbot/notify"
 	"fatbot/state"
 	"fatbot/users"
 	"fatbot/whoop"
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/getsentry/sentry-go"
@@ -281,15 +280,32 @@ func handleWhoopBonusCallback(fatBotUpdate FatBotUpdate) error {
 		// Mark as ignored
 		state.SetWithTTL("whoop:ignored:"+whoopID, "1", 604800) // 7 days
 
-		// Fetch details just to show the message
-		accessToken, err := user.GetValidWhoopAccessToken()
-		if err != nil {
-			return err
+		// Check if it's a bonus (secondary) workout or just a small one
+		lastWorkout, err := user.GetLastWorkout()
+		accessToken, errToken := user.GetValidWhoopAccessToken()
+		if errToken != nil {
+			return errToken
 		}
-		workout, err := whoop.GetWorkoutById(accessToken, whoopID)
-		if err != nil {
-			return err
+		workout, errWorkout := whoop.GetWorkoutById(accessToken, whoopID)
+		if errWorkout != nil {
+			return errWorkout
 		}
+
+		isBonus := err == nil && users.IsSameDay(lastWorkout.CreatedAt, workout.Start)
+
+		if !isBonus {
+			bot.Send(tgbotapi.NewMessage(user.TelegramUserID, "Understood. I won't report this workout."))
+			return nil
+		}
+
+		// Update message to remove buttons
+		edit := tgbotapi.NewEditMessageReplyMarkup(
+			fatBotUpdate.Update.CallbackQuery.Message.Chat.ID,
+			fatBotUpdate.Update.CallbackQuery.Message.MessageID,
+			tgbotapi.InlineKeyboardMarkup{InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{}},
+		)
+		bot.Request(edit)
+
 		duration := workout.End.Sub(workout.Start)
 
 		if err := user.LoadGroups(); err != nil {
@@ -307,7 +323,6 @@ func handleWhoopBonusCallback(fatBotUpdate FatBotUpdate) error {
 			))
 			bot.Send(msg)
 		}
-		bot.Send(tgbotapi.NewMessage(user.TelegramUserID, "Got it. I've announced it as a bonus activity without stats."))
 		return nil
 	}
 
@@ -328,94 +343,14 @@ func handleWhoopBonusCallback(fatBotUpdate FatBotUpdate) error {
 		}
 
 		for _, group := range user.Groups {
-			// Calculate streak (same logic as in schedule/whoop.go)
-			lastWorkout, err := user.GetLastXWorkout(1, group.ChatID)
-			streak := 0
-			if err == nil {
-				streak = lastWorkout.Streak // Maintain streak
-			} else {
-				streak = 1
-			}
-
 			workout := users.Workout{
 				UserID:  user.ID,
 				GroupID: group.ID,
 				WhoopID: record.ID,
-				Streak:  streak,
 			}
 			db.DBCon.Create(&workout)
-
-			// Standard Message
-			msg := tgbotapi.NewMessage(group.ChatID, fmt.Sprintf(
-				"🏋️ %s just completed a %s workout!\n\nStrain: %.1f\nCalories: %.0f\nAvg HR: %d\nDuration: %.0f min\n\nStreak: %d",
-				user.GetName(),
-				record.SportName,
-				record.Score.Strain,
-				record.Score.Kilojoule/4.184, // KJ to Kcal
-				record.Score.AverageHeartRate,
-				duration.Minutes(),
-				streak,
-			))
-			bot.Send(msg)
-
-			// David Goggins Message
-			if err := user.LoadWorkoutsThisCycle(group.ChatID); err != nil {
-				log.Errorf("Failed to load workouts for user %s: %s", user.GetName(), err)
-			}
-			ranks := users.GetRanks()
-			var userRank users.Rank
-			if user.Rank >= 0 && user.Rank < len(ranks) {
-				userRank = ranks[user.Rank]
-			} else {
-				if len(ranks) > 0 {
-					userRank = ranks[0]
-				}
-			}
-
-			aiResponse := ai.GetAiWhoopResponse(record.SportName, record.Score.Strain, record.Score.Kilojoule/4.184, record.Score.AverageHeartRate, duration.Minutes())
-			if aiResponse == "" {
-				aiResponse = "Great work!"
-			}
-
-			// TimeAgo logic
-			timeAgo := ""
-			if !lastWorkout.CreatedAt.IsZero() {
-				hours := time.Now().Sub(lastWorkout.CreatedAt).Hours()
-				if int(hours/24) == 0 {
-					timeAgo = fmt.Sprintf("%d hours ago", int(hours))
-				} else {
-					days := int(hours / 24)
-					timeAgo = fmt.Sprintf("%d days and %d hours ago", days, int(hours)-days*24)
-				}
-			}
-
-			streakMessage := ""
-			if streak > 0 {
-				streakSigns := ""
-				for i := 0; i < streak; i++ {
-					streakSigns += "👑"
-				}
-				streakMessage = fmt.Sprintf("%d in a row! %s %s", streak, streakSigns, users.GetRandomStreakMessage())
-			}
-
-			message := fmt.Sprintf("%s %s\nYour rank: %s\nLast workout: %s (%s)\nThis week: %d\n%s",
-				user.GetName(),
-				aiResponse,
-				fmt.Sprintf("%s %s (%d/%d)",
-					userRank.Name,
-					userRank.Emoji,
-					user.Rank,
-					len(ranks)),
-				lastWorkout.CreatedAt.Weekday(),
-				timeAgo,
-				len(user.Workouts),
-				streakMessage,
-			)
-
-			newMsg := tgbotapi.NewMessage(group.ChatID, message)
-			bot.Send(newMsg)
+			notify.NotifyWorkout(bot, user, workout, record.SportName, record.Score.Strain, record.Score.Kilojoule/4.184, record.Score.AverageHeartRate, duration.Minutes())
 		}
-		bot.Send(tgbotapi.NewMessage(user.TelegramUserID, "Done! Workout registered and posted."))
 	}
 	return nil
 }

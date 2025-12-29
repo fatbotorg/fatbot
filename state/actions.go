@@ -71,7 +71,7 @@ func (menu ChangeAdminsMenu) PerformAction(params ActionData) error {
 				return err
 			}
 		default:
-			log.Warnf("Unknown", "option", option)
+			log.Warn("Unknown", "option", option)
 		}
 	}
 	return nil

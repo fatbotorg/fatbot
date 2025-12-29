@@ -4,3 +4,4 @@ fatbot
 *.env
 *.envrc
 dump.rdb
+fat.db-wal
