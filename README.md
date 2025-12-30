@@ -63,7 +63,7 @@ insert into users(username, name,telegram_user_id,active,is_admin) values(<your_
 * Set the bot as admin
 * Critical step: when you're asked to provde the bot with admin permissions *toggle the option to stay annonymous on*. This changes the group to a "supergroup" which is essential for the bot to operate. You can switch it off right away (recommended)
 * Another critical step: make sure users *aren't allowed* to invite other to the group!
-* As a superadmin, you can now run `/newgroup` in the group chat and the bot should take care of its creation and let you know it worked in a message
+* As a group admin, you can now run `/newgroup` in the group chat and the bot should take care of its creation and let you know it worked in a message
 
 ##### Adding users
 
