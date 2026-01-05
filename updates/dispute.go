@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"fatbot/state"
 	"fatbot/users"
 	"fmt"
 
@@ -111,11 +112,15 @@ func handlePollUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 				return fmt.Errorf("failed to get workout: %v", err)
 			}
 
-			_, err = targetUser.RollbackLastWorkout(group.ChatID)
+			deletedWorkout, _, err := targetUser.RollbackLastWorkout(group.ChatID)
 			if err != nil {
 				if _, nwe := err.(*users.NoWorkoutsError); !nwe {
 					return err
 				}
+			}
+
+			if deletedWorkout.WhoopID != "" {
+				state.SetWithTTL("whoop:ignored:"+deletedWorkout.WhoopID, "1", 604800) // 7 days
 			}
 
 			// Announce result

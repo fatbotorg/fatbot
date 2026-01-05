@@ -157,18 +157,18 @@ func (user *User) FlagLastWorkout(chatId int64) error {
 	return nil
 }
 
-func (user *User) RollbackLastWorkout(chatId int64) (Workout, error) {
+func (user *User) RollbackLastWorkout(chatId int64) (Workout, Workout, error) {
 	db := db.DBCon
 	lastWorkout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
-		return Workout{}, err
+		return Workout{}, Workout{}, err
 	}
 	db.Delete(&Workout{}, lastWorkout.ID)
 	newLastWorkout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
-		return Workout{}, err
+		return lastWorkout, Workout{}, err
 	}
-	return newLastWorkout, nil
+	return lastWorkout, newLastWorkout, nil
 }
 
 func (user *User) PushWorkout(days, chatId int64) error {

@@ -181,9 +181,12 @@ func (menu DeleteLastWorkoutMenu) PerformAction(params ActionData) error {
 	if err != nil {
 		return err
 	}
-	if newLastWorkout, err := user.RollbackLastWorkout(groupChatId); err != nil {
+	if deletedWorkout, newLastWorkout, err := user.RollbackLastWorkout(groupChatId); err != nil {
 		return err
 	} else {
+		if deletedWorkout.WhoopID != "" {
+			SetWithTTL("whoop:ignored:"+deletedWorkout.WhoopID, "1", 604800) // 7 days
+		}
 		msg := tgbotapi.NewMessage(params.Update.FromChat().ID, "")
 		message := fmt.Sprintf("Deleted last workout for user %s\nRolledback to: %s",
 			user.GetName(), newLastWorkout.CreatedAt.Format("2006-01-02 15:04:05"))
