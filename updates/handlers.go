@@ -105,7 +105,7 @@ func (update MediaUpdate) handle() error {
 		return err
 	}
 	labels := detectImageLabels(imageBytes)
-	msg, err := handleWorkoutUpload(update, labels)
+	msg, err := handleWorkoutUpload(update, labels, imageBytes)
 	if err != nil {
 		return fmt.Errorf("Error handling last workout: %s", err)
 	}
