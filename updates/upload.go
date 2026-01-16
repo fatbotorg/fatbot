@@ -46,7 +46,7 @@ func getFile(update MediaUpdate) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func handleWorkoutUpload(update MediaUpdate, labels []string) (tgbotapi.MessageConfig, error) {
+func handleWorkoutUpload(update MediaUpdate, labels []string, imageBytes []byte) (tgbotapi.MessageConfig, error) {
 	var message string
 	botUpdate := update.Update
 	msg := tgbotapi.NewMessage(botUpdate.Message.Chat.ID, "")
@@ -134,6 +134,10 @@ func handleWorkoutUpload(update MediaUpdate, labels []string) (tgbotapi.MessageC
 			len(user.Workouts),
 			streakMessage,
 		)
+	}
+
+	if appleWatchData := getAppleWatchData(imageBytes); appleWatchData != "" {
+		message += appleWatchData
 	}
 
 	msg.Text = message

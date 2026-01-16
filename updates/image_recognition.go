@@ -67,6 +67,34 @@ func detectImageLabels(imageBytes []byte) []string {
 	return answer
 }
 
+func detectImageText(imageBytes []byte) []string {
+	svc := rekognition.New(session.New())
+	input := &rekognition.DetectTextInput{
+		Image: &rekognition.Image{
+			Bytes: imageBytes,
+		},
+	}
+
+	result, err := svc.DetectText(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			log.Error(aerr.Error())
+			sentry.CaptureException(err)
+		} else {
+			log.Error(err.Error())
+		}
+		return []string{}
+	}
+
+	var detectedText []string
+	for _, text := range result.TextDetections {
+		if *text.Type == "LINE" {
+			detectedText = append(detectedText, *text.DetectedText)
+		}
+	}
+	return detectedText
+}
+
 func findEmoji(label string) string {
 	acceptedLables := map[string]string{
 		"fitness":       "🤾",
