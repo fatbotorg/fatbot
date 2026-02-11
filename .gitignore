@@ -5,3 +5,4 @@ fatbot
 *.envrc
 dump.rdb
 fat.db-wal
+mise.toml
