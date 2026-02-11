@@ -267,7 +267,9 @@ func (user *User) GetLastXWorkout(lastx int, chatId int64) (Workout, error) {
 		return Workout{}, err
 	}
 	if err := db.Model(&User{}).
-		Preload("Workouts", "group_id = ?", group.ID).
+		Preload("Workouts", func(db *gorm.DB) *gorm.DB {
+			return db.Where("group_id = ?", group.ID).Order("created_at ASC")
+		}).
 		Limit(lastx).
 		Find(&user).Error; err != nil {
 		return Workout{}, err
