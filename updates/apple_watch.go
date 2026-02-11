@@ -12,7 +12,7 @@ import (
 
 func getAppleWatchData(imageBytes []byte) string {
 	lines := detectImageText(imageBytes)
-	
+
 	var duration float64
 	var avgHR float64
 	var calories float64
@@ -21,10 +21,13 @@ func getAppleWatchData(imageBytes []byte) string {
 	// Check for Apple Watch indicators
 	for _, line := range lines {
 		lowerLine := strings.ToLower(line)
-		if strings.Contains(lowerLine, "total time") || 
-		   strings.Contains(lowerLine, "active calories") ||
-		   strings.Contains(lowerLine, "avg heart rate") ||
-		   strings.Contains(lowerLine, "apple watch") {
+		if strings.Contains(lowerLine, "total time") ||
+			strings.Contains(lowerLine, "workout time") ||
+			strings.Contains(lowerLine, "elapsed time") ||
+			strings.Contains(lowerLine, "active calories") ||
+			strings.Contains(lowerLine, "avg heart rate") ||
+			strings.Contains(lowerLine, "avg. heart rate") ||
+			strings.Contains(lowerLine, "apple watch") {
 			isAppleWatch = true
 			break
 		}
@@ -35,9 +38,9 @@ func getAppleWatchData(imageBytes []byte) string {
 	}
 
 	// Regex patterns
-	// Duration: matches H:MM:SS or MM:SS or M:SS
-	// Examples: "43:36", "1:05:20"
-	durationRegex := regexp.MustCompile(`^(\d{0,2}:)?(\d{1,2}):(\d{2})$`)
+	// Duration: matches H:MM:SS or MM:SS
+	// capture groups: 1=HH (optional), 2=MM, 3=SS
+	durationRegex := regexp.MustCompile(`(?:(\d{1,2}):)?(\d{1,2}):(\d{2})`)
 	// HR: matches "169 BPM" or "169BPM" or just "169" if following label
 	hrRegex := regexp.MustCompile(`(\d{2,3})\s*BPM`)
 	// Cal: matches "559CAL" or "559KCAl"
@@ -49,40 +52,42 @@ func getAppleWatchData(imageBytes []byte) string {
 		lowerLine := strings.ToLower(line)
 
 		// Parse Duration
-		if strings.Contains(lowerLine, "total time") {
+		if strings.Contains(lowerLine, "total time") ||
+			strings.Contains(lowerLine, "workout time") ||
+			strings.Contains(lowerLine, "elapsed time") {
 			// Look in current and next 2 lines
 			for j := 0; j <= 2 && i+j < len(lines); j++ {
-				// Clean the string of "total time" if it's on the same line
-				candidate := strings.TrimSpace(strings.ReplaceAll(strings.ToLower(lines[i+j]), "total time", ""))
+				candidate := lines[i+j]
 				matches := durationRegex.FindStringSubmatch(candidate)
 				if len(matches) > 0 {
 					// matches[0] is full match
-					// matches[1] is HH: (optional)
+					// matches[1] is HH (optional)
 					// matches[2] is MM
 					// matches[3] is SS
-					
-				h := 0.0
-				m := 0.0
-				s := 0.0
+
+					h := 0.0
+					m := 0.0
+					s := 0.0
 
 					if matches[1] != "" {
-						hStr := strings.TrimSuffix(matches[1], ":")
-						hVal, _ := strconv.Atoi(hStr)
+						hVal, _ := strconv.Atoi(matches[1])
 						h = float64(hVal)
 					}
-				mVal, _ := strconv.Atoi(matches[2])
-				m = float64(mVal)
-				sVal, _ := strconv.Atoi(matches[3])
-				s = float64(sVal)
+					mVal, _ := strconv.Atoi(matches[2])
+					m = float64(mVal)
+					sVal, _ := strconv.Atoi(matches[3])
+					s = float64(sVal)
 
-				duration = h*60 + m + s/60
-				break
+					duration = h*60 + m + s/60
+					break
 				}
 			}
 		}
 
 		// Parse Avg Heart Rate
-		if strings.Contains(lowerLine, "avg heart rate") || strings.Contains(lowerLine, "avg hr") {
+		if strings.Contains(lowerLine, "avg heart rate") ||
+			strings.Contains(lowerLine, "avg hr") ||
+			strings.Contains(lowerLine, "avg. heart rate") {
 			for j := 0; j <= 2 && i+j < len(lines); j++ {
 				candidate := lines[i+j]
 				// Check for explicitly marked BPM
@@ -134,12 +139,18 @@ func getAppleWatchData(imageBytes []byte) string {
 		// Assuming MaxHR of 190 as per requirement example
 		maxHR := 190.0
 		intensity := avgHR / maxHR
-		
+
 		// Formula: Duration (min) * Intensity * e^(1.92 * Intensity)
 		strainRaw := duration * intensity * math.Exp(1.92*intensity)
 
+		// Scale to 0-21 (Whoop scale approximation)
+		strain := 21.0 * (1.0 - math.Exp(-0.005*strainRaw))
+		if strain > 21.0 {
+			strain = 21.0
+		}
+
 		return fmt.Sprintf("\n\nStrain: %.1f\nCalories: %.0f\nAvg HR: %d\nDuration: %.0f min",
-			strainRaw, calories, int(avgHR), duration)
+			strain, calories, int(avgHR), duration)
 	}
 
 	return ""
