@@ -48,3 +48,12 @@ func GarminWorkoutExists(garminID string) bool {
 	db.Where("garmin_id = ?", baseID).Limit(1).Find(&workout)
 	return workout.ID != 0
 }
+
+func (user *User) DeregisterGarmin() error {
+	db := db.DBCon
+	user.GarminAccessToken = ""
+	user.GarminRefreshToken = ""
+	user.GarminTokenExpiry = time.Time{}
+	user.GarminUserID = ""
+	return db.Save(&user).Error
+}

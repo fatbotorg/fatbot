@@ -114,6 +114,8 @@ func main() {
 			http.HandleFunc("/whoop-callback", updates.HandleWhoopCallback)
 			http.HandleFunc("/garmin-callback", updates.HandleGarminCallback)
 			http.HandleFunc("/garmin-webhook", updates.HandleGarminWebhook)
+			http.HandleFunc("/garmin-deregistration", updates.HandleGarminDeregistration)
+			http.HandleFunc("/garmin-permissions-change", updates.HandleGarminPermissionsChange)
 			port := os.Getenv("PORT")
 			if port == "" {
 				port = "8080"
