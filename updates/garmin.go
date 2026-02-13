@@ -95,6 +95,13 @@ type GarminNotification struct {
 	Activities      []GarminEntry `json:"activities"`
 	Dailies         []GarminEntry `json:"dailies"`
 	Epochs          []GarminEntry `json:"epochs"`
+	Sleeps          []GarminEntry `json:"sleeps"`
+	BodyComps       []GarminEntry `json:"bodyCompositions"`
+	Stress          []GarminEntry `json:"stressDetails"`
+	UserMetrics     []GarminEntry `json:"userMetrics"`
+	MoveIQ          []GarminEntry `json:"moveIQActivities"`
+	PulseOx         []GarminEntry `json:"pulseOx"`
+	Respiration     []GarminEntry `json:"respiration"`
 	ActivityDetails []GarminEntry `json:"activityDetails"`
 	ActivityFiles   []GarminEntry `json:"activityFiles"`
 }
@@ -140,6 +147,13 @@ func HandleGarminWebhook(w http.ResponseWriter, r *http.Request) {
 
 	allEntries := append(notification.Activities, notification.Dailies...)
 	allEntries = append(allEntries, notification.Epochs...)
+	allEntries = append(allEntries, notification.Sleeps...)
+	allEntries = append(allEntries, notification.BodyComps...)
+	allEntries = append(allEntries, notification.Stress...)
+	allEntries = append(allEntries, notification.UserMetrics...)
+	allEntries = append(allEntries, notification.MoveIQ...)
+	allEntries = append(allEntries, notification.PulseOx...)
+	allEntries = append(allEntries, notification.Respiration...)
 	allEntries = append(allEntries, notification.ActivityDetails...)
 
 	log.Infof("Received Garmin Webhook: %d total entries", len(allEntries))
@@ -219,4 +233,111 @@ func HandleGarminWebhook(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+type GarminPermissionsChange struct {
+	PermissionsChange []struct {
+		UserId          string   `json:"userId"`
+		UserAccessToken string   `json:"userAccessToken"`
+		Permissions     []string `json:"permissions"`
+	} `json:"permissionsChange"`
+}
+
+func HandleGarminPermissionsChange(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Errorf("Failed to read Garmin permissions change body: %s", err)
+		return
+	}
+	log.Infof("Raw Garmin Permissions Change Body: %s", string(bodyBytes))
+
+	var change GarminPermissionsChange
+	if err := json.Unmarshal(bodyBytes, &change); err != nil {
+		log.Errorf("Failed to decode Garmin permissions change: %s", err)
+		return
+	}
+
+	for _, entry := range change.PermissionsChange {
+		var user users.User
+		db.DBCon.Where("garmin_user_id = ?", entry.UserId).First(&user)
+		if user.ID == 0 && entry.UserAccessToken != "" {
+			db.DBCon.Where("garmin_access_token = ?", entry.UserAccessToken).First(&user)
+		}
+
+		if user.ID != 0 {
+			if len(entry.Permissions) == 0 {
+				if err := user.DeregisterGarmin(); err != nil {
+					log.Errorf("Failed to deregister Garmin for user %s after permission revocation: %s", user.GetName(), err)
+				} else {
+					log.Infof("Successfully deregistered Garmin for user %s due to full permission revocation", user.GetName())
+					if GlobalBot != nil {
+						msg := tgbotapi.NewMessage(user.TelegramUserID, "Your Garmin account has been disconnected because all permissions were revoked.")
+						GlobalBot.Send(msg)
+					}
+				}
+			} else {
+				log.Infof("Garmin permissions changed for user %s: %v", user.GetName(), entry.Permissions)
+			}
+		} else {
+			log.Warnf("Could not find user for permissions change: UserId=%s", entry.UserId)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 var GlobalBot *tgbotapi.BotAPI
+
+type GarminDeregistration struct {
+	Deregistrations []struct {
+		UserId          string `json:"userId"`
+		UserAccessToken string `json:"userAccessToken"`
+	} `json:"deregistrations"`
+}
+
+func HandleGarminDeregistration(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Errorf("Failed to read Garmin deregistration body: %s", err)
+		return
+	}
+	log.Infof("Raw Garmin Deregistration Body: %s", string(bodyBytes))
+
+	var dereg GarminDeregistration
+	if err := json.Unmarshal(bodyBytes, &dereg); err != nil {
+		log.Errorf("Failed to decode Garmin deregistration: %s", err)
+		return
+	}
+
+	for _, entry := range dereg.Deregistrations {
+		var user users.User
+		db.DBCon.Where("garmin_user_id = ?", entry.UserId).First(&user)
+		if user.ID == 0 && entry.UserAccessToken != "" {
+			db.DBCon.Where("garmin_access_token = ?", entry.UserAccessToken).First(&user)
+		}
+
+		if user.ID != 0 {
+			if err := user.DeregisterGarmin(); err != nil {
+				log.Errorf("Failed to deregister Garmin for user %s: %s", user.GetName(), err)
+			} else {
+				log.Infof("Successfully deregistered Garmin for user %s", user.GetName())
+				if GlobalBot != nil {
+					msg := tgbotapi.NewMessage(user.TelegramUserID, "Your Garmin account has been disconnected.")
+					GlobalBot.Send(msg)
+				}
+			}
+		} else {
+			log.Warnf("Could not find user to deregister: UserId=%s", entry.UserId)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+}

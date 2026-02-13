@@ -82,7 +82,7 @@ func GetAuthURL(state, challenge string) string {
 	q.Set("state", state)
 	q.Set("code_challenge", challenge)
 	q.Set("code_challenge_method", "S256")
-	q.Set("scope", "read:activities read:activity_data read:daily_summaries read:historical_data")
+	q.Set("scope", "read:activities read:activity_data read:daily_summaries read:historical_data read:sleep read:body_composition read:stress read:user_metrics read:move_iq read:pulse_ox read:respiration")
 	u.RawQuery = q.Encode()
 
 	log.Infof("Generating Garmin Auth URL for environment: %s", env)
