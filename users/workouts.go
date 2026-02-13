@@ -29,6 +29,7 @@ type Workout struct {
 	Flagged        bool
 	Streak         int
 	WhoopID        string
+	GarminID       string
 }
 
 func getLastCycleExactTime() time.Time {
