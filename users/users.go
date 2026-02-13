@@ -34,6 +34,11 @@ type User struct {
 	WhoopRefreshToken string
 	WhoopTokenExpiry  time.Time
 
+	GarminAccessToken  string
+	GarminRefreshToken string
+	GarminTokenExpiry  time.Time
+	GarminUserID       string
+
 	Workouts    []Workout
 	Events      []Event
 	Groups      []*Group `gorm:"many2many:user_groups;"`

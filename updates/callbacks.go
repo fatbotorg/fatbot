@@ -1,7 +1,9 @@
 package updates
 
 import (
+	"encoding/json"
 	"fatbot/db"
+	"fatbot/garmin"
 	"fatbot/notify"
 	"fatbot/state"
 	"fatbot/users"
@@ -9,6 +11,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/getsentry/sentry-go"
@@ -223,6 +226,10 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 		if err := handleWhoopBonusCallback(fatBotUpdate); err != nil {
 			return err
 		}
+	} else if strings.HasPrefix(fatBotUpdate.Update.CallbackData(), "garmin:") {
+		if err := handleGarminBonusCallback(fatBotUpdate); err != nil {
+			return err
+		}
 	} else {
 		err := handleStatefulCallback(fatBotUpdate)
 		if err != nil {
@@ -350,6 +357,70 @@ func handleWhoopBonusCallback(fatBotUpdate FatBotUpdate) error {
 			}
 			db.DBCon.Create(&workout)
 			notify.NotifyWorkout(bot, user, workout, record.SportName, record.Score.Strain, record.Score.Kilojoule/4.184, record.Score.AverageHeartRate, duration.Minutes())
+		}
+	}
+	return nil
+}
+
+func handleGarminBonusCallback(fatBotUpdate FatBotUpdate) error {
+	data := fatBotUpdate.Update.CallbackData()
+	parts := strings.Split(data, ":")
+	action := parts[1] // yes or no
+	summaryID := parts[2]
+	bot := fatBotUpdate.Bot
+	user, err := users.GetUserById(fatBotUpdate.Update.CallbackQuery.From.ID)
+	if err != nil {
+		return err
+	}
+
+	// Clean up pending state
+	state.ClearString("garmin:pending:" + summaryID)
+
+	// Update message to remove buttons
+	edit := tgbotapi.NewEditMessageReplyMarkup(
+		fatBotUpdate.Update.CallbackQuery.Message.Chat.ID,
+		fatBotUpdate.Update.CallbackQuery.Message.MessageID,
+		tgbotapi.InlineKeyboardMarkup{InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{}},
+	)
+	bot.Request(edit)
+
+	if action == "no" {
+		// Mark as ignored
+		state.SetWithTTL("garmin:ignored:"+summaryID, "1", 604800) // 7 days
+		bot.Send(tgbotapi.NewMessage(user.TelegramUserID, "Understood. I won't report this Garmin activity."))
+		return nil
+	}
+
+	if action == "yes" {
+		// Process as normal workout
+		if users.GarminWorkoutExists(summaryID) {
+			bot.Send(tgbotapi.NewMessage(user.TelegramUserID, "This workout was already registered automatically."))
+			return nil
+		}
+		activityDataJSON, err := state.Get("garmin:data:" + summaryID)
+		if err != nil {
+			return fmt.Errorf("could not find Garmin activity data in state: %s", err)
+		}
+		var record garmin.ActivityData
+		if err := json.Unmarshal([]byte(activityDataJSON), &record); err != nil {
+			return fmt.Errorf("failed to unmarshal Garmin activity data: %s", err)
+		}
+		state.ClearString("garmin:data:" + summaryID)
+
+		duration := time.Duration(record.DurationInSeconds) * time.Second
+
+		if err := user.LoadGroups(); err != nil {
+			return err
+		}
+
+		for _, group := range user.Groups {
+			workout := users.Workout{
+				UserID:   user.ID,
+				GroupID:  group.ID,
+				GarminID: record.SummaryID,
+			}
+			db.DBCon.Create(&workout)
+			notify.NotifyWorkout(bot, user, workout, record.ActivityName, 0, record.Calories, record.AverageHeartRate, duration.Minutes())
 		}
 	}
 	return nil

@@ -58,6 +58,11 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 		if err != nil {
 			return err
 		}
+	case "garmin":
+		msg, err = HandleGarminCommand(fatBotUpdate)
+		if err != nil {
+			return err
+		}
 	case "help":
 		msg.ChatID = update.FromChat().ID
 		msg.Text = "Join the group using: /join\nCheck your status using: /status"

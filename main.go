@@ -52,6 +52,10 @@ func setupBotCommands(bot *tgbotapi.BotAPI) {
 			Description: "Connect Whoop Account",
 		},
 		{
+			Command:     "garmin",
+			Description: "Connect Garmin Account",
+		},
+		{
 			Command:     "help",
 			Description: "Show help information",
 		},
@@ -101,12 +105,15 @@ func main() {
 	if bot, err = tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_APITOKEN")); err != nil {
 		log.Fatalf("Issue with token: %s", err)
 	} else {
+		updates.GlobalBot = bot
 		schedule.Init(bot)
 		bot.Debug = false
 		log.Infof("Authorized on account %s", bot.Self.UserName)
 
 		go func() {
 			http.HandleFunc("/whoop-callback", updates.HandleWhoopCallback)
+			http.HandleFunc("/garmin-callback", updates.HandleGarminCallback)
+			http.HandleFunc("/garmin-webhook", updates.HandleGarminWebhook)
 			port := os.Getenv("PORT")
 			if port == "" {
 				port = "8080"
