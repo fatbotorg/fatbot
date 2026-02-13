@@ -15,6 +15,25 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+func calculateStrain(avgHR int) float64 {
+	if avgHR < 60 {
+		return 0
+	}
+	// Simplified linear-ish mapping for a 1.0-21.0 scale
+	// (AvgHR - 60) / (MaxHR - 60) * 21
+	// Assuming MaxHR around 190
+	maxHR := 190.0
+	minHR := 60.0
+	strain := (float64(avgHR) - minHR) / (maxHR - minHR) * 21.0
+	if strain > 21.0 {
+		strain = 21.0
+	}
+	if strain < 0 {
+		strain = 0
+	}
+	return strain
+}
+
 func ProcessGarminActivity(bot *tgbotapi.BotAPI, user users.User, activity garmin.ActivityData) {
 	// Normalize ID
 	baseID := activity.SummaryID
@@ -92,6 +111,7 @@ func ProcessGarminActivity(bot *tgbotapi.BotAPI, user users.User, activity garmi
 	}
 
 	// --- MAIN WORKOUT LOGIC ---
+	strain := calculateStrain(activity.AverageHeartRate)
 	for _, group := range user.Groups {
 		workout := users.Workout{
 			UserID:   user.ID,
@@ -99,7 +119,7 @@ func ProcessGarminActivity(bot *tgbotapi.BotAPI, user users.User, activity garmi
 			GarminID: activity.SummaryID,
 		}
 		db.DBCon.Create(&workout)
-		notify.NotifyWorkout(bot, user, workout, activity.ActivityName, 0, activity.Calories, activity.AverageHeartRate, duration.Minutes())
+		notify.NotifyWorkout(bot, user, workout, activity.ActivityName, strain, activity.Calories, activity.AverageHeartRate, duration.Minutes())
 	}
 	notify.SendWorkoutPM(bot, user, activity.ActivityName)
 }
