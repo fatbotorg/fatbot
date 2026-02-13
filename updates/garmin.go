@@ -116,14 +116,32 @@ type GarminEntry struct {
 		ActivityName       string  `json:"activityName"`
 		DurationInSeconds  int     `json:"durationInSeconds"`
 		StartTimeInSeconds int64   `json:"startTimeInSeconds"`
-		Calories           float64 `json:"activeKilocalories"`
+		ActiveCalories     float64 `json:"activeKilocalories"`
 		AverageHeartRate   int     `json:"averageHeartRateInBeatsPerMinute"`
 	} `json:"summary"`
 	ActivityName       string  `json:"activityName"`
 	DurationInSeconds  int     `json:"durationInSeconds"`
 	StartTimeInSeconds int64   `json:"startTimeInSeconds"`
+	ActiveCalories     float64 `json:"activeCalories"`
+	ActiveKilocalories float64 `json:"activeKilocalories"`
 	Calories           float64 `json:"calories"`
 	AverageHeartRate   int     `json:"averageHeartRateInBeatsPerMinute"`
+}
+
+func (e GarminEntry) GetCalories() float64 {
+	if e.ActiveCalories > 0 {
+		return e.ActiveCalories
+	}
+	if e.ActiveKilocalories > 0 {
+		return e.ActiveKilocalories
+	}
+	if e.Calories > 0 {
+		return e.Calories
+	}
+	if e.Summary != nil && e.Summary.ActiveCalories > 0 {
+		return e.Summary.ActiveCalories
+	}
+	return 0
 }
 
 func HandleGarminWebhook(w http.ResponseWriter, r *http.Request) {
@@ -199,7 +217,7 @@ func HandleGarminWebhook(w http.ResponseWriter, r *http.Request) {
 				ActivityName:       entry.ActivityName,
 				DurationInSeconds:  entry.DurationInSeconds,
 				StartTimeInSeconds: entry.StartTimeInSeconds,
-				Calories:           entry.Calories,
+				Calories:           entry.GetCalories(),
 				AverageHeartRate:   entry.AverageHeartRate,
 			}}
 		} else if entry.Summary != nil {
@@ -208,7 +226,7 @@ func HandleGarminWebhook(w http.ResponseWriter, r *http.Request) {
 				ActivityName:       entry.Summary.ActivityName,
 				DurationInSeconds:  entry.Summary.DurationInSeconds,
 				StartTimeInSeconds: entry.Summary.StartTimeInSeconds,
-				Calories:           entry.Summary.Calories,
+				Calories:           entry.GetCalories(),
 				AverageHeartRate:   entry.Summary.AverageHeartRate,
 			}}
 		} else if entry.CallbackURL != "" && !strings.Contains(entry.CallbackURL, "activityFile") {
