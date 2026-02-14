@@ -24,13 +24,25 @@ func handlePollUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 		return fmt.Errorf("failed to get group: %v", err)
 	}
 
-	// Get active users in the group
+	// Get target user (the one whose workout is being disputed)
+	targetUser, err := poll.GetTargetUser()
+	if err != nil {
+		return fmt.Errorf("failed to get target user: %v", err)
+	}
+
+	// Prevent the workout owner from voting
+	if update.PollAnswer.User.ID == targetUser.TelegramUserID {
+		log.Debug("Ignoring vote from workout owner", "user_id", targetUser.TelegramUserID, "poll_id", update.PollAnswer.PollID)
+		return nil
+	}
+
+	// Get active users in the group (excluding the workout owner)
 	groupWithUsers := users.GetGroupWithUsers(group.ChatID)
-	activeUsersCount := len(groupWithUsers.Users)
+	activeUsersCount := len(groupWithUsers.Users) - 1 // Subtract 1 for the workout owner
 
 	// Calculate required votes: ([usersInGroup / 2] + 1)
 	requiredVotes := (activeUsersCount / 2) + 1
-	log.Debug("vote calculation", "active_users", activeUsersCount, "required_votes", requiredVotes)
+	log.Debug("vote calculation", "active_users", activeUsersCount, "required_votes", requiredVotes, "workout_owner", targetUser.GetName())
 
 	log.Debugf("%+v", update.PollAnswer)
 
@@ -64,20 +76,13 @@ func handlePollUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 
 	// Check if there's a decision:
 	// 1. One option has majority votes, OR
-	// 2. Everyone has voted and it's a tie (default to NO)
+	// 2. Everyone has voted (excluding workout owner)
 	hasMajority := noVotes >= requiredVotes || yesVotes >= requiredVotes
 	everyoneVoted := totalVotes >= activeUsersCount
-	isTie := noVotes == yesVotes
 
-	shouldResolve := hasMajority || (everyoneVoted && isTie)
+	shouldResolve := hasMajority || everyoneVoted
 
 	if shouldResolve {
-		// Get target user
-		targetUser, err := poll.GetTargetUser()
-		if err != nil {
-			return fmt.Errorf("failed to get target user: %v", err)
-		}
-
 		// Now stop the poll to get final confirmation
 		pollState, err := bot.StopPoll(tgbotapi.NewStopPoll(group.ChatID, poll.MessageID))
 		if err != nil {
@@ -89,21 +94,8 @@ func handlePollUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 		finalNoVotes := pollState.Options[0].VoterCount
 		finalYesVotes := pollState.Options[1].VoterCount
 
-		// Determine the outcome
-		// If it's a tie and everyone voted, default to NO (keep workout)
-		// Otherwise, use majority rule
-		keepWorkout := false
-		if everyoneVoted && finalNoVotes == finalYesVotes {
-			// Tie with everyone voting - default to NO (keep workout)
-			keepWorkout = true
-			log.Debug("Tie with everyone voting - defaulting to NO (keep workout)")
-		} else if finalYesVotes >= requiredVotes {
-			// Majority voted to cancel the workout
-			keepWorkout = false
-		} else {
-			// Majority voted to keep the workout (or no majority reached)
-			keepWorkout = true
-		}
+		// Determine the outcome based on majority
+		keepWorkout := finalYesVotes < requiredVotes
 
 		if !keepWorkout {
 			// Cancel the workout
@@ -153,6 +145,15 @@ func handlePollUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 			if _, err := bot.Send(msg); err != nil {
 				return fmt.Errorf("failed to send group message: %v", err)
 			}
+		}
+
+		// Unpin the poll
+		unpinConfig := tgbotapi.UnpinChatMessageConfig{
+			ChatID:    group.ChatID,
+			MessageID: poll.MessageID,
+		}
+		if _, err := bot.Request(unpinConfig); err != nil {
+			log.Error("Failed to unpin poll", "error", err)
 		}
 
 		// Clean up vote tracking for this poll
