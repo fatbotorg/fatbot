@@ -58,8 +58,9 @@ func PublishStory(imageURL, caption string) (string, error) {
 	log.Debug("Story container created", "containerID", containerRes.ID)
 
 	// 2. Wait for container to be ready
-	log.Debug("Waiting for story container to be processed by Meta...")
-	time.Sleep(10 * time.Second)
+	if err := waitForContainer(containerRes.ID, accessToken); err != nil {
+		return "", err
+	}
 
 	// 3. Publish Media Container
 	publishURL := fmt.Sprintf("https://graph.facebook.com/v18.0/%s/media_publish", businessID)
@@ -123,8 +124,9 @@ func PublishPost(imageURL, caption string) (string, error) {
 	log.Debug("Post container created", "containerID", containerRes.ID)
 
 	// 2. Wait for container to be ready
-	log.Debug("Waiting for post container to be processed by Meta...")
-	time.Sleep(15 * time.Second)
+	if err := waitForContainer(containerRes.ID, accessToken); err != nil {
+		return "", err
+	}
 
 	// 3. Publish Media Container
 	publishURL := fmt.Sprintf("https://graph.facebook.com/v18.0/%s/media_publish", businessID)
@@ -151,4 +153,41 @@ func PublishPost(imageURL, caption string) (string, error) {
 	log.Debug("Post published successfully", "postID", publishRes.ID)
 
 	return publishRes.ID, nil
+}
+
+func waitForContainer(containerID, accessToken string) error {
+	checkURL := fmt.Sprintf("https://graph.facebook.com/v18.0/%s", containerID)
+	params := url.Values{}
+	params.Set("fields", "status_code")
+	params.Set("access_token", accessToken)
+
+	log.Debug("Waiting for media container to be processed by Meta...", "containerID", containerID)
+
+	for i := 0; i < 12; i++ { // Wait up to 60 seconds (12 * 5s)
+		resp, err := http.Get(checkURL + "?" + params.Encode())
+		if err != nil {
+			return err
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		var status struct {
+			StatusCode string `json:"status_code"`
+		}
+		if err := json.Unmarshal(body, &status); err != nil {
+			return fmt.Errorf("failed to decode status: %s", string(body))
+		}
+
+		if status.StatusCode == "FINISHED" {
+			log.Debug("Container processed and ready", "containerID", containerID)
+			return nil
+		}
+		if status.StatusCode == "ERROR" {
+			return fmt.Errorf("container processing failed: %s", string(body))
+		}
+
+		log.Debug("Container not ready yet, waiting 5s...", "status", status.StatusCode, "containerID", containerID)
+		time.Sleep(5 * time.Second)
+	}
+	return fmt.Errorf("timed out waiting for container %s to be READY", containerID)
 }

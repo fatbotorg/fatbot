@@ -54,6 +54,7 @@ func UploadToS3(fileName string, fileBytes []byte) (string, error) {
 	_, err = svc.PutObject(input)
 	if err != nil {
 		// If ACLs are disabled, try without ACL
+		log.Warn("S3 upload with public-read ACL failed, retrying without ACL. Note: Instagram publication will fail if the bucket/object is not public!", "error", err)
 		// Reset the reader to the beginning
 		bodyReader.Seek(0, io.SeekStart)
 		input.ACL = nil
