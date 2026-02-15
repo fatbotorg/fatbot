@@ -2,6 +2,7 @@ package updates
 
 import (
 	"encoding/json"
+	"fatbot/ai"
 	"fatbot/db"
 	"fatbot/garmin"
 	"fatbot/notify"
@@ -35,6 +36,7 @@ func handleStatefulCallback(fatBotUpdate FatBotUpdate) (err error) {
 	msg := tgbotapi.NewMessage(chatId, "")
 	if fatBotUpdate.Update.CallbackQuery == nil {
 		data = fatBotUpdate.Update.Message.Text
+		data = strings.ReplaceAll(data, state.Delimiter, " ")
 		msg.Text = data
 	} else {
 		data = fatBotUpdate.Update.CallbackData()
@@ -120,14 +122,8 @@ func handleAdminMenuBackClick(fatBotUpdate FatBotUpdate, menuState state.State) 
 
 func handleAdminMenuLastStep(fatBotUpdate FatBotUpdate, menuState *state.State) error {
 	var data string
-	var messageId int
 	chatId := fatBotUpdate.Update.FromChat().ID
 	adminUser, _ := users.GetUserById(chatId)
-	if fatBotUpdate.Update.CallbackQuery == nil {
-		messageId = fatBotUpdate.Update.Message.MessageID
-	} else {
-		messageId = fatBotUpdate.Update.CallbackQuery.Message.MessageID
-	}
 	msg := tgbotapi.NewMessage(chatId, "")
 	if fatBotUpdate.Update.CallbackQuery == nil {
 		data = fatBotUpdate.Update.Message.Text
@@ -143,19 +139,24 @@ func handleAdminMenuLastStep(fatBotUpdate FatBotUpdate, menuState *state.State) 
 		State:  menuState,
 	}
 	if err := menuState.Menu.PerformAction(actionData); err != nil {
+		if _, ok := err.(*state.MenuActionDoneError); ok {
+			return nil
+		}
 		sentry.CaptureException(err)
 		log.Error(err)
 	} else {
-		edit := tgbotapi.NewEditMessageTextAndMarkup(
-			chatId, messageId, "Choose an option", state.CreateAdminKeyboard(adminUser.IsAdmin),
-		)
-		fatBotUpdate.Bot.Request(edit)
 		if fatBotUpdate.Update.CallbackQuery != nil {
+			messageId := fatBotUpdate.Update.CallbackQuery.Message.MessageID
+			edit := tgbotapi.NewEditMessageTextAndMarkup(
+				chatId, messageId, "Choose an option", state.CreateAdminKeyboard(adminUser.IsAdmin),
+			)
+			fatBotUpdate.Bot.Request(edit)
 			text := fmt.Sprintf("%s done. -> %s", menuState.Menu.CreateMenu(0).Name, data)
 			callback := tgbotapi.NewCallback(fatBotUpdate.Update.CallbackQuery.ID, text)
 			fatBotUpdate.Bot.Request(callback)
 		} else {
-			msg.Text = "Done."
+			msg.Text = "Choose an option"
+			msg.ReplyMarkup = state.CreateAdminKeyboard(adminUser.IsAdmin)
 			fatBotUpdate.Bot.Request(msg)
 		}
 		err := state.DeleteStateEntry(chatId)
@@ -170,7 +171,6 @@ func handleAdminMenuLastStep(fatBotUpdate FatBotUpdate, menuState *state.State) 
 func handleAdminMenuStep(fatBotUpdate FatBotUpdate, menuState *state.State) error {
 	var data string
 	chatId := fatBotUpdate.Update.FromChat().ID
-	messageId := fatBotUpdate.Update.CallbackQuery.Message.MessageID
 	msg := tgbotapi.NewMessage(chatId, "")
 	step := menuState.CurrentStep()
 	if fatBotUpdate.Update.CallbackQuery == nil {
@@ -186,16 +186,38 @@ func handleAdminMenuStep(fatBotUpdate FatBotUpdate, menuState *state.State) erro
 			data, _ := menuState.ExtractData()
 			step.PopulateKeyboard(data)
 		}
-		edit := tgbotapi.NewEditMessageTextAndMarkup(
-			chatId, messageId, step.Message, step.Keyboard,
-		)
-		if _, err := fatBotUpdate.Bot.Send(edit); err != nil {
-			log.Error(err)
+		messageText := step.Message
+		if step.Name == "confirmpsa" {
+			rawMessage := data
+			stylized := ai.StylizePSA(rawMessage)
+			state.SetWithTTL(fmt.Sprintf("psa:stylized:%d", chatId), stylized, 3600)
+			messageText = fmt.Sprintf("AI Stylized Preview:\n\n%s", stylized)
+		}
+		if fatBotUpdate.Update.CallbackQuery != nil {
+			messageId := fatBotUpdate.Update.CallbackQuery.Message.MessageID
+			edit := tgbotapi.NewEditMessageTextAndMarkup(
+				chatId, messageId, messageText, step.Keyboard,
+			)
+			if step.Name == "confirmpsa" {
+				edit.ParseMode = "Markdown"
+			}
+			if _, err := fatBotUpdate.Bot.Send(edit); err != nil {
+				log.Error(err)
+			}
+		} else {
+			msg.Text = messageText
+			msg.ReplyMarkup = step.Keyboard
+			if step.Name == "confirmpsa" {
+				msg.ParseMode = "Markdown"
+			}
+			if _, err := fatBotUpdate.Bot.Send(msg); err != nil {
+				log.Error(err)
+			}
 		}
 	case state.InputStepKind:
 		msg.Text = step.Message
+		fatBotUpdate.Bot.Request(msg)
 	}
-	fatBotUpdate.Bot.Request(msg)
 	return nil
 }
 
@@ -205,13 +227,17 @@ func initAdminMenuFlow(fatBotUpdate FatBotUpdate, menu state.Menu) error {
 	} else {
 		menu := menu.CreateMenu(user.TelegramUserID)
 		step := menu.Steps[0]
+		if step.Kind == state.InputStepKind {
+			msg := tgbotapi.NewMessage(fatBotUpdate.Update.FromChat().ID, step.Message)
+			fatBotUpdate.Bot.Send(msg)
+		}
 		edit := tgbotapi.NewEditMessageTextAndMarkup(
 			fatBotUpdate.Update.FromChat().ID,
 			fatBotUpdate.Update.CallbackQuery.Message.MessageID,
 			step.Message,
 			step.Keyboard,
 		)
-		fatBotUpdate.Bot.Send(edit)
+		fatBotUpdate.Bot.Request(edit)
 	}
 	return nil
 }

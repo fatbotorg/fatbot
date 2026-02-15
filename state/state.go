@@ -37,7 +37,7 @@ func (state *State) getValueSplit() []string {
 }
 
 func (state *State) IsLastStep() bool {
-	return len(state.Menu.CreateMenu(0).Steps) == len(state.getValueSplit())
+	return len(state.getValueSplit()) >= len(state.Menu.CreateMenu(0).Steps)
 }
 
 func (state *State) IsFirstStep() bool {
@@ -117,7 +117,15 @@ func (state *State) ExtractData() (data int64, err error) {
 
 func (state *State) CurrentStep() Step {
 	stateSlice := state.getValueSplit()
-	return state.Menu.CreateMenu(0).Steps[len(stateSlice)-1]
+	steps := state.Menu.CreateMenu(0).Steps
+	index := len(stateSlice) - 1
+	if index >= len(steps) {
+		index = len(steps) - 1
+	}
+	if index < 0 {
+		index = 0
+	}
+	return steps[index]
 }
 
 func CreateStateEntry(chatId int64, value string) error {

@@ -149,6 +149,16 @@ func createConfirmationKeyboard() tgbotapi.InlineKeyboardMarkup {
 	return keyboard
 }
 
+func createPSAApprovalKeyboard() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Approve", "approve"),
+			tgbotapi.NewInlineKeyboardButtonData("Edit", "edit"),
+			tgbotapi.NewInlineKeyboardButtonData("Cancel", "cancel"),
+		),
+	)
+}
+
 func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 	var rename RenameMenu
 	var pushWorkout PushWorkoutMenu
@@ -162,6 +172,7 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 	var updateRanks UpdateRanksMenu
 	var manageImmunity ManageImmunityMenu
 	var disputeWorkout DisputeWorkoutMenu
+	var psa PSAMenu
 	menus := []MenuBase{
 		rename.CreateMenu(0),
 		pushWorkout.CreateMenu(0),
@@ -175,6 +186,7 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 		updateRanks.CreateMenu(0),
 		manageImmunity.CreateMenu(0),
 		disputeWorkout.CreateMenu(0),
+		psa.CreateMenu(0),
 	}
 
 	row := []tgbotapi.InlineKeyboardButton{}

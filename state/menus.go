@@ -28,6 +28,8 @@ const (
 	TelegramInactiveUserIdStepResult stepResult = "telegramInactiveUserId"
 	NewNameStepResult                stepResult = "newName"
 	PushDaysStepResult               stepResult = "pushDays"
+	PSAMessageStepResult             stepResult = "psaMessage"
+	PSAMessageFeedbackStepResult     stepResult = "psaFeedback"
 	OptionResult                     stepResult = "option"
 )
 
@@ -81,6 +83,15 @@ type ManageImmunityMenu struct {
 type DisputeWorkoutMenu struct {
 	MenuBase
 }
+type PSAMenu struct {
+	MenuBase
+}
+
+type MenuActionDoneError struct{}
+
+func (e *MenuActionDoneError) Error() string {
+	return "menu action done"
+}
 
 type Menu interface {
 	CreateMenu(userId int64) MenuBase
@@ -102,6 +113,7 @@ var menuMap = map[string]Menu{
 	"updateranks":       UpdateRanksMenu{},
 	"manageimmunity":    ManageImmunityMenu{},
 	"disputeworkout":    DisputeWorkoutMenu{},
+	"psa":               PSAMenu{},
 }
 
 func (menu ManageAdminsMenu) CreateMenu(userId int64) MenuBase {
@@ -284,6 +296,28 @@ func (menu DisputeWorkoutMenu) CreateMenu(userId int64) MenuBase {
 		Name:  "disputeworkout",
 		Label: "Dispute Workout",
 		Steps: []Step{chooseGroup, userStep},
+	}
+}
+
+func (menu PSAMenu) CreateMenu(userId int64) MenuBase {
+	insertMessage := Step{
+		Name:    "insertmessage",
+		Kind:    InputStepKind,
+		Message: "Insert PSA Message",
+		Result:  PSAMessageStepResult,
+	}
+	approveStep := Step{
+		Name:     "confirmpsa",
+		Kind:     KeyboardStepKind,
+		Message:  "Preview", // This will be dynamic
+		Keyboard: createPSAApprovalKeyboard(),
+		Result:   OptionResult,
+	}
+	return MenuBase{
+		Name:           "psa",
+		Label:          "PSA",
+		Steps:          []Step{insertMessage, approveStep},
+		SuperAdminOnly: true,
 	}
 }
 

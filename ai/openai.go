@@ -114,3 +114,31 @@ func GetAiMotivationalTitle() string {
 	}
 	return strings.ToUpper(strings.Trim(resp.Choices[0].Message.Content, `".`))
 }
+
+func StylizePSA(message string) string {
+	client := openai.NewClient(getOpenAIToken())
+	resp, err := client.CreateChatCompletion(
+		context.Background(),
+		openai.ChatCompletionRequest{
+			Temperature: 0.7,
+			Model:       openai.GPT3Dot5Turbo,
+			Messages: []openai.ChatCompletionMessage{
+				{
+					Role:    openai.ChatMessageRoleSystem,
+					Content: "You are a professional assistant for FatBot, a Telegram bot for workout tracking. Your task is to stylize, organize, and format PSA messages to make them easy to read and easy on the eye. Use clear language and proper Telegram Markdown formatting (bolding with *, italics with _). Do NOT use MarkdownV2 specific characters or escaping. The message should be professional yet motivating and ready for a group announcement.",
+				},
+				{
+					Role:    openai.ChatMessageRoleUser,
+					Content: fmt.Sprintf("Please stylize this PSA message:\n\n%s", message),
+				},
+			},
+		},
+	)
+
+	if err != nil {
+		log.Errorf("ChatCompletion error: %v\n", err)
+		sentry.CaptureException(err)
+		return message
+	}
+	return resp.Choices[0].Message.Content
+}
