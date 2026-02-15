@@ -204,18 +204,30 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 
 	// A. Background (Cover)
 	srcW, srcH := src.Bounds().Dx(), src.Bounds().Dy()
-	ratioW := float64(width) / float64(srcW)
-	ratioH := float64(height) / float64(srcH)
-	scale := ratioW
-	if ratioH > ratioW {
-		scale = ratioH
+	srcRatio := float64(srcW) / float64(srcH)
+	destRatio := float64(width) / float64(height)
+
+	var srcRect image.Rectangle
+	if srcRatio > destRatio {
+		newSrcW := int(float64(srcH) * destRatio)
+		offset := (srcW - newSrcW) / 2
+		srcRect = image.Rect(offset, 0, offset+newSrcW, srcH)
+	} else {
+		newSrcH := int(float64(srcW) / destRatio)
+		offset := (srcH - newSrcH) / 2
+		srcRect = image.Rect(0, offset, srcW, offset+newSrcH)
 	}
-	newW, newH := int(float64(srcW)*scale), int(float64(srcH)*scale)
-	scaledImg := image.NewRGBA(image.Rect(0, 0, newW, newH))
-	xdraw.CatmullRom.Scale(scaledImg, scaledImg.Bounds(), src, src.Bounds(), xdraw.Over, nil)
-	offsetX := (newW - width) / 2
-	offsetY := (newH - height) / 2
-	dc.DrawImage(scaledImg, -offsetX, -offsetY)
+
+	if rgba, ok := dc.Image().(*image.RGBA); ok {
+		xdraw.CatmullRom.Scale(rgba, rgba.Bounds(), src, srcRect, xdraw.Over, nil)
+	} else {
+		// Fallback if not RGBA
+		scaleW := float64(width) / float64(srcRect.Dx())
+		scaleH := float64(height) / float64(srcRect.Dy())
+		dc.Scale(scaleW, scaleH)
+		dc.DrawImage(src, -srcRect.Min.X, -srcRect.Min.Y)
+		dc.Identity()
+	}
 
 	// B. Strong Modern Overlay
 	dc.SetRGBA(0, 0, 0, 0.4)
@@ -223,17 +235,31 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 	dc.Fill()
 
 	// C. Typography Setup
-	fontPath := "/System/Library/Fonts/Supplemental/DIN Alternate Bold.ttf"
-	if _, err := os.Stat(fontPath); err != nil {
-		fontPath = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
+	fontPaths := []string{
+		"/usr/share/fonts/freefont/FreeSansBold.ttf",
+		"/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+		"/System/Library/Fonts/Supplemental/DIN Alternate Bold.ttf",
+		"/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+	}
+	var fontPath string
+	for _, path := range fontPaths {
+		if _, err := os.Stat(path); err == nil {
+			fontPath = path
+			break
+		}
+	}
+	if fontPath == "" {
+		log.Warn("No suitable font found for image rendering")
 	}
 
 	centerX := float64(width) / 2
 	centerY := float64(height) / 2
 
 	// D. BIG TOP TEXT: THE TITLE
-	if err := dc.LoadFontFace(fontPath, 140); err != nil {
-		log.Warnf("Failed to load font %s: %s", fontPath, err)
+	if fontPath != "" {
+		if err := dc.LoadFontFace(fontPath, 140); err != nil {
+			log.Warnf("Failed to load font %s: %s", fontPath, err)
+		}
 	}
 	dc.SetRGB(1, 1, 1)
 	dc.DrawStringAnchored(title, centerX, float64(height)*0.15, 0.5, 0.5)
@@ -244,19 +270,25 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 	dc.SetRGBA(0.7, 1, 0, 0.8) // Neon Lime Green
 	dc.Fill()
 
-	if err := dc.LoadFontFace(fontPath, 160); err != nil {
-		log.Warnf("Failed to load font %s: %s", fontPath, err)
+	if fontPath != "" {
+		if err := dc.LoadFontFace(fontPath, 160); err != nil {
+			log.Warnf("Failed to load font %s: %s", fontPath, err)
+		}
 	}
 	dc.SetRGB(0, 0, 0)
 	dc.DrawStringAnchored(fmt.Sprintf("%d", count), centerX, centerY, 0.5, 0.5)
-	if err := dc.LoadFontFace(fontPath, 30); err != nil {
-		log.Warnf("Failed to load font %s: %s", fontPath, err)
+	if fontPath != "" {
+		if err := dc.LoadFontFace(fontPath, 30); err != nil {
+			log.Warnf("Failed to load font %s: %s", fontPath, err)
+		}
 	}
 	dc.DrawStringAnchored("WORKOUTS THIS WEEK", centerX, centerY+80, 0.5, 0.5)
 
 	// F. HUGE BOTTOM NAME
-	if err := dc.LoadFontFace(fontPath, 120); err != nil {
-		log.Warnf("Failed to load font %s: %s", fontPath, err)
+	if fontPath != "" {
+		if err := dc.LoadFontFace(fontPath, 120); err != nil {
+			log.Warnf("Failed to load font %s: %s", fontPath, err)
+		}
 	}
 	dc.SetRGBA(1, 1, 1, 1)
 	dc.DrawStringAnchored(strings.ToUpper(name), centerX, float64(height)*0.85, 0.5, 0.5)
@@ -267,8 +299,10 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 	dc.Fill()
 
 	// H. BRANDING
-	if err := dc.LoadFontFace(fontPath, 40); err != nil {
-		log.Warnf("Failed to load font %s: %s", fontPath, err)
+	if fontPath != "" {
+		if err := dc.LoadFontFace(fontPath, 40); err != nil {
+			log.Warnf("Failed to load font %s: %s", fontPath, err)
+		}
 	}
 	dc.SetRGBA(1, 1, 1, 0.5)
 	dc.DrawStringAnchored("www.fatbot.fit", centerX, float64(height)-50, 0.5, 0.5)
