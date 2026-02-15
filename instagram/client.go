@@ -171,6 +171,8 @@ func waitForContainer(containerID, accessToken string) error {
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 
+		log.Debug("Container status check response", "body", string(body))
+
 		var status struct {
 			StatusCode string `json:"status_code"`
 		}

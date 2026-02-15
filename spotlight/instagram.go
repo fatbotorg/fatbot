@@ -127,8 +127,12 @@ func CreateInstagramStory(bot *tgbotapi.BotAPI, user users.User, chatId int64) {
 	// 3. Generate Visuals
 	ts := time.Now().Unix()
 	storyFile := fmt.Sprintf("story_%d_%d.jpg", user.TelegramUserID, ts)
-	log.Debug("Rendering high impact story image", "outFile", storyFile)
-	if err := renderHighImpactImage(srcImg, 1080, 1920, user.GetName(), title, workoutCount, storyFile); err != nil {
+	displayName := user.GetName()
+	if user.InstagramHandle != "" {
+		displayName = "@" + user.InstagramHandle
+	}
+	log.Debug("Rendering high impact story image", "outFile", storyFile, "handle", displayName)
+	if err := renderHighImpactImage(srcImg, 1080, 1920, displayName, title, workoutCount, storyFile); err != nil {
 		log.Errorf("Error rendering story: %s", err)
 		return
 	}
