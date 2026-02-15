@@ -148,7 +148,8 @@ This is what consistency looks like. Keep pushing.
 	if err == nil && len(storyBytes) > 0 {
 		if publicStoryURL, err := users.UploadToS3(storyFile, storyBytes); err == nil {
 			log.Infof("Story public URL: %s", publicStoryURL)
-			if storyID, pubErr = instagram.PublishStory(publicStoryURL); pubErr != nil {
+			storyCaption := fmt.Sprintf("@%s", user.InstagramHandle)
+			if storyID, pubErr = instagram.PublishStory(publicStoryURL, storyCaption); pubErr != nil {
 				log.Errorf("Failed to publish story for %s: %s", user.GetName(), pubErr)
 			}
 		} else {
