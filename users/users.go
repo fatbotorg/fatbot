@@ -127,6 +127,18 @@ func GetUsers(chatId int64) []User {
 	return users
 }
 
+func GetUsersWithInsta(chatId int64) []User {
+	var usersList []User
+	db.DBCon.Model(&User{}).
+		Joins("JOIN user_groups ON user_groups.user_id = users.id").
+		Joins("JOIN groups ON groups.id = user_groups.group_id").
+		Joins("JOIN workouts ON workouts.user_id = users.id").
+		Where("groups.chat_id = ? AND users.instagram_handle != ? AND workouts.photo_file_id != ?", chatId, "", "").
+		Group("users.id").
+		Find(&usersList)
+	return usersList
+}
+
 func GetInactiveUsers(chatId int64) []User {
 	db := db.DBCon
 	var users []User

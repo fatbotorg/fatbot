@@ -40,6 +40,18 @@ func GetGroups() (groups []Group) {
 	return
 }
 
+func GetGroupsWithInsta() []Group {
+	var groups []Group
+	db.DBCon.Model(&Group{}).
+		Joins("JOIN user_groups ON user_groups.group_id = groups.id").
+		Joins("JOIN users ON users.id = user_groups.user_id").
+		Joins("JOIN workouts ON workouts.user_id = users.id").
+		Where("users.instagram_handle != ? AND workouts.photo_file_id != ?", "", "").
+		Group("groups.id").
+		Find(&groups)
+	return groups
+}
+
 func GetManagedGroups(adminUserId int64) (groups []Group) {
 	adminuser, err := GetUserById(adminUserId)
 	if err != nil {

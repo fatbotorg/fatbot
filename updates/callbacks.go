@@ -127,6 +127,8 @@ func handleAdminMenuLastStep(fatBotUpdate FatBotUpdate, menuState *state.State) 
 	msg := tgbotapi.NewMessage(chatId, "")
 	if fatBotUpdate.Update.CallbackQuery == nil {
 		data = fatBotUpdate.Update.Message.Text
+		data = strings.ReplaceAll(data, state.Delimiter, " ")
+		msg.Text = data
 	} else {
 		data = fatBotUpdate.Update.CallbackData()
 	}
@@ -175,10 +177,26 @@ func handleAdminMenuStep(fatBotUpdate FatBotUpdate, menuState *state.State) erro
 	step := menuState.CurrentStep()
 	if fatBotUpdate.Update.CallbackQuery == nil {
 		data = fatBotUpdate.Update.Message.Text
+		data = strings.ReplaceAll(data, state.Delimiter, " ")
 	} else {
 		data = fatBotUpdate.Update.CallbackData()
 	}
 	value := menuState.Value + state.Delimiter + data
+	if menuState.Menu.CreateMenu(0).Name == "instaspotlight" && data == "random" {
+		actionData := state.ActionData{
+			Data:   data,
+			Update: fatBotUpdate.Update,
+			Bot:    fatBotUpdate.Bot,
+			State:  menuState,
+		}
+		if err := menuState.Menu.PerformAction(actionData); err != nil {
+			if _, ok := err.(*state.MenuActionDoneError); !ok {
+				sentry.CaptureException(err)
+				log.Error(err)
+			}
+		}
+		return nil
+	}
 	switch step.Kind {
 	case state.KeyboardStepKind:
 		if len(step.Keyboard.InlineKeyboard) == 0 {
