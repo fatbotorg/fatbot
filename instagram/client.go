@@ -19,7 +19,7 @@ type PublishResponse struct {
 	ID string `json:"id"`
 }
 
-func PublishStory(imageURL string) (string, error) {
+func PublishStory(imageURL, caption string) (string, error) {
 	businessID := viper.GetString("instagram.business_account_id")
 	accessToken := viper.GetString("instagram.access_token")
 
@@ -32,6 +32,9 @@ func PublishStory(imageURL string) (string, error) {
 	params := url.Values{}
 	params.Set("image_url", imageURL)
 	params.Set("media_type", "STORIES")
+	if caption != "" {
+		params.Set("caption", caption)
+	}
 	params.Set("access_token", accessToken)
 
 	resp, err := http.PostForm(containerURL, params)
