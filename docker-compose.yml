@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   fatbot:
@@ -15,20 +15,19 @@ services:
       - DBPATH=/app/fat.db
       - REDIS_ADDR=redis://redis:6379
       - PORT=8080
-      
+
       # Core Service Tokens
       - TELEGRAM_APITOKEN=${TELEGRAM_APITOKEN}
       - OPENAI_APITOKEN=${OPENAI_APITOKEN}
       - OPENAI_API_KEY=${OPENAI_APITOKEN}
       - SENTRY_DSN=${SENTRY_DSN}
-      
+
       # AWS Configuration
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=us-west-2
-      - S3_BUCKET=fatbot
-      - AWS_SDK_LOAD_CONFIG=1
-      
+      - AWS_REGION=${AWS_REGION}
+      - S3_BUCKET=${AWS_S3_BUCKET}
+
       # Instagram (via Viper/Env fallback if configured)
       - INSTAGRAM_BUSINESS_ACCOUNT_ID=${INSTAGRAM_BUSINESS_ACCOUNT_ID}
       - INSTAGRAM_ACCESS_TOKEN=${INSTAGRAM_ACCESS_TOKEN}
