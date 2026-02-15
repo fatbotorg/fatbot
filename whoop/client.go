@@ -149,8 +149,6 @@ func GetWorkouts(accessToken string, start time.Time, nextToken string) (*Workou
 	}
 	u.RawQuery = q.Encode()
 
-	log.Infof("Requesting Whoop Workouts: %s", u.String())
-
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		return nil, err

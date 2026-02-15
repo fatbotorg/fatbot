@@ -43,6 +43,11 @@ func Init(bot *tgbotapi.BotAPI) {
 	}); err != nil {
 		log.Errorf("Rank updater scheduler err: %s", err)
 	}
+	if _, err := scheduler.Every(1).Day().At("12:00").Do(func() {
+		DailyInstagramAutomation(bot)
+	}); err != nil {
+		log.Errorf("Instagram automation scheduler err: %s", err)
+	}
 
 	scheduler.StartAsync()
 }

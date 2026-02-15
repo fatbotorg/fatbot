@@ -26,6 +26,7 @@ type Workout struct {
 	UserID         uint
 	GroupID        uint
 	PhotoMessageID int
+	PhotoFileID    string
 	Flagged        bool
 	Streak         int
 	WhoopID        string
@@ -217,6 +218,10 @@ func (user *User) CreateDummyWorkout() {
 func (user *User) UpdateWorkout(update tgbotapi.Update, lastWorkout Workout) (Workout, error) {
 	db := db.DBCon
 	messageId := update.Message.MessageID
+	var fileId string
+	if len(update.Message.Photo) > 0 {
+		fileId = update.Message.Photo[len(update.Message.Photo)-1].FileID
+	}
 	db.Where("telegram_user_id = ?", user.TelegramUserID).Find(&user)
 	group, err := GetGroup(update.FromChat().ID)
 	if err != nil {
@@ -235,6 +240,7 @@ func (user *User) UpdateWorkout(update tgbotapi.Update, lastWorkout Workout) (Wo
 	workout := &Workout{
 		UserID:         user.ID,
 		PhotoMessageID: messageId,
+		PhotoFileID:    fileId,
 		GroupID:        group.ID,
 		Streak:         streak,
 	}

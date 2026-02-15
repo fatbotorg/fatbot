@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"fatbot/db"
 	"fatbot/users"
 	"fmt"
 	"strings"
@@ -87,11 +88,15 @@ func (update MediaUpdate) handle() error {
 				return err
 			}
 
+			fileId := msg.Photo[len(msg.Photo)-1].FileID
 			count := 0
 			for _, group := range user.Groups {
-				// We can't forward a photo directly if we want to change caption or context, but Forward is simplest.
-				// However, standard forwarding keeps the original sender.
-				// To mimic the "Video Note" broadcasting behavior:
+				// Update the latest workout in this group with the photo
+				if lastWorkout, err := user.GetLastXWorkout(1, group.ChatID); err == nil {
+					lastWorkout.PhotoFileID = fileId
+					db.DBCon.Save(&lastWorkout)
+				}
+
 				forwardMsg := tgbotapi.NewForward(group.ChatID, chatId, msg.MessageID)
 				if _, err := update.Bot.Send(forwardMsg); err != nil {
 					log.Errorf("Failed to forward photo to group %d: %s", group.ChatID, err)
@@ -99,7 +104,7 @@ func (update MediaUpdate) handle() error {
 					count++
 				}
 			}
-			reply := tgbotapi.NewMessage(chatId, fmt.Sprintf("Sent photo to %d groups!", count))
+			reply := tgbotapi.NewMessage(chatId, fmt.Sprintf("Sent photo to %d groups and saved for your daily progress! 📸", count))
 			update.Bot.Send(reply)
 			return nil
 		}
@@ -165,6 +170,7 @@ func (update GroupReplyUpdate) handle() error {
 		// Get the chat and user IDs
 		chatId := update.Update.Message.Chat.ID
 		userId := update.Update.Message.From.ID
+		groupName := update.Update.Message.Chat.Title
 
 		// Get the user from the database
 		user, err := users.GetUserById(userId)
@@ -185,7 +191,7 @@ func (update GroupReplyUpdate) handle() error {
 			"has_replied", hasReplied)
 
 		if isWeeklyLeader && !hasReplied {
-			log.Info("Weekly leader replied to message, pinning their response")
+			log.Infof("Weekly leader in group %s replied to message, pinning their response", groupName)
 
 			// Unpin all existing messages first
 			unpinAllConfig := tgbotapi.UnpinAllChatMessagesConfig{
@@ -255,7 +261,7 @@ func (update VideoNoteUpdate) handle() error {
 	// Check if the reply is to the specific prompt
 	if strings.Contains(msg.ReplyToMessage.Text, "Reply to this message with a video note") {
 		chatId := update.Update.FromChat().ID
-		
+
 		// Broadcast to all user's groups
 		user, err := users.GetUserById(chatId)
 		if err != nil {

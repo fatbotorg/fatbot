@@ -63,7 +63,6 @@ func SyncWhoopWorkouts(bot *tgbotapi.BotAPI) {
 			// Filter: Ignore short workouts (< 25 mins) or low strain (< 4.0)
 			duration := record.End.Sub(record.Start)
 			if duration < 25*time.Minute || record.Score.Strain < 4.0 {
-				log.Debugf("Skipping workout %s: duration %.1f mins, strain %.1f", record.SportName, duration.Minutes(), record.Score.Strain)
 				continue
 			}
 

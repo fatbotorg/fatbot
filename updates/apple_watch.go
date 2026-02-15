@@ -6,8 +6,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/charmbracelet/log"
 )
 
 func getAppleWatchData(imageBytes []byte) string {
@@ -78,7 +76,7 @@ func getAppleWatchData(imageBytes []byte) string {
 		if len(hrMatches) > 0 {
 			val, _ := strconv.ParseFloat(hrMatches[1], 64)
 			if val > 40 && val < 220 {
-				// If we see "Avg" nearby, it's definitely Avg HR. 
+				// If we see "Avg" nearby, it's definitely Avg HR.
 				// Even if not, a BPM value is a strong candidate.
 				if hasLabelNearby(i, []string{"avg", "average"}) {
 					avgHR = val
@@ -129,8 +127,6 @@ func getAppleWatchData(imageBytes []byte) string {
 	} else {
 		duration = otherDuration
 	}
-
-	log.Debugf("Apple Watch Data: Duration=%.2f, AvgHR=%.0f, Calories=%.0f", duration, avgHR, calories)
 
 	if duration > 0 && avgHR > 0 {
 		// Strain Calculation
