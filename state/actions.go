@@ -387,3 +387,59 @@ func (menu DisputeWorkoutMenu) PerformAction(params ActionData) error {
 
 	return nil
 }
+
+func (menu PSAMenu) PerformAction(params ActionData) error {
+	chatId := params.Update.FromChat().ID
+	option := params.Data
+
+	switch option {
+	case "cancel":
+		defer DeleteStateEntry(chatId)
+		ClearString(fmt.Sprintf("psa:stylized:%d", chatId))
+		msg := tgbotapi.NewMessage(chatId, "PSA cancelled.")
+		params.Bot.Send(msg)
+		return nil
+
+	case "edit":
+		// Restart the flow by going back to the input step
+		// Clear current stylized message
+		ClearString(fmt.Sprintf("psa:stylized:%d", chatId))
+		// We want to go back to the 'insertmessage' step
+		// In the current menu system, we can restart the menu
+		DeleteStateEntry(chatId)
+		newMenu := PSAMenu{}.CreateMenu(chatId)
+		msg := tgbotapi.NewMessage(chatId, "Please provide changes or a new message for the PSA:")
+		params.Bot.Send(msg)
+		// We re-create the state with just the menu name to trigger the first step
+		CreateStateEntry(chatId, newMenu.Name)
+		return &MenuActionDoneError{}
+
+	case "approve":
+		defer DeleteStateEntry(chatId)
+		stylizedMessage, err := Get(fmt.Sprintf("psa:stylized:%d", chatId))
+		if err != nil || stylizedMessage == "" {
+			return fmt.Errorf("failed to retrieve stylized message: %s", err)
+		}
+		ClearString(fmt.Sprintf("psa:stylized:%d", chatId))
+
+		groups := users.GetGroups()
+		for _, group := range groups {
+			if !group.Approved {
+				continue
+			}
+			msg := tgbotapi.NewMessage(group.ChatID, stylizedMessage)
+			msg.ParseMode = "Markdown"
+			if _, err := params.Bot.Send(msg); err != nil {
+				log.Errorf("failed to send PSA to group %s: %s", group.Title, err)
+			}
+		}
+		confirmationMsg := tgbotapi.NewMessage(chatId, "PSA published to all groups.")
+		params.Bot.Send(confirmationMsg)
+		return nil
+
+	default:
+		msg := tgbotapi.NewMessage(chatId, "Please use the buttons to Approve, Edit, or Cancel the PSA.")
+		params.Bot.Send(msg)
+		return &MenuActionDoneError{}
+	}
+}
