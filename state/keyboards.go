@@ -159,6 +159,60 @@ func createPSAApprovalKeyboard() tgbotapi.InlineKeyboardMarkup {
 	)
 }
 
+func createInstaSpotlightModeKeyboard() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Random", "random"),
+			tgbotapi.NewInlineKeyboardButtonData("Pick User", "pick"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("<- Back", "adminmenuback"),
+		),
+	)
+}
+
+func createGroupsWithInstaKeyboard() tgbotapi.InlineKeyboardMarkup {
+	groups := users.GetGroupsWithInsta()
+	row := []tgbotapi.InlineKeyboardButton{}
+	rows := [][]tgbotapi.InlineKeyboardButton{}
+	for _, group := range groups {
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData(group.Title, fmt.Sprintf("%d", group.ChatID)))
+		if len(row) == 3 {
+			rows = append(rows, row)
+			row = []tgbotapi.InlineKeyboardButton{}
+		}
+	}
+	if len(row) > 0 {
+		rows = append(rows, row)
+	}
+	backRow := []tgbotapi.InlineKeyboardButton{}
+	backButton := tgbotapi.NewInlineKeyboardButtonData("<- Back", "adminmenuback")
+	backRow = append(backRow, backButton)
+	rows = append(rows, backRow)
+	return tgbotapi.NewInlineKeyboardMarkup(rows...)
+}
+
+func createUsersWithInstaKeyboard(chatId int64) tgbotapi.InlineKeyboardMarkup {
+	usersList := users.GetUsersWithInsta(chatId)
+	row := []tgbotapi.InlineKeyboardButton{}
+	rows := [][]tgbotapi.InlineKeyboardButton{}
+	for _, user := range usersList {
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData(user.GetName(), fmt.Sprint(user.TelegramUserID)))
+		if len(row) == 3 {
+			rows = append(rows, row)
+			row = []tgbotapi.InlineKeyboardButton{}
+		}
+	}
+	if len(row) > 0 {
+		rows = append(rows, row)
+	}
+	backRow := []tgbotapi.InlineKeyboardButton{}
+	backButton := tgbotapi.NewInlineKeyboardButtonData("<- Back", "adminmenuback")
+	backRow = append(backRow, backButton)
+	rows = append(rows, backRow)
+	return tgbotapi.NewInlineKeyboardMarkup(rows...)
+}
+
 func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 	var rename RenameMenu
 	var pushWorkout PushWorkoutMenu
@@ -173,6 +227,7 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 	var manageImmunity ManageImmunityMenu
 	var disputeWorkout DisputeWorkoutMenu
 	var psa PSAMenu
+	var instagramSpotlight InstagramSpotlightMenu
 	menus := []MenuBase{
 		rename.CreateMenu(0),
 		pushWorkout.CreateMenu(0),
@@ -187,6 +242,7 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 		manageImmunity.CreateMenu(0),
 		disputeWorkout.CreateMenu(0),
 		psa.CreateMenu(0),
+		instagramSpotlight.CreateMenu(0),
 	}
 
 	row := []tgbotapi.InlineKeyboardButton{}

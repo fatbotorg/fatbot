@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fatbot/spotlight"
 	"fatbot/users"
 	"fmt"
 	"strconv"
@@ -442,4 +443,63 @@ func (menu PSAMenu) PerformAction(params ActionData) error {
 		params.Bot.Send(msg)
 		return &MenuActionDoneError{}
 	}
+}
+
+func (menu InstagramSpotlightMenu) PerformAction(params ActionData) error {
+	data := params.Data
+	chatId := params.Update.FromChat().ID
+	adminUser, _ := users.GetUserById(chatId)
+
+	if data == "random" {
+		defer DeleteStateEntry(params.State.ChatId)
+		// Immediately restore the admin menu
+		if params.Update.CallbackQuery != nil {
+			messageId := params.Update.CallbackQuery.Message.MessageID
+			edit := tgbotapi.NewEditMessageTextAndMarkup(
+				chatId, messageId, "Choose an option", CreateAdminKeyboard(adminUser.IsAdmin),
+			)
+			params.Bot.Request(edit)
+		}
+		// Notify the admin
+		waitMsg := tgbotapi.NewMessage(chatId, "Random Instagram Spotlight triggered! Generating media and publishing, this may take up to a minute. Please wait...")
+		params.Bot.Send(waitMsg)
+
+		// Start the long process
+		go spotlight.DailyInstagramAutomation(params.Bot)
+		return &MenuActionDoneError{}
+	} else if data == "pick" {
+		return nil
+	}
+
+	steps := menu.CreateMenu(0).Steps
+	lastStep := steps[len(steps)-1]
+	if lastStep.Name == "chooseuserinsta" {
+		defer DeleteStateEntry(params.State.ChatId)
+		userId, err := strconv.ParseInt(data, 10, 64)
+		if err != nil {
+			return err
+		}
+		user, err := users.GetUserById(userId)
+		if err != nil {
+			return err
+		}
+
+		// Immediately restore the admin menu
+		if params.Update.CallbackQuery != nil {
+			messageId := params.Update.CallbackQuery.Message.MessageID
+			edit := tgbotapi.NewEditMessageTextAndMarkup(
+				chatId, messageId, "Choose an option", CreateAdminKeyboard(adminUser.IsAdmin),
+			)
+			params.Bot.Request(edit)
+		}
+		// Notify the admin
+		waitMsg := tgbotapi.NewMessage(chatId, fmt.Sprintf("Instagram Spotlight triggered for %s! Generating media and publishing, this may take up to a minute. Please wait...", user.GetName()))
+		params.Bot.Send(waitMsg)
+
+		// Start the long process
+		go spotlight.ManualInstagramSpotlight(params.Bot, user)
+		return &MenuActionDoneError{}
+	}
+
+	return nil
 }

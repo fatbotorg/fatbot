@@ -1,4 +1,4 @@
-package schedule
+package spotlight
 
 import (
 	"bytes"
@@ -53,6 +53,16 @@ func DailyInstagramAutomation(bot *tgbotapi.BotAPI) {
 
 	log.Infof("Daily Instagram selection: %s", randomUser.GetName())
 	CreateInstagramStory(bot, randomUser, chatIds[0])
+}
+
+func ManualInstagramSpotlight(bot *tgbotapi.BotAPI, user users.User) {
+	chatIds, err := user.GetChatIds()
+	if err != nil || len(chatIds) == 0 {
+		log.Warnf("Manual selection user %s has no groups", user.GetName())
+		return
+	}
+	log.Infof("Manual Instagram selection: %s", user.GetName())
+	CreateInstagramStory(bot, user, chatIds[0])
 }
 
 func getPraiseMessage(count int) string {
@@ -171,7 +181,8 @@ Handle: @%s
 Status: %s
 Workouts: %d
 
-Check out the central account to see your spotlight! 💪`,
+Check out the central account to see your spotlight! 💪 
+https://www.instagram.com/fatbot.fit`,
 			user.InstagramHandle, praise, workoutCount)
 
 		// Send only the Post image as a confirmation preview

@@ -86,6 +86,9 @@ type DisputeWorkoutMenu struct {
 type PSAMenu struct {
 	MenuBase
 }
+type InstagramSpotlightMenu struct {
+	MenuBase
+}
 
 type MenuActionDoneError struct{}
 
@@ -114,6 +117,7 @@ var menuMap = map[string]Menu{
 	"manageimmunity":    ManageImmunityMenu{},
 	"disputeworkout":    DisputeWorkoutMenu{},
 	"psa":               PSAMenu{},
+	"instaspotlight":    InstagramSpotlightMenu{},
 }
 
 func (menu ManageAdminsMenu) CreateMenu(userId int64) MenuBase {
@@ -321,17 +325,46 @@ func (menu PSAMenu) CreateMenu(userId int64) MenuBase {
 	}
 }
 
+func (menu InstagramSpotlightMenu) CreateMenu(userId int64) MenuBase {
+	chooseMode := Step{
+		Name:     "choosemode",
+		Kind:     KeyboardStepKind,
+		Message:  "Choose Spotlight Mode",
+		Keyboard: createInstaSpotlightModeKeyboard(),
+		Result:   OptionResult,
+	}
+	chooseGroup := groupStepBase
+	chooseGroup.Name = "choosegroupinsta"
+	chooseUser := userStep
+	chooseUser.Name = "chooseuserinsta"
+
+	return MenuBase{
+		Name:           "instaspotlight",
+		Label:          "Instagram Spotlight",
+		Steps:          []Step{chooseMode, chooseGroup, chooseUser},
+		SuperAdminOnly: true,
+	}
+}
+
 func (step *Step) PopulateKeyboard(data int64) {
 	switch step.Result {
 	case TelegramUserIdStepResult:
 		if step.Name == "chooseanyuser" {
 			// For removeuser menu, show both active and inactive users
 			step.Keyboard = createAllUsersKeyboard(data)
+		} else if step.Name == "chooseuserinsta" {
+			step.Keyboard = createUsersWithInstaKeyboard(data)
 		} else {
 			step.Keyboard = createUsersKeyboard(data, true)
 		}
 	case TelegramInactiveUserIdStepResult:
 		step.Keyboard = createUsersKeyboard(data, false)
+	case GroupIdStepResult:
+		if step.Name == "choosegroupinsta" {
+			step.Keyboard = createGroupsWithInstaKeyboard()
+		} else {
+			step.Keyboard = createGroupsKeyboard(0)
+		}
 	default:
 		log.Errorf("unknown step result for keyboard population: %s", step.Result)
 	}
