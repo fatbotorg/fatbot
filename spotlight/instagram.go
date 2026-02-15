@@ -238,6 +238,7 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 	fontPaths := []string{
 		"/usr/share/fonts/freefont/FreeSansBold.ttf",
 		"/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+		"/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
 		"/System/Library/Fonts/Supplemental/DIN Alternate Bold.ttf",
 		"/System/Library/Fonts/Supplemental/Arial Bold.ttf",
 	}
@@ -249,7 +250,7 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 		}
 	}
 	if fontPath == "" {
-		log.Warn("No suitable font found for image rendering")
+		log.Debug("No suitable font found for image rendering - using default")
 	}
 
 	centerX := float64(width) / 2
@@ -257,7 +258,7 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 
 	// D. BIG TOP TEXT: THE TITLE
 	if fontPath != "" {
-		if err := dc.LoadFontFace(fontPath, 140); err != nil {
+		if err := dc.LoadFontFace(fontPath, 200); err != nil {
 			log.Warnf("Failed to load font %s: %s", fontPath, err)
 		}
 	}
@@ -265,28 +266,28 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 	dc.DrawStringAnchored(title, centerX, float64(height)*0.15, 0.5, 0.5)
 
 	// E. SMALLER CENTER PROGRESS
-	badgeRadius := float64(width) * 0.18
+	badgeRadius := float64(width) * 0.22
 	dc.DrawCircle(centerX, centerY, badgeRadius)
 	dc.SetRGBA(0.7, 1, 0, 0.8) // Neon Lime Green
 	dc.Fill()
 
 	if fontPath != "" {
-		if err := dc.LoadFontFace(fontPath, 160); err != nil {
+		if err := dc.LoadFontFace(fontPath, 350); err != nil {
 			log.Warnf("Failed to load font %s: %s", fontPath, err)
 		}
 	}
 	dc.SetRGB(0, 0, 0)
 	dc.DrawStringAnchored(fmt.Sprintf("%d", count), centerX, centerY, 0.5, 0.5)
 	if fontPath != "" {
-		if err := dc.LoadFontFace(fontPath, 30); err != nil {
+		if err := dc.LoadFontFace(fontPath, 60); err != nil {
 			log.Warnf("Failed to load font %s: %s", fontPath, err)
 		}
 	}
-	dc.DrawStringAnchored("WORKOUTS THIS WEEK", centerX, centerY+80, 0.5, 0.5)
+	dc.DrawStringAnchored("WORKOUTS THIS WEEK", centerX, centerY+140, 0.5, 0.5)
 
 	// F. HUGE BOTTOM NAME
 	if fontPath != "" {
-		if err := dc.LoadFontFace(fontPath, 120); err != nil {
+		if err := dc.LoadFontFace(fontPath, 200); err != nil {
 			log.Warnf("Failed to load font %s: %s", fontPath, err)
 		}
 	}
@@ -295,12 +296,12 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 
 	// G. BOTTOM ACCENT
 	dc.SetRGBA(0.7, 1, 0, 1)
-	dc.DrawRectangle(centerX-200, float64(height)*0.92, 400, 15)
+	dc.DrawRectangle(centerX-300, float64(height)*0.92, 600, 20)
 	dc.Fill()
 
 	// H. BRANDING
 	if fontPath != "" {
-		if err := dc.LoadFontFace(fontPath, 40); err != nil {
+		if err := dc.LoadFontFace(fontPath, 60); err != nil {
 			log.Warnf("Failed to load font %s: %s", fontPath, err)
 		}
 	}
