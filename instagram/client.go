@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/charmbracelet/log"
 	"github.com/spf13/viper"
 )
 
@@ -20,6 +21,7 @@ type PublishResponse struct {
 }
 
 func PublishStory(imageURL, caption string) (string, error) {
+	log.Debug("Publishing story to Instagram", "imageURL", imageURL)
 	businessID := viper.GetString("instagram.business_account_id")
 	accessToken := viper.GetString("instagram.access_token")
 
@@ -37,6 +39,7 @@ func PublishStory(imageURL, caption string) (string, error) {
 	}
 	params.Set("access_token", accessToken)
 
+	log.Debug("Creating story container")
 	resp, err := http.PostForm(containerURL, params)
 	if err != nil {
 		return "", err
@@ -52,8 +55,10 @@ func PublishStory(imageURL, caption string) (string, error) {
 	if containerRes.ID == "" {
 		return "", fmt.Errorf("failed to create story container: %s", string(body))
 	}
+	log.Debug("Story container created", "containerID", containerRes.ID)
 
 	// 2. Wait for container to be ready
+	log.Debug("Waiting for story container to be processed by Meta...")
 	time.Sleep(10 * time.Second)
 
 	// 3. Publish Media Container
@@ -62,6 +67,7 @@ func PublishStory(imageURL, caption string) (string, error) {
 	params.Set("creation_id", containerRes.ID)
 	params.Set("access_token", accessToken)
 
+	log.Debug("Publishing story container")
 	resp, err = http.PostForm(publishURL, params)
 	if err != nil {
 		return "", err
@@ -77,11 +83,13 @@ func PublishStory(imageURL, caption string) (string, error) {
 	if publishRes.ID == "" {
 		return "", fmt.Errorf("failed to publish: %s", string(body))
 	}
+	log.Debug("Story published successfully", "storyID", publishRes.ID)
 
 	return publishRes.ID, nil
 }
 
 func PublishPost(imageURL, caption string) (string, error) {
+	log.Debug("Publishing post to Instagram", "imageURL", imageURL)
 	businessID := viper.GetString("instagram.business_account_id")
 	accessToken := viper.GetString("instagram.access_token")
 
@@ -96,6 +104,7 @@ func PublishPost(imageURL, caption string) (string, error) {
 	params.Set("caption", caption)
 	params.Set("access_token", accessToken)
 
+	log.Debug("Creating post container")
 	resp, err := http.PostForm(containerURL, params)
 	if err != nil {
 		return "", err
@@ -111,8 +120,10 @@ func PublishPost(imageURL, caption string) (string, error) {
 	if containerRes.ID == "" {
 		return "", fmt.Errorf("failed to create post container: %s", string(body))
 	}
+	log.Debug("Post container created", "containerID", containerRes.ID)
 
 	// 2. Wait for container to be ready
+	log.Debug("Waiting for post container to be processed by Meta...")
 	time.Sleep(15 * time.Second)
 
 	// 3. Publish Media Container
@@ -121,6 +132,7 @@ func PublishPost(imageURL, caption string) (string, error) {
 	params.Set("creation_id", containerRes.ID)
 	params.Set("access_token", accessToken)
 
+	log.Debug("Publishing post container")
 	resp, err = http.PostForm(publishURL, params)
 	if err != nil {
 		return "", err
@@ -136,6 +148,7 @@ func PublishPost(imageURL, caption string) (string, error) {
 	if publishRes.ID == "" {
 		return "", fmt.Errorf("failed to publish: %s", string(body))
 	}
+	log.Debug("Post published successfully", "postID", publishRes.ID)
 
 	return publishRes.ID, nil
 }

@@ -23,17 +23,20 @@ import (
 )
 
 func DailyInstagramAutomation(bot *tgbotapi.BotAPI) {
+	log.Info("Starting Daily Instagram Automation")
 	var usersList []users.User
 	// Join with workouts to ensure we only pick users who have at least one workout with a photo
 	err := db.DBCon.Model(&users.User{}).
 		Joins("JOIN workouts ON workouts.user_id = users.id").
-		Where("users.instagram_handle != ? AND workouts.photo_file_id != ?", "", "").
+		Where("users.instagram_handle != ? AND workouts.photo_file_id != ? AND workouts.photo_file_id != ?", "", "", "NULL").
 		Group("users.id").
 		Find(&usersList).Error
 	if err != nil {
 		log.Errorf("Error fetching instagram users with photos: %s", err)
 		return
 	}
+
+	log.Infof("Found %d users enrolled for Instagram with workout photos", len(usersList))
 
 	if len(usersList) == 0 {
 		log.Info("No enrolled users with workout photos available for Instagram")
@@ -51,7 +54,7 @@ func DailyInstagramAutomation(bot *tgbotapi.BotAPI) {
 		return
 	}
 
-	log.Infof("Daily Instagram selection: %s", randomUser.GetName())
+	log.Infof("Daily Instagram selection: %s (ChatID: %d)", randomUser.GetName(), chatIds[0])
 	CreateInstagramStory(bot, randomUser, chatIds[0])
 }
 
@@ -76,6 +79,7 @@ func getPraiseMessage(count int) string {
 }
 
 func CreateInstagramStory(bot *tgbotapi.BotAPI, user users.User, chatId int64) {
+	log.Debug("Starting Instagram story creation", "user", user.GetName(), "chatId", chatId)
 	lastWorkout, err := user.GetLastXWorkout(1, chatId)
 	if err != nil {
 		log.Errorf("Error getting last workout for instagram: %s", err)
@@ -83,10 +87,12 @@ func CreateInstagramStory(bot *tgbotapi.BotAPI, user users.User, chatId int64) {
 	}
 
 	if lastWorkout.PhotoFileID == "" {
+		log.Warn("User has no photo for their last workout, skipping Instagram story", "user", user.GetName())
 		return
 	}
 
 	// 1. Download image
+	log.Debug("Downloading photo from Telegram", "fileId", lastWorkout.PhotoFileID)
 	fileConfig := tgbotapi.FileConfig{FileID: lastWorkout.PhotoFileID}
 	tgFile, err := bot.GetFile(fileConfig)
 	if err != nil {
@@ -116,16 +122,19 @@ func CreateInstagramStory(bot *tgbotapi.BotAPI, user users.User, chatId int64) {
 	workoutCount := len(user.Workouts)
 	praise := getPraiseMessage(workoutCount)
 	title := ai.GetAiMotivationalTitle()
+	log.Debug("Prepared story data", "workoutCount", workoutCount, "title", title)
 
 	// 3. Generate Visuals
 	ts := time.Now().Unix()
 	storyFile := fmt.Sprintf("story_%d_%d.jpg", user.TelegramUserID, ts)
+	log.Debug("Rendering high impact story image", "outFile", storyFile)
 	if err := renderHighImpactImage(srcImg, 1080, 1920, user.GetName(), title, workoutCount, storyFile); err != nil {
 		log.Errorf("Error rendering story: %s", err)
 		return
 	}
 
 	postFile := fmt.Sprintf("post_%d_%d.jpg", user.TelegramUserID, ts)
+	log.Debug("Rendering high impact post image", "outFile", postFile)
 	if err := renderHighImpactImage(srcImg, 1080, 1080, user.GetName(), title, workoutCount, postFile); err != nil {
 		log.Errorf("Error rendering post: %s", err)
 		return
@@ -146,11 +155,15 @@ This is what consistency looks like. Keep pushing.
 	// Story
 	storyBytes, err := os.ReadFile(storyFile)
 	if err == nil && len(storyBytes) > 0 {
+		log.Debug("Uploading story to S3")
 		if publicStoryURL, err := users.UploadToS3(storyFile, storyBytes); err == nil {
 			log.Infof("Story public URL: %s", publicStoryURL)
 			storyCaption := fmt.Sprintf("@%s", user.InstagramHandle)
+			log.Debug("Publishing story to Instagram")
 			if storyID, pubErr = instagram.PublishStory(publicStoryURL, storyCaption); pubErr != nil {
 				log.Errorf("Failed to publish story for %s: %s", user.GetName(), pubErr)
+			} else {
+				log.Infof("Successfully published story: %s", storyID)
 			}
 		} else {
 			log.Errorf("Failed to upload story to S3: %s", err)
@@ -162,10 +175,14 @@ This is what consistency looks like. Keep pushing.
 	// Post
 	postBytes, err := os.ReadFile(postFile)
 	if err == nil && len(postBytes) > 0 {
+		log.Debug("Uploading post to S3")
 		if publicPostURL, err := users.UploadToS3(postFile, postBytes); err == nil {
 			log.Infof("Post public URL: %s", publicPostURL)
+			log.Debug("Publishing post to Instagram")
 			if postID, pubErr = instagram.PublishPost(publicPostURL, caption); pubErr != nil {
 				log.Errorf("Failed to publish post for %s: %s", user.GetName(), pubErr)
+			} else {
+				log.Infof("Successfully published post: %s", postID)
 			}
 		} else {
 			log.Errorf("Failed to upload post to S3: %s", err)
@@ -186,6 +203,7 @@ Check out the central account to see your spotlight! 💪
 https://www.instagram.com/fatbot.fit`,
 			user.InstagramHandle, praise, workoutCount)
 
+		log.Debug("Sending Telegram notification to user")
 		// Send only the Post image as a confirmation preview
 		msg := tgbotapi.NewPhoto(user.TelegramUserID, tgbotapi.FilePath(postFile))
 		msg.Caption = tgCaption
@@ -201,6 +219,7 @@ https://www.instagram.com/fatbot.fit`,
 }
 
 func renderHighImpactImage(src image.Image, width, height int, name, title string, count int, outFile string) error {
+	log.Debug("Rendering image", "width", width, "height", height, "name", name, "count", count)
 	dc := gg.NewContext(width, height)
 
 	// A. Background (Cover)
@@ -223,6 +242,7 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 		xdraw.CatmullRom.Scale(rgba, rgba.Bounds(), src, srcRect, xdraw.Over, nil)
 	} else {
 		// Fallback if not RGBA
+		log.Debug("Context image is not RGBA, using fallback scaling")
 		scaleW := float64(width) / float64(srcRect.Dx())
 		scaleH := float64(height) / float64(srcRect.Dy())
 		dc.Scale(scaleW, scaleH)
@@ -239,6 +259,7 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 	fontPaths := []string{
 		"/usr/share/fonts/freefont/FreeSansBold.ttf",
 		"/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+		"/usr/share/fonts/ttf-dejavu/DejaVuSans-Bold.ttf",
 		"/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
 		"/System/Library/Fonts/Supplemental/DIN Alternate Bold.ttf",
 		"/System/Library/Fonts/Supplemental/Arial Bold.ttf",
@@ -247,11 +268,12 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 	for _, path := range fontPaths {
 		if _, err := os.Stat(path); err == nil {
 			fontPath = path
+			log.Debug("Found font", "path", fontPath)
 			break
 		}
 	}
 	if fontPath == "" {
-		log.Debug("No suitable font found for image rendering - using default")
+		log.Warn("No suitable font found for image rendering - using default")
 	}
 
 	centerX := float64(width) / 2
@@ -259,7 +281,7 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 
 	// D. BIG TOP TEXT: THE TITLE
 	if fontPath != "" {
-		if err := dc.LoadFontFace(fontPath, 200); err != nil {
+		if err := dc.LoadFontFace(fontPath, 100); err != nil {
 			log.Warnf("Failed to load font %s: %s", fontPath, err)
 		}
 	}
@@ -273,14 +295,14 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 	dc.Fill()
 
 	if fontPath != "" {
-		if err := dc.LoadFontFace(fontPath, 350); err != nil {
+		if err := dc.LoadFontFace(fontPath, 200); err != nil {
 			log.Warnf("Failed to load font %s: %s", fontPath, err)
 		}
 	}
 	dc.SetRGB(0, 0, 0)
 	dc.DrawStringAnchored(fmt.Sprintf("%d", count), centerX, centerY, 0.5, 0.5)
 	if fontPath != "" {
-		if err := dc.LoadFontFace(fontPath, 60); err != nil {
+		if err := dc.LoadFontFace(fontPath, 28); err != nil {
 			log.Warnf("Failed to load font %s: %s", fontPath, err)
 		}
 	}
@@ -288,7 +310,7 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 
 	// F. HUGE BOTTOM NAME
 	if fontPath != "" {
-		if err := dc.LoadFontFace(fontPath, 200); err != nil {
+		if err := dc.LoadFontFace(fontPath, 120); err != nil {
 			log.Warnf("Failed to load font %s: %s", fontPath, err)
 		}
 	}
@@ -302,7 +324,7 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 
 	// H. BRANDING
 	if fontPath != "" {
-		if err := dc.LoadFontFace(fontPath, 60); err != nil {
+		if err := dc.LoadFontFace(fontPath, 30); err != nil {
 			log.Warnf("Failed to load font %s: %s", fontPath, err)
 		}
 	}
@@ -313,5 +335,6 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 	if err := jpeg.Encode(&buf, dc.Image(), &jpeg.Options{Quality: 95}); err != nil {
 		return err
 	}
+	log.Debug("Successfully encoded image to JPEG", "outFile", outFile)
 	return os.WriteFile(outFile, buf.Bytes(), 0644)
 }

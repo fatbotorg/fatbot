@@ -10,11 +10,15 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/charmbracelet/log"
 	"github.com/spf13/viper"
 )
 
 func UploadToS3(fileName string, fileBytes []byte) (string, error) {
 	bucket := viper.GetString("s3.bucket")
+	if bucket == "" {
+		bucket = os.Getenv("S3_BUCKET")
+	}
 	region := viper.GetString("s3.region")
 	if region == "" {
 		region = os.Getenv("AWS_REGION")
@@ -22,6 +26,8 @@ func UploadToS3(fileName string, fileBytes []byte) (string, error) {
 	if region == "" {
 		region = "us-east-1"
 	}
+
+	log.Debug("Uploading to S3", "bucket", bucket, "region", region, "fileName", fileName)
 
 	if bucket == "" {
 		return "", fmt.Errorf("S3 bucket not configured")
