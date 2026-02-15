@@ -115,7 +115,7 @@ func main() {
 	} else {
 		updates.GlobalBot = bot
 		schedule.Init(bot)
-		bot.Debug = false
+		bot.Debug = os.Getenv("DEBUG") == "true"
 		log.Infof("Authorized on account %s", bot.Self.UserName)
 
 		go func() {

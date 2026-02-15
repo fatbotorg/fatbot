@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  fatbot:
+    build: .
+    container_name: fatbot-test
+    depends_on:
+      - redis
+    ports:
+      - "8080:8080"
+    environment:
+      # Infrastructure & Debug
+      - DEBUG=true
+      - ENVIRONMENT=production
+      - DBPATH=/app/fat.db
+      - REDIS_ADDR=redis://redis:6379
+      - PORT=8080
+      
+      # Core Service Tokens
+      - TELEGRAM_APITOKEN=${TELEGRAM_APITOKEN}
+      - OPENAI_APITOKEN=${OPENAI_APITOKEN}
+      - OPENAI_API_KEY=${OPENAI_APITOKEN}
+      - SENTRY_DSN=${SENTRY_DSN}
+      
+      # AWS Configuration
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=us-west-2
+      - S3_BUCKET=fatbot
+      - AWS_SDK_LOAD_CONFIG=1
+      
+      # Instagram (via Viper/Env fallback if configured)
+      - INSTAGRAM_BUSINESS_ACCOUNT_ID=${INSTAGRAM_BUSINESS_ACCOUNT_ID}
+      - INSTAGRAM_ACCESS_TOKEN=${INSTAGRAM_ACCESS_TOKEN}
+    volumes:
+      - ./config.yaml:/app/config.yaml
+      - ./fat.db:/app/fat.db
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    container_name: redis-test
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
