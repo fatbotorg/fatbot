@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/charmbracelet/log"
 	"github.com/getsentry/sentry-go"
@@ -88,4 +89,28 @@ func GetAiWelcomeResponse() string {
 		return ""
 	}
 	return resp.Choices[0].Message.Content
+}
+
+func GetAiMotivationalTitle() string {
+	client := openai.NewClient(getOpenAIToken())
+	resp, err := client.CreateChatCompletion(
+		context.Background(),
+		openai.ChatCompletionRequest{
+			Temperature: 1.2,
+			Model:       openai.GPT3Dot5Turbo,
+			Messages: []openai.ChatCompletionMessage{
+				{
+					Role:    openai.ChatMessageRoleUser,
+					Content: "Write a single, extremely impactful, high-energy motivational word or short phrase (max 2 words) for a fitness hero. Examples: UNSTOPPABLE, BEAST MODE, RELENTLESS. Capitalized.",
+				},
+			},
+		},
+	)
+
+	if err != nil {
+		log.Errorf("ChatCompletion error: %v\n", err)
+		sentry.CaptureException(err)
+		return "UNSTOPPABLE"
+	}
+	return strings.ToUpper(strings.Trim(resp.Choices[0].Message.Content, `".`))
 }

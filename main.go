@@ -56,6 +56,14 @@ func setupBotCommands(bot *tgbotapi.BotAPI) {
 			Description: "Connect Garmin Account",
 		},
 		{
+			Command:     "instagram",
+			Description: "Enroll in daily Instagram Story automation (e.g. /instagram handle)",
+		},
+		{
+			Command:     "instagram_off",
+			Description: "Disable daily Instagram Story automation",
+		},
+		{
 			Command:     "help",
 			Description: "Show help information",
 		},

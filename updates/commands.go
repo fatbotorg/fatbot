@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"fatbot/db"
 	"fatbot/schedule"
 	"fatbot/state"
 	"fatbot/users"
@@ -63,6 +64,18 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 		if err != nil {
 			return err
 		}
+	case "instagram":
+		err = handleInstagramCommand(fatBotUpdate)
+		if err != nil {
+			return err
+		}
+		return nil
+	case "instagram_off":
+		err = handleInstagramOffCommand(fatBotUpdate)
+		if err != nil {
+			return err
+		}
+		return nil
 	case "help":
 		msg.ChatID = update.FromChat().ID
 		msg.Text = "Join the group using: /join\nCheck your status using: /status"
@@ -313,6 +326,47 @@ func handleJoinCommandExistingUser(fatBotUpdate FatBotUpdate, user users.User) (
 		}
 	}
 	return
+}
+
+func handleInstagramCommand(fatBotUpdate FatBotUpdate) error {
+	update := fatBotUpdate.Update
+	bot := fatBotUpdate.Bot
+	user, err := users.GetUserById(update.SentFrom().ID)
+	if err != nil {
+		return err
+	}
+	handle := strings.TrimSpace(update.Message.CommandArguments())
+	if handle == "" {
+		msg := tgbotapi.NewMessage(update.FromChat().ID, "Please provide your Instagram handle: `/instagram your_handle`")
+		msg.ParseMode = "Markdown"
+		_, err := bot.Send(msg)
+		return err
+	}
+	// Remove @ if present
+	handle = strings.TrimPrefix(handle, "@")
+	user.InstagramHandle = handle
+	if err := db.DBCon.Save(&user).Error; err != nil {
+		return err
+	}
+	msg := tgbotapi.NewMessage(update.FromChat().ID, fmt.Sprintf("Awesome! I've registered your Instagram handle @%s and enabled daily automated stories. 🔥", handle))
+	_, err = bot.Send(msg)
+	return err
+}
+
+func handleInstagramOffCommand(fatBotUpdate FatBotUpdate) error {
+	update := fatBotUpdate.Update
+	bot := fatBotUpdate.Bot
+	user, err := users.GetUserById(update.SentFrom().ID)
+	if err != nil {
+		return err
+	}
+	user.InstagramHandle = ""
+	if err := db.DBCon.Save(&user).Error; err != nil {
+		return err
+	}
+	msg := tgbotapi.NewMessage(update.FromChat().ID, "Daily automated Instagram stories disabled. 🫡")
+	_, err = bot.Send(msg)
+	return err
 }
 
 func handleAdminCommandUpdate(fatBotUpdate FatBotUpdate) error {

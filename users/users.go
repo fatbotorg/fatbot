@@ -39,7 +39,9 @@ type User struct {
 	GarminTokenExpiry  time.Time
 	GarminUserID       string
 
-	Workouts    []Workout
+	InstagramHandle string
+
+	Workouts []Workout
 	Events      []Event
 	Groups      []*Group `gorm:"many2many:user_groups;"`
 	GroupsAdmin []*Group `gorm:"many2many:groups_admins;"`
