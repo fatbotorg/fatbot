@@ -119,7 +119,7 @@ func ProcessGarminActivity(bot *tgbotapi.BotAPI, user users.User, activity garmi
 			GarminID: activity.SummaryID,
 		}
 		db.DBCon.Create(&workout)
-		notify.NotifyWorkout(bot, user, workout, activity.ActivityName, strain, activity.Calories, activity.AverageHeartRate, duration.Minutes())
+		notify.NotifyWorkout(bot, user, workout, activity.ActivityName, strain, activity.Calories, activity.AverageHeartRate, duration.Minutes(), activity.DistanceInMeters, activity.DeviceName, activity.ActivityType)
 	}
 	notify.SendWorkoutPM(bot, user, activity.ActivityName)
 }

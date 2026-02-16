@@ -114,18 +114,24 @@ type GarminEntry struct {
 	Summary         *struct {
 		SummaryId          string  `json:"summaryId"`
 		ActivityName       string  `json:"activityName"`
+		ActivityType       string  `json:"activityType"`
+		DeviceName         string  `json:"deviceName"`
 		DurationInSeconds  int     `json:"durationInSeconds"`
 		StartTimeInSeconds int64   `json:"startTimeInSeconds"`
 		ActiveCalories     float64 `json:"activeKilocalories"`
 		AverageHeartRate   int     `json:"averageHeartRateInBeatsPerMinute"`
+		DistanceInMeters   float64 `json:"distanceInMeters"`
 	} `json:"summary"`
 	ActivityName       string  `json:"activityName"`
+	ActivityType       string  `json:"activityType"`
+	DeviceName         string  `json:"deviceName"`
 	DurationInSeconds  int     `json:"durationInSeconds"`
 	StartTimeInSeconds int64   `json:"startTimeInSeconds"`
 	ActiveCalories     float64 `json:"activeCalories"`
 	ActiveKilocalories float64 `json:"activeKilocalories"`
 	Calories           float64 `json:"calories"`
 	AverageHeartRate   int     `json:"averageHeartRateInBeatsPerMinute"`
+	DistanceInMeters   float64 `json:"distanceInMeters"`
 }
 
 func (e GarminEntry) GetCalories() float64 {
@@ -215,19 +221,25 @@ func HandleGarminWebhook(w http.ResponseWriter, r *http.Request) {
 			activities = []garmin.ActivityData{{
 				SummaryID:          baseID,
 				ActivityName:       entry.ActivityName,
+				ActivityType:       entry.ActivityType,
+				DeviceName:         entry.DeviceName,
 				DurationInSeconds:  entry.DurationInSeconds,
 				StartTimeInSeconds: entry.StartTimeInSeconds,
 				Calories:           entry.GetCalories(),
 				AverageHeartRate:   entry.AverageHeartRate,
+				DistanceInMeters:   entry.DistanceInMeters,
 			}}
 		} else if entry.Summary != nil {
 			activities = []garmin.ActivityData{{
 				SummaryID:          baseID,
 				ActivityName:       entry.Summary.ActivityName,
+				ActivityType:       entry.Summary.ActivityType,
+				DeviceName:         entry.Summary.DeviceName,
 				DurationInSeconds:  entry.Summary.DurationInSeconds,
 				StartTimeInSeconds: entry.Summary.StartTimeInSeconds,
 				Calories:           entry.GetCalories(),
 				AverageHeartRate:   entry.Summary.AverageHeartRate,
+				DistanceInMeters:   entry.Summary.DistanceInMeters,
 			}}
 		} else if entry.CallbackURL != "" && !strings.Contains(entry.CallbackURL, "activityFile") {
 			fetched, err := garmin.FetchActivityByPullURI(entry.CallbackURL, accessToken)

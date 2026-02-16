@@ -98,9 +98,8 @@ func SyncWhoopWorkouts(bot *tgbotapi.BotAPI) {
 					WhoopID: record.ID,
 				}
 				db.DBCon.Create(&workout)
-				notify.NotifyWorkout(bot, user, workout, record.SportName, record.Score.Strain, record.Score.Kilojoule/4.184, record.Score.AverageHeartRate, duration.Minutes())
-			}
-			notify.SendWorkoutPM(bot, user, record.SportName)
-		}
-	}
+						notify.NotifyWorkout(bot, user, workout, record.SportName, record.Score.Strain, record.Score.Kilojoule/4.184, record.Score.AverageHeartRate, duration.Minutes(), 0, "", "")
+					}
+					notify.SendWorkoutPM(bot, user, record.SportName)
+				}	}
 }

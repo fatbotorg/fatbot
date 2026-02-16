@@ -400,7 +400,7 @@ func handleWhoopBonusCallback(fatBotUpdate FatBotUpdate) error {
 				WhoopID: record.ID,
 			}
 			db.DBCon.Create(&workout)
-			notify.NotifyWorkout(bot, user, workout, record.SportName, record.Score.Strain, record.Score.Kilojoule/4.184, record.Score.AverageHeartRate, duration.Minutes())
+			notify.NotifyWorkout(bot, user, workout, record.SportName, record.Score.Strain, record.Score.Kilojoule/4.184, record.Score.AverageHeartRate, duration.Minutes(), 0, "", "")
 		}
 	}
 	return nil
@@ -464,7 +464,7 @@ func handleGarminBonusCallback(fatBotUpdate FatBotUpdate) error {
 				GarminID: record.SummaryID,
 			}
 			db.DBCon.Create(&workout)
-			notify.NotifyWorkout(bot, user, workout, record.ActivityName, 0, record.Calories, record.AverageHeartRate, duration.Minutes())
+			notify.NotifyWorkout(bot, user, workout, record.ActivityName, 0, record.Calories, record.AverageHeartRate, duration.Minutes(), record.DistanceInMeters, record.DeviceName, record.ActivityType)
 		}
 	}
 	return nil

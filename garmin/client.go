@@ -27,6 +27,7 @@ type ActivityData struct {
 	ActivityID         int64   `json:"activityId"`
 	ActivityName       string  `json:"activityName"`
 	ActivityType       string  `json:"activityType"`
+	DeviceName         string  `json:"deviceName"`
 	StartTimeInSeconds int64   `json:"startTimeInSeconds"`
 	DurationInSeconds  int     `json:"durationInSeconds"`
 	Calories           float64 `json:"calories"`
