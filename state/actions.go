@@ -364,6 +364,16 @@ func (menu DisputeWorkoutMenu) PerformAction(params ActionData) error {
 		return err
 	}
 
+	// Pin the poll
+	pinConfig := tgbotapi.PinChatMessageConfig{
+		ChatID:              groupChatId,
+		MessageID:           message.MessageID,
+		DisableNotification: false,
+	}
+	if _, err := params.Bot.Request(pinConfig); err != nil {
+		log.Error("Failed to pin dispute poll", "error", err)
+	}
+
 	// Store poll information
 	if err := users.CreateWorkoutDisputePoll(
 		message.Poll.ID,
@@ -375,6 +385,9 @@ func (menu DisputeWorkoutMenu) PerformAction(params ActionData) error {
 		return err
 	}
 
+	// Initialize poll creation time for tracking
+	// Note: This will be handled in the first poll update
+
 	// Notify the target user
 	userMsg := tgbotapi.NewMessage(telegramUserId,
 		fmt.Sprintf("Your workout from %s is being disputed. A poll has been created in the group to decide the outcome.",
@@ -383,7 +396,7 @@ func (menu DisputeWorkoutMenu) PerformAction(params ActionData) error {
 
 	// Send confirmation to admin
 	adminMsg := tgbotapi.NewMessage(params.Update.FromChat().ID,
-		fmt.Sprintf("Dispute poll created for %s's workout. The poll will close in 1 hour or when enough votes are reached.", user.GetName()))
+		fmt.Sprintf("Dispute poll created for %s's workout. The poll will close in 1 hour or when everyone has voted.", user.GetName()))
 	params.Bot.Send(adminMsg)
 
 	return nil
