@@ -20,6 +20,13 @@ type Leader struct {
 	Workouts int
 }
 
+type GroupScore struct {
+	Group           users.Group
+	TotalWorkouts   int
+	AverageWorkouts float64
+	UserCount       int
+}
+
 func nudgeBannedUsers(bot *tgbotapi.BotAPI) {
 	inactiveUsers := users.GetInactiveUsers(0)
 	for _, user := range inactiveUsers {
@@ -41,6 +48,23 @@ func nudgeBannedUsers(bot *tgbotapi.BotAPI) {
 }
 
 func CreateChart(bot *tgbotapi.BotAPI) {
+	// Calculate group scores and rankings before sending reports
+	groupScores := calculateGroupScores()
+	totalActiveGroups := len(groupScores)
+
+	// Build a map for quick lookup: chatId -> (rank, average)
+	type groupRankInfo struct {
+		rank    int
+		average float64
+	}
+	rankMap := make(map[int64]groupRankInfo)
+	for i, score := range groupScores {
+		rankMap[score.Group.ChatID] = groupRankInfo{
+			rank:    i + 1,
+			average: score.AverageWorkouts,
+		}
+	}
+
 	groups := users.GetGroupsWithUsers()
 	for _, group := range groups {
 		if len(group.Users) == 0 {
@@ -129,6 +153,12 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 			}
 		}
 
+		// Add group ranking info
+		if rankInfo, ok := rankMap[group.ChatID]; ok && totalActiveGroups > 0 {
+			caption += fmt.Sprintf("\n\nYour group averaged %.1f workouts per member this week. You're ranked %d/%d among active groups!",
+				rankInfo.average, rankInfo.rank, totalActiveGroups)
+		}
+
 		msg.Caption = caption
 		_, err = bot.Send(msg)
 		if err != nil {
@@ -162,10 +192,10 @@ func collectUsersData(group users.Group) (usersWorkouts, previousWeekWorkouts []
 	var maxWorkouts int = 0
 	for i := range group.Users {
 		user := &group.Users[i] // Get a pointer to the user in the slice
-		
+
 		userPreviousWeekWorkouts := user.GetPreviousWeekWorkouts(group.ChatID)
 		previousWeekWorkouts = append(previousWeekWorkouts, fmt.Sprint(len(userPreviousWeekWorkouts)))
-		
+
 		// Use ReportCycle (last 7 days) instead of ThisCycle (which resets to 0 on report day)
 		if err := user.LoadWorkoutsReportCycle(group.ChatID); err != nil {
 			log.Error("Error loading workouts for user", "user_id", user.ID, "error", err)
@@ -226,6 +256,50 @@ func createQuickChart(chartConfig string) *quickchartgo.Chart {
 	return qc
 }
 
+// calculateGroupScores calculates the average workouts per user for all active groups
+// and returns them sorted by average (descending), with ties broken by user count (descending)
+func calculateGroupScores() []GroupScore {
+	groups := users.GetGroupsWithUsers()
+	var scores []GroupScore
+
+	for _, group := range groups {
+		// Skip groups with fewer than 4 members (not active)
+		if len(group.Users) < 4 {
+			continue
+		}
+
+		totalWorkouts := 0
+		for i := range group.Users {
+			user := &group.Users[i]
+			if err := user.LoadWorkoutsReportCycle(group.ChatID); err != nil {
+				log.Error("Error loading workouts for group score", "user_id", user.ID, "error", err)
+				continue
+			}
+			totalWorkouts += len(user.Workouts)
+		}
+
+		userCount := len(group.Users)
+		average := float64(totalWorkouts) / float64(userCount)
+
+		scores = append(scores, GroupScore{
+			Group:           group,
+			TotalWorkouts:   totalWorkouts,
+			AverageWorkouts: average,
+			UserCount:       userCount,
+		})
+	}
+
+	// Sort by average (descending), ties broken by user count (descending)
+	sort.Slice(scores, func(i, j int) bool {
+		if scores[i].AverageWorkouts == scores[j].AverageWorkouts {
+			return scores[i].UserCount > scores[j].UserCount
+		}
+		return scores[i].AverageWorkouts > scores[j].AverageWorkouts
+	})
+
+	return scores
+}
+
 func ReportStandings(bot *tgbotapi.BotAPI) {
 	groups := users.GetGroups()
 	for _, group := range groups {
@@ -264,16 +338,16 @@ func CreateStatsMessage(chatId int64) string {
 }
 
 type WeeklyStats struct {
-	User              users.User
-	ThisWeekWorkouts  int
-	LastWeekWorkouts  int
-	Improvement       int
-	DaysLeftToWin     string
+	User             users.User
+	ThisWeekWorkouts int
+	LastWeekWorkouts int
+	Improvement      int
+	DaysLeftToWin    string
 }
 
 func buildPowerRankingsMessage(group users.Group) string {
 	stats := collectWeeklyStats(group)
-	
+
 	if len(stats) == 0 {
 		return "📊 Mid-Week Power Rankings 📊\n\nNo workout data available yet this week."
 	}
@@ -287,7 +361,7 @@ func buildPowerRankingsMessage(group users.Group) string {
 
 	message := "📊 Mid-Week Power Rankings 📊\n\n"
 	message += "🏆 Current Leaderboard:\n"
-	
+
 	maxWorkouts := stats[0].ThisWeekWorkouts
 	leadersCount := 0
 	for _, s := range stats {
@@ -307,26 +381,26 @@ func buildPowerRankingsMessage(group users.Group) string {
 		} else {
 			position = fmt.Sprintf("%d.", i+1)
 		}
-		
+
 		improvementStr := ""
 		if s.Improvement > 0 {
 			improvementStr = fmt.Sprintf(" 📈+%d", s.Improvement)
 		} else if s.Improvement < 0 {
 			improvementStr = fmt.Sprintf(" 📉%d", s.Improvement)
 		}
-		
-		message += fmt.Sprintf("%s %s: %d workouts%s\n", 
+
+		message += fmt.Sprintf("%s %s: %d workouts%s\n",
 			position, s.User.GetName(), s.ThisWeekWorkouts, improvementStr)
 	}
 
 	comebackPlayer := findComebackPlayer(stats)
 	if comebackPlayer != nil {
-		message += fmt.Sprintf("\n🔥 Comeback Player: %s (+%d vs last week!)\n", 
+		message += fmt.Sprintf("\n🔥 Comeback Player: %s (+%d vs last week!)\n",
 			comebackPlayer.User.GetName(), comebackPlayer.Improvement)
 	}
 
 	if leadersCount > 1 && maxWorkouts > 0 {
-		message += fmt.Sprintf("\n⚡ CLOSE RACE! %d players tied at %d workouts!\n", 
+		message += fmt.Sprintf("\n⚡ CLOSE RACE! %d players tied at %d workouts!\n",
 			leadersCount, maxWorkouts)
 	}
 
@@ -343,21 +417,21 @@ func buildPowerRankingsMessage(group users.Group) string {
 
 func collectWeeklyStats(group users.Group) []WeeklyStats {
 	var stats []WeeklyStats
-	
+
 	for i := range group.Users {
 		user := &group.Users[i] // Get a pointer to the user in the slice
-		
+
 		lastWeekWorkouts := user.GetPreviousWeekWorkouts(group.ChatID)
-		
+
 		if err := user.LoadWorkoutsThisCycle(group.ChatID); err != nil {
 			log.Error("Error loading workouts for user", "user_id", user.ID, "error", err)
 			sentry.CaptureException(err)
 			continue // Skip this user if workouts cannot be loaded
 		}
 		thisWeekWorkouts := user.Workouts
-		
+
 		improvement := len(thisWeekWorkouts) - len(lastWeekWorkouts)
-		
+
 		stats = append(stats, WeeklyStats{
 			User:             *user, // Dereference the pointer for the struct field
 			ThisWeekWorkouts: len(thisWeekWorkouts),
@@ -365,21 +439,21 @@ func collectWeeklyStats(group users.Group) []WeeklyStats {
 			Improvement:      improvement,
 		})
 	}
-	
+
 	return stats
 }
 
 func findComebackPlayer(stats []WeeklyStats) *WeeklyStats {
 	var bestComeback *WeeklyStats
 	maxImprovement := 0
-	
+
 	for i := range stats {
 		if stats[i].Improvement > maxImprovement && stats[i].Improvement >= 2 {
 			maxImprovement = stats[i].Improvement
 			bestComeback = &stats[i]
 		}
 	}
-	
+
 	return bestComeback
 }
 
@@ -387,28 +461,28 @@ func findCloseContenders(stats []WeeklyStats, maxWorkouts int) []string {
 	if maxWorkouts == 0 {
 		return nil
 	}
-	
+
 	var contenders []string
 	daysLeft := 7 - int(time.Now().Weekday())
 	if daysLeft <= 0 || daysLeft >= 5 {
 		return nil
 	}
-	
+
 	for _, s := range stats {
 		gap := maxWorkouts - s.ThisWeekWorkouts
-		
+
 		if gap == 0 {
-			contenders = append(contenders, 
+			contenders = append(contenders,
 				fmt.Sprintf("• %s: Leading! One more workout seals it 🏆\n", s.User.GetName()))
 		} else if gap == 1 {
-			contenders = append(contenders, 
+			contenders = append(contenders,
 				fmt.Sprintf("• %s: 1 workout behind - still in the game! 🎯\n", s.User.GetName()))
 		} else if gap == 2 && daysLeft >= 2 {
-			contenders = append(contenders, 
+			contenders = append(contenders,
 				fmt.Sprintf("• %s: 2 workouts needed - you've got time! ⏰\n", s.User.GetName()))
 		}
 	}
-	
+
 	return contenders
 }
 
