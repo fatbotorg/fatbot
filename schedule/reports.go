@@ -25,6 +25,9 @@ type GroupScore struct {
 	TotalWorkouts   int
 	AverageWorkouts float64
 	UserCount       int
+	IsNewBest       bool
+	PreviousBest    float64
+	IsFirstWeek     bool
 }
 
 func nudgeBannedUsers(bot *tgbotapi.BotAPI) {
@@ -52,16 +55,22 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 	groupScores := calculateGroupScores()
 	totalActiveGroups := len(groupScores)
 
-	// Build a map for quick lookup: chatId -> (rank, average)
+	// Build a map for quick lookup: chatId -> rank info including historical comparison
 	type groupRankInfo struct {
-		rank    int
-		average float64
+		rank         int
+		average      float64
+		isNewBest    bool
+		previousBest float64
+		isFirstWeek  bool
 	}
 	rankMap := make(map[int64]groupRankInfo)
 	for i, score := range groupScores {
 		rankMap[score.Group.ChatID] = groupRankInfo{
-			rank:    i + 1,
-			average: score.AverageWorkouts,
+			rank:         i + 1,
+			average:      score.AverageWorkouts,
+			isNewBest:    score.IsNewBest,
+			previousBest: score.PreviousBest,
+			isFirstWeek:  score.IsFirstWeek,
 		}
 	}
 
@@ -157,6 +166,16 @@ func CreateChart(bot *tgbotapi.BotAPI) {
 		if rankInfo, ok := rankMap[group.ChatID]; ok && totalActiveGroups > 0 {
 			caption += fmt.Sprintf("\n\nYour group averaged %.1f workouts per member this week. You're ranked %d/%d among active groups!",
 				rankInfo.average, rankInfo.rank, totalActiveGroups)
+
+			// Add historical comparison message
+			if rankInfo.isFirstWeek {
+				caption += "\nThis is your first recorded week! Your record has been set - try to break it next week!"
+			} else if rankInfo.isNewBest {
+				caption += "\nThis is your best week in recorded history!"
+			} else {
+				diff := rankInfo.previousBest - rankInfo.average
+				caption += fmt.Sprintf("\nYou were %.1f points away from your best week ever (%.1f).", diff, rankInfo.previousBest)
+			}
 		}
 
 		msg.Caption = caption
@@ -256,8 +275,9 @@ func createQuickChart(chartConfig string) *quickchartgo.Chart {
 	return qc
 }
 
-// calculateGroupScores calculates the average workouts per user for all active groups
-// and returns them sorted by average (descending), with ties broken by user count (descending)
+// calculateGroupScores calculates the average workouts per user for all active groups,
+// compares with historical best, updates if new record, and returns sorted by average
+// (descending), with ties broken by user count (descending)
 func calculateGroupScores() []GroupScore {
 	groups := users.GetGroupsWithUsers()
 	var scores []GroupScore
@@ -281,11 +301,23 @@ func calculateGroupScores() []GroupScore {
 		userCount := len(group.Users)
 		average := float64(totalWorkouts) / float64(userCount)
 
+		// Compare with historical best and update if needed
+		isNewBest, previousBest, err := group.UpdateBestAverageIfHigher(average)
+		if err != nil {
+			log.Error("Error updating best average for group", "group_id", group.ChatID, "error", err)
+		}
+
+		// Check if this is the first week (no previous record)
+		isFirstWeek := previousBest == 0
+
 		scores = append(scores, GroupScore{
 			Group:           group,
 			TotalWorkouts:   totalWorkouts,
 			AverageWorkouts: average,
 			UserCount:       userCount,
+			IsNewBest:       isNewBest,
+			PreviousBest:    previousBest,
+			IsFirstWeek:     isFirstWeek,
 		})
 	}
 
