@@ -10,12 +10,13 @@ import (
 
 type Group struct {
 	gorm.Model
-	ChatID   int64
-	Approved bool
-	Title    string
-	Users    []User `gorm:"many2many:user_groups;"`
-	Admins   []User `gorm:"many2many:groups_admins;"`
-	Workouts []Workout
+	ChatID              int64
+	Approved            bool
+	Title               string
+	BestAverageWorkouts float64 `gorm:"default:0"`
+	Users               []User  `gorm:"many2many:user_groups;"`
+	Admins              []User  `gorm:"many2many:groups_admins;"`
+	Workouts            []Workout
 }
 
 func CreateGroup(chatId int64, title string) error {
@@ -164,4 +165,20 @@ func (group *Group) loadGroupAdmins() error {
 		return err
 	}
 	return nil
+}
+
+// UpdateBestAverageIfHigher compares current average with the stored best and updates if higher.
+// Returns whether this is a new best, the previous best value, and any error.
+// If previousBest is 0, this is the first recorded week.
+func (group *Group) UpdateBestAverageIfHigher(currentAverage float64) (isNewBest bool, previousBest float64, err error) {
+	previousBest = group.BestAverageWorkouts
+	if currentAverage > group.BestAverageWorkouts {
+		db := db.DBCon
+		err = db.Model(group).Update("best_average_workouts", currentAverage).Error
+		if err != nil {
+			return false, previousBest, err
+		}
+		return true, previousBest, nil
+	}
+	return false, previousBest, nil
 }
