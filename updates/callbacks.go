@@ -6,6 +6,7 @@ import (
 	"fatbot/db"
 	"fatbot/garmin"
 	"fatbot/notify"
+	"fatbot/schedule"
 	"fatbot/state"
 	"fatbot/users"
 	"fatbot/whoop"
@@ -274,6 +275,10 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 		if err := handleGarminBonusCallback(fatBotUpdate); err != nil {
 			return err
 		}
+	} else if strings.HasPrefix(fatBotUpdate.Update.CallbackData(), "strava:") {
+		if err := handleStravaBonusCallback(fatBotUpdate); err != nil {
+			return err
+		}
 	} else {
 		err := handleStatefulCallback(fatBotUpdate)
 		if err != nil {
@@ -510,4 +515,51 @@ func handleAdminJoinApprovalCreation(bot *tgbotapi.BotAPI, dataSlice []string, u
 	}
 	messageText = "Invitation sent"
 	return
+}
+
+func handleStravaBonusCallback(fatBotUpdate FatBotUpdate) error {
+	data := fatBotUpdate.Update.CallbackData()
+	parts := strings.Split(data, ":")
+	action := parts[1] // yes or no
+	stravaID := parts[2]
+	bot := fatBotUpdate.Bot
+	user, err := users.GetUserById(fatBotUpdate.Update.CallbackQuery.From.ID)
+	if err != nil {
+		return err
+	}
+
+	// Clean up pending state
+	state.ClearString("strava:pending:" + stravaID)
+
+	// Update message to remove buttons
+	edit := tgbotapi.NewEditMessageReplyMarkup(
+		fatBotUpdate.Update.CallbackQuery.Message.Chat.ID,
+		fatBotUpdate.Update.CallbackQuery.Message.MessageID,
+		tgbotapi.InlineKeyboardMarkup{InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{}},
+	)
+	bot.Request(edit)
+
+	if action == "no" {
+		// Mark as ignored
+		state.SetWithTTL("strava:ignored:"+stravaID, "1", 604800) // 7 days
+		state.ClearString("strava:data:" + stravaID)
+		bot.Send(tgbotapi.NewMessage(user.TelegramUserID, "Understood. I won't report this Strava activity."))
+		return nil
+	}
+
+	if action == "yes" {
+		// Process as normal workout
+		if users.StravaWorkoutExists(stravaID) {
+			bot.Send(tgbotapi.NewMessage(user.TelegramUserID, "This workout was already registered automatically."))
+			return nil
+		}
+
+		// Process the workout
+		if err := schedule.ProcessStravaActivityFromCallback(bot, user, stravaID); err != nil {
+			log.Errorf("Failed to process Strava activity from callback: %s", err)
+			bot.Send(tgbotapi.NewMessage(user.TelegramUserID, "Sorry, there was an error processing your workout. Please try again."))
+			return err
+		}
+	}
+	return nil
 }
