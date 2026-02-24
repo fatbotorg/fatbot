@@ -39,9 +39,15 @@ type User struct {
 	GarminTokenExpiry  time.Time
 	GarminUserID       string
 
+	// Strava Integration
+	StravaAccessToken  string
+	StravaRefreshToken string
+	StravaTokenExpiry  time.Time
+	StravaAthleteID    string
+
 	InstagramHandle string
 
-	Workouts []Workout
+	Workouts    []Workout
 	Events      []Event
 	Groups      []*Group `gorm:"many2many:user_groups;"`
 	GroupsAdmin []*Group `gorm:"many2many:groups_admins;"`

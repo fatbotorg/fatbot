@@ -56,6 +56,10 @@ func setupBotCommands(bot *tgbotapi.BotAPI) {
 			Description: "Connect Garmin Account",
 		},
 		{
+			Command:     "strava",
+			Description: "Connect Strava Account",
+		},
+		{
 			Command:     "instagram",
 			Description: "Enroll in daily Instagram Story automation (e.g. /instagram handle)",
 		},
@@ -124,6 +128,8 @@ func main() {
 			http.HandleFunc("/garmin-webhook", updates.HandleGarminWebhook)
 			http.HandleFunc("/garmin-deregistration", updates.HandleGarminDeregistration)
 			http.HandleFunc("/garmin-permissions-change", updates.HandleGarminPermissionsChange)
+			http.HandleFunc("/strava-callback", updates.HandleStravaCallback)
+			http.HandleFunc("/strava-webhook", updates.HandleStravaWebhook)
 			port := os.Getenv("PORT")
 			if port == "" {
 				port = "8080"

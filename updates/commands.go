@@ -64,6 +64,11 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 		if err != nil {
 			return err
 		}
+	case "strava":
+		msg, err = HandleStravaCommand(fatBotUpdate)
+		if err != nil {
+			return err
+		}
 	case "instagram":
 		err = handleInstagramCommand(fatBotUpdate)
 		if err != nil {
