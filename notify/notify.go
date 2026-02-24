@@ -220,7 +220,7 @@ func NotifyStravaWorkout(bot *tgbotapi.BotAPI, user users.User, workout users.Wo
 	}
 
 	msgText += "━━━━━━━━━━━━━━━━━━━━━━━\n"
-	msgText += "<i>Data provided by Strava</i>"
+	msgText += fmt.Sprintf("<i>Powered by Strava</i> | <a href=\"https://www.strava.com/activities/%d\">View on Strava</a>", activity.ID)
 
 	msg := tgbotapi.NewMessage(group.ChatID, msgText)
 	msg.ParseMode = "HTML"
@@ -288,7 +288,7 @@ func NotifyStravaWorkout(bot *tgbotapi.BotAPI, user users.User, workout users.Wo
 			streakMessage,
 		)
 	}
-	statsMessage += "\n\n<i>Data provided by Strava</i>"
+	statsMessage += "\n\n<i>Powered by Strava</i>"
 
 	msg = tgbotapi.NewMessage(group.ChatID, statsMessage)
 	msg.ParseMode = "HTML"
