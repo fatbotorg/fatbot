@@ -33,7 +33,7 @@ func HandleStravaCommand(fatBotUpdate FatBotUpdate) (tgbotapi.MessageConfig, err
 		"Note: This will disconnect any existing Whoop or Garmin integration."
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonURL("Connect Strava", authURL),
+			tgbotapi.NewInlineKeyboardButtonURL("Connect with Strava", authURL),
 		),
 	)
 	return msg, nil
