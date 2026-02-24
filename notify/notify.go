@@ -171,21 +171,21 @@ func NotifyStravaWorkout(bot *tgbotapi.BotAPI, user users.User, workout users.Wo
 	db.DBCon.Save(&workout)
 
 	// Build Strava-specific message
-	msgText := "<b>━━━━━━━━ STRAVA ━━━━━━━━</b>\n"
-	msgText += fmt.Sprintf("🏃 <b>%s</b>\n", activity.Name)
-	msgText += "━━━━━━━━━━━━━━━━━━━━━━━\n"
+	msgText := fmt.Sprintf("<b>STRAVA</b>\n\n")
+	msgText += fmt.Sprintf("🏋️ %s just completed a workout!\n", user.GetName())
+	msgText += fmt.Sprintf("Activity: %s\n", activity.Name)
 
 	// Distance
 	if activity.Distance > 0 {
 		distanceKm := activity.Distance / 1000.0
-		msgText += fmt.Sprintf("📏 Distance: %.2f km\n", distanceKm)
+		msgText += fmt.Sprintf("Distance: %.2f km\n", distanceKm)
 
 		// Pace (for running/cycling activities)
 		if durationMins > 0 && distanceKm > 0 {
 			pace := durationMins / distanceKm
 			paceMins := int(pace)
 			paceSecs := int((pace - float64(paceMins)) * 60)
-			msgText += fmt.Sprintf("⏱ Pace: %d:%02d /km\n", paceMins, paceSecs)
+			msgText += fmt.Sprintf("Pace: %d:%02d /km\n", paceMins, paceSecs)
 		}
 	}
 
@@ -193,34 +193,33 @@ func NotifyStravaWorkout(bot *tgbotapi.BotAPI, user users.User, workout users.Wo
 	hours := int(durationMins) / 60
 	mins := int(durationMins) % 60
 	if hours > 0 {
-		msgText += fmt.Sprintf("⏳ Time: %d:%02d\n", hours, mins)
+		msgText += fmt.Sprintf("Time: %d:%02d\n", hours, mins)
 	} else {
-		msgText += fmt.Sprintf("⏳ Time: %d min\n", mins)
+		msgText += fmt.Sprintf("Time: %d min\n", mins)
 	}
 
 	// Heart Rate
 	if activity.AverageHeartrate > 0 {
-		msgText += fmt.Sprintf("❤️ Avg HR: %.0f bpm\n", activity.AverageHeartrate)
+		msgText += fmt.Sprintf("Avg HR: %.0f bpm\n", activity.AverageHeartrate)
 	}
 
 	// Calories
 	if activity.Calories > 0 {
-		msgText += fmt.Sprintf("🔥 Calories: %.0f kcal\n", activity.Calories)
+		msgText += fmt.Sprintf("Calories: %.0f kcal\n", activity.Calories)
 	}
 
 	// Suffer Score (if available - Strava Premium feature)
 	if activity.SufferScore != nil && *activity.SufferScore > 0 {
 		strainEquiv := strava.SufferScoreToStrain(*activity.SufferScore)
-		msgText += fmt.Sprintf("😰 Suffer Score: %d (~%.1f strain)\n", *activity.SufferScore, strainEquiv)
+		msgText += fmt.Sprintf("Suffer Score: %d (~%.1f strain)\n", *activity.SufferScore, strainEquiv)
 	}
 
 	// Device
 	if activity.DeviceName != "" {
-		msgText += fmt.Sprintf("📱 Device: %s\n", activity.DeviceName)
+		msgText += fmt.Sprintf("Device: %s\n", activity.DeviceName)
 	}
 
-	msgText += "━━━━━━━━━━━━━━━━━━━━━━━\n"
-	msgText += fmt.Sprintf("<i>Powered by Strava</i> | <a href=\"https://www.strava.com/activities/%d\">View on Strava</a>", activity.ID)
+	msgText += fmt.Sprintf("\n<i>Powered by Strava</i> | <a href=\"https://www.strava.com/activities/%d\">View on Strava</a>", activity.ID)
 
 	msg := tgbotapi.NewMessage(group.ChatID, msgText)
 	msg.ParseMode = "HTML"
