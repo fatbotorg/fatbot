@@ -54,7 +54,7 @@ func HandleWhoopCallback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid state", http.StatusBadRequest)
 		return
 	}
-	
+
 	// parts[1] is the user ID based on "fatbot-USERID-TIMESTAMP"
 	user, err := users.GetUserByState(parts[1])
 	if err != nil {
@@ -65,6 +65,17 @@ func HandleWhoopCallback(w http.ResponseWriter, r *http.Request) {
 	if err := user.UpdateWhoopToken(token); err != nil {
 		http.Error(w, "Failed to save token", http.StatusInternalServerError)
 		return
+	}
+
+	log.Infof("Whoop connected for user %s", user.GetName())
+
+	// Notify user via Telegram
+	if GlobalBot != nil {
+		msg := tgbotapi.NewMessage(user.TelegramUserID,
+			"Your Whoop account has been connected successfully!\n\n"+
+				"Your workouts will now be automatically synced. "+
+				"Note: Any previous Strava or Garmin integration has been disconnected.")
+		GlobalBot.Send(msg)
 	}
 
 	fmt.Fprint(w, "Whoop connected successfully! You can close this window.")
