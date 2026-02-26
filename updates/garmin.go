@@ -88,6 +88,17 @@ func HandleGarminCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Infof("Garmin connected for user %s, Garmin ID: %s", user.GetName(), user.GarminUserID)
+
+	// Notify user via Telegram
+	if GlobalBot != nil {
+		msg := tgbotapi.NewMessage(user.TelegramUserID,
+			"Your Garmin account has been connected successfully!\n\n"+
+				"Your workouts will now be automatically synced. "+
+				"Note: Any previous Strava or Whoop integration has been disconnected.")
+		GlobalBot.Send(msg)
+	}
+
 	fmt.Fprint(w, "Garmin connected successfully! You can close this window.")
 }
 
