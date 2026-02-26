@@ -12,6 +12,11 @@ func (user *User) UpdateWhoopToken(token *whoop.TokenResponse) error {
 	user.WhoopAccessToken = token.AccessToken
 	user.WhoopRefreshToken = token.RefreshToken
 	user.WhoopTokenExpiry = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
+
+	// Clear other integrations (one integration at a time rule)
+	user.clearStrava()
+	user.clearGarmin()
+
 	return db.Save(&user).Error
 }
 

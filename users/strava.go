@@ -41,19 +41,34 @@ func (user *User) GetValidStravaAccessToken() (string, error) {
 	return user.StravaAccessToken, nil
 }
 
-// ClearOtherIntegrations clears Whoop and Garmin tokens when Strava is connected
-func (user *User) ClearOtherIntegrations() {
-	// Clear Whoop
+// clearWhoop clears Whoop tokens
+func (user *User) clearWhoop() {
 	user.WhoopAccessToken = ""
 	user.WhoopRefreshToken = ""
 	user.WhoopTokenExpiry = time.Time{}
 	user.WhoopID = ""
+}
 
-	// Clear Garmin
+// clearGarmin clears Garmin tokens
+func (user *User) clearGarmin() {
 	user.GarminAccessToken = ""
 	user.GarminRefreshToken = ""
 	user.GarminTokenExpiry = time.Time{}
 	user.GarminUserID = ""
+}
+
+// clearStrava clears Strava tokens
+func (user *User) clearStrava() {
+	user.StravaAccessToken = ""
+	user.StravaRefreshToken = ""
+	user.StravaTokenExpiry = time.Time{}
+	user.StravaAthleteID = ""
+}
+
+// ClearOtherIntegrations clears Whoop and Garmin tokens when Strava is connected
+func (user *User) ClearOtherIntegrations() {
+	user.clearWhoop()
+	user.clearGarmin()
 }
 
 // DeregisterStrava clears all Strava tokens and athlete ID

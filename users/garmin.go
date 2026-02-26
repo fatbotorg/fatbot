@@ -12,6 +12,11 @@ func (user *User) UpdateGarminToken(token *garmin.TokenResponse) error {
 	user.GarminAccessToken = token.AccessToken
 	user.GarminRefreshToken = token.RefreshToken
 	user.GarminTokenExpiry = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
+
+	// Clear other integrations (one integration at a time rule)
+	user.clearStrava()
+	user.clearWhoop()
+
 	return db.Save(&user).Error
 }
 
