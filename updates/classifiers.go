@@ -50,6 +50,12 @@ func (fatBotUpdate FatBotUpdate) isUnknownGroupUpdate() bool {
 		return true
 	}
 
+	// Exempt the support group from being treated as unknown
+	supportChatID := getSupportGroupChatID()
+	if supportChatID != 0 && update.FromChat().ID == supportChatID {
+		return false
+	}
+
 	return !users.IsApprovedChatID(update.FromChat().ID) && !update.FromChat().IsPrivate()
 }
 
@@ -63,6 +69,27 @@ func isAdminCommand(cmd string) bool {
 		return true
 	}
 	return false
+}
+
+func (fatBotUpdate FatBotUpdate) isSupportGroupReplyUpdate() bool {
+	update := fatBotUpdate.Update
+	supportChatID := getSupportGroupChatID()
+	if supportChatID == 0 {
+		return false
+	}
+	if update.Message == nil || update.FromChat() == nil {
+		return false
+	}
+	if update.FromChat().ID != supportChatID {
+		return false
+	}
+	if update.Message.ReplyToMessage == nil || update.Message.ReplyToMessage.From == nil {
+		return false
+	}
+	if update.Message.IsCommand() {
+		return false
+	}
+	return update.Message.ReplyToMessage.From.ID == fatBotUpdate.Bot.Self.ID
 }
 
 func (fatBotUpdate FatBotUpdate) isGroupReplyUpdate() bool {

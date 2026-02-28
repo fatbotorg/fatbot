@@ -146,14 +146,29 @@ func (update MediaUpdate) handle() error {
 	return nil
 }
 
+func (update SupportGroupReplyUpdate) handle() error {
+	return handleSupportGroupReply(update.FatBotUpdate)
+}
+
 func (update PrivateUpdate) handle() error {
+	// Check if user is in the support message flow
+	chatId := update.Update.FromChat().ID
+	if isSupportState(chatId) {
+		return handleSupportMessage(update.FatBotUpdate)
+	}
+
+	// Check if user is replying to a support message (continued conversation)
+	if isSupportReply(update.Update) {
+		return handleSupportFollowUp(update.FatBotUpdate)
+	}
+
 	// Handle stateful callbacks first
 	if err := handleStatefulCallback(update.FatBotUpdate); err == nil {
 		return err
 	}
 
 	// Default response for private messages
-	msg := tgbotapi.NewMessage(update.Update.FromChat().ID, "")
+	msg := tgbotapi.NewMessage(chatId, "")
 	msg.Text = "Try /help"
 	if _, err := update.Bot.Send(msg); err != nil {
 		return err
