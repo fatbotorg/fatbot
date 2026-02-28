@@ -8,6 +8,7 @@ ban:
 workout:
   period: 60
 users:
-  new: 
+  new:
     days: 5
-
+support:
+  group_chat_id: -1003810328205

@@ -68,6 +68,10 @@ func setupBotCommands(bot *tgbotapi.BotAPI) {
 			Description: "Disable daily Instagram Story automation",
 		},
 		{
+			Command:     "support",
+			Description: "Send a message to the support team",
+		},
+		{
 			Command:     "help",
 			Description: "Show help information",
 		},

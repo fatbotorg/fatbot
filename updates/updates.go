@@ -50,6 +50,9 @@ type GroupReplyUpdate struct {
 type PollUpdate struct {
 	FatBotUpdate
 }
+type SupportGroupReplyUpdate struct {
+	FatBotUpdate
+}
 
 func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 	switch {
@@ -67,6 +70,8 @@ func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 		return MediaUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isVideoNoteUpdate():
 		return VideoNoteUpdate{FatBotUpdate: fatBotUpdate}, nil
+	case fatBotUpdate.isSupportGroupReplyUpdate():
+		return SupportGroupReplyUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isGroupReplyUpdate():
 		return GroupReplyUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isPrivateUpdate():
