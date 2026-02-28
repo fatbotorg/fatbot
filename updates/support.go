@@ -141,20 +141,30 @@ func handleSupportMessage(fatBotUpdate FatBotUpdate) error {
 	return nil
 }
 
-// buildSupportGroupMessage creates the formatted message for the support group
-func buildSupportGroupMessage(update tgbotapi.Update, messageText string) string {
-	from := update.SentFrom()
+// getSupportDisplayName returns the display name for a user in support messages.
+// Uses the bot's GetName() (NickName or Name) for registered users,
+// falls back to Telegram first/last name for unregistered users.
+func getSupportDisplayName(from *tgbotapi.User) string {
+	if user, err := users.GetUserById(from.ID); err == nil {
+		return user.GetName()
+	}
 	displayName := from.FirstName
 	if from.LastName != "" {
 		displayName += " " + from.LastName
 	}
+	return displayName
+}
+
+// buildSupportGroupMessage creates the formatted message for the support group
+func buildSupportGroupMessage(update tgbotapi.Update, messageText string) string {
+	from := update.SentFrom()
+	displayName := getSupportDisplayName(from)
 
 	username := ""
 	if from.UserName != "" {
 		username = fmt.Sprintf(" (@%s)", from.UserName)
 	}
 
-	// Try to get user info from DB for richer context
 	userContext := getUserContext(from.ID)
 
 	return fmt.Sprintf(
@@ -170,10 +180,7 @@ func buildSupportGroupMessage(update tgbotapi.Update, messageText string) string
 // buildSupportGroupFollowUp creates a formatted follow-up message with user context
 func buildSupportGroupFollowUp(update tgbotapi.Update, messageText string) string {
 	from := update.SentFrom()
-	displayName := from.FirstName
-	if from.LastName != "" {
-		displayName += " " + from.LastName
-	}
+	displayName := getSupportDisplayName(from)
 
 	username := ""
 	if from.UserName != "" {
