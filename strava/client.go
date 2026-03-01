@@ -44,28 +44,28 @@ type AthleteData struct {
 
 // ActivityData represents a Strava activity
 type ActivityData struct {
-	ID                 int64   `json:"id"`
-	Name               string  `json:"name"`
-	Type               string  `json:"type"`
-	SportType          string  `json:"sport_type"`
-	Distance           float64 `json:"distance"`     // meters
-	MovingTime         int     `json:"moving_time"`  // seconds
-	ElapsedTime        int     `json:"elapsed_time"` // seconds
-	TotalElevationGain float64 `json:"total_elevation_gain"`
-	StartDate          string  `json:"start_date"`
-	StartDateLocal     string  `json:"start_date_local"`
-	Timezone           string  `json:"timezone"`
-	AverageSpeed       float64 `json:"average_speed"` // m/s
-	MaxSpeed           float64 `json:"max_speed"`     // m/s
-	AverageHeartrate   float64 `json:"average_heartrate"`
-	MaxHeartrate       float64 `json:"max_heartrate"`
-	Calories           float64 `json:"calories"`
-	SufferScore        *int    `json:"suffer_score"` // Strava Premium feature, may be null
-	DeviceName         string  `json:"device_name"`
-	Manual             bool    `json:"manual"`
-	Private            bool    `json:"private"`
-	Commute            bool    `json:"commute"`
-	Trainer            bool    `json:"trainer"`
+	ID                 int64    `json:"id"`
+	Name               string   `json:"name"`
+	Type               string   `json:"type"`
+	SportType          string   `json:"sport_type"`
+	Distance           float64  `json:"distance"`     // meters
+	MovingTime         int      `json:"moving_time"`  // seconds
+	ElapsedTime        int      `json:"elapsed_time"` // seconds
+	TotalElevationGain float64  `json:"total_elevation_gain"`
+	StartDate          string   `json:"start_date"`
+	StartDateLocal     string   `json:"start_date_local"`
+	Timezone           string   `json:"timezone"`
+	AverageSpeed       float64  `json:"average_speed"` // m/s
+	MaxSpeed           float64  `json:"max_speed"`     // m/s
+	AverageHeartrate   float64  `json:"average_heartrate"`
+	MaxHeartrate       float64  `json:"max_heartrate"`
+	Calories           float64  `json:"calories"`
+	SufferScore        *float64 `json:"suffer_score"` // Strava Premium feature, may be null (API returns float)
+	DeviceName         string   `json:"device_name"`
+	Manual             bool     `json:"manual"`
+	Private            bool     `json:"private"`
+	Commute            bool     `json:"commute"`
+	Trainer            bool     `json:"trainer"`
 }
 
 // WebhookEvent represents a Strava webhook push event
@@ -225,10 +225,10 @@ func GetAthlete(accessToken string) (*AthleteData, error) {
 // Suffer Score range: 0-400+ (typically 0-150 for most workouts)
 // Whoop Strain range: 0-21
 // This is a rough approximation for display comparison only
-func SufferScoreToStrain(sufferScore int) float64 {
+func SufferScoreToStrain(sufferScore float64) float64 {
 	// Linear approximation: strain = suffer_score * 0.14
 	// This gives: suffer 50 -> strain 7, suffer 100 -> strain 14, suffer 150 -> strain 21
-	strain := float64(sufferScore) * 0.14
+	strain := sufferScore * 0.14
 	if strain > 21.0 {
 		strain = 21.0
 	}
