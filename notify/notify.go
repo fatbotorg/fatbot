@@ -208,10 +208,10 @@ func NotifyStravaWorkout(bot *tgbotapi.BotAPI, user users.User, workout users.Wo
 		msgText += fmt.Sprintf("Calories: %.0f kcal\n", activity.Calories)
 	}
 
-	// Suffer Score (if available - Strava Premium feature)
+	// Suffer Score / Relative Effort (if available - Strava Premium feature)
 	if activity.SufferScore != nil && *activity.SufferScore > 0 {
 		strainEquiv := strava.SufferScoreToStrain(*activity.SufferScore)
-		msgText += fmt.Sprintf("Suffer Score: %d (~%.1f strain)\n", *activity.SufferScore, strainEquiv)
+		msgText += fmt.Sprintf("Relative Effort: %.0f (~%.1f strain)\n", *activity.SufferScore, strainEquiv)
 	}
 
 	// Device
