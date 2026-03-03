@@ -86,6 +86,28 @@ func clear(key int64) error {
 	return nil
 }
 
+// SetNX atomically sets a key with TTL only if it does not already exist.
+// Returns true if the key was set (lock acquired), false if it already existed.
+func SetNX(key, value string, ttl int) (bool, error) {
+	c, err := dial()
+	if err != nil {
+		log.Errorf("setnx dial err: %s", err)
+		return false, err
+	}
+	defer c.Close()
+
+	result, err := redis.String(c.Do("SET", key, value, "EX", ttl, "NX"))
+	if err == redis.ErrNil {
+		// Key already exists — lock not acquired
+		return false, nil
+	}
+	if err != nil {
+		log.Errorf("setnx err: %s", err)
+		return false, err
+	}
+	return result == "OK", nil
+}
+
 func ClearString(key string) error {
 	c, err := dial()
 	if err != nil {

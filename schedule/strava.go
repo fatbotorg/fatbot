@@ -24,12 +24,17 @@ func ProcessStravaActivity(bot *tgbotapi.BotAPI, user users.User, activityID int
 		return
 	}
 
-	// 2. Check if recently processed (Atomic Lock)
+	// 2. Atomic dedup lock — SET NX ensures only one goroutine proceeds
 	lockKey := "strava:lock:" + stravaID
-	if _, err := state.Get(lockKey); err == nil {
+	acquired, err := state.SetNX(lockKey, "1", 30)
+	if err != nil {
+		log.Errorf("Failed to acquire Strava lock for %s: %s", stravaID, err)
 		return
 	}
-	state.SetWithTTL(lockKey, "1", 30) // 30-second lock
+	if !acquired {
+		log.Debugf("Strava activity %s already being processed (lock exists)", stravaID)
+		return
+	}
 
 	// 3. Check if ignored
 	if _, err := state.Get("strava:ignored:" + stravaID); err == nil {
