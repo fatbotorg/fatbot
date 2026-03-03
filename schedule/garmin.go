@@ -46,12 +46,17 @@ func ProcessGarminActivity(bot *tgbotapi.BotAPI, user users.User, activity garmi
 		return
 	}
 
-	// 2. Check if recently processed (Atomic Lock)
+	// 2. Atomic dedup lock — SET NX ensures only one goroutine proceeds
 	lockKey := "garmin:lock:" + baseID
-	if _, err := state.Get(lockKey); err == nil {
+	acquired, err := state.SetNX(lockKey, "1", 30)
+	if err != nil {
+		log.Errorf("Failed to acquire Garmin lock for %s: %s", baseID, err)
 		return
 	}
-	state.SetWithTTL(lockKey, "1", 30) // 30-second lock
+	if !acquired {
+		log.Debugf("Garmin activity %s already being processed (lock exists)", baseID)
+		return
+	}
 
 	// 3. Check if ignored
 	if _, err := state.Get("garmin:ignored:" + baseID); err == nil {
