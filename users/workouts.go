@@ -23,15 +23,17 @@ func (e *NoWorkoutsError) Error() string {
 
 type Workout struct {
 	gorm.Model
-	UserID         uint
-	GroupID        uint
-	PhotoMessageID int
-	PhotoFileID    string
-	Flagged        bool
-	Streak         int
-	WhoopID        string
-	GarminID       string
-	StravaID       string
+	UserID          uint
+	GroupID         uint
+	PhotoMessageID  int
+	PhotoFileID     string
+	Flagged         bool
+	Streak          int
+	WhoopID         string
+	GarminID        string
+	StravaID        string
+	NotifyMessageID int   // Telegram message ID of the bot's group notification (for editing)
+	NotifyChatID    int64 // Chat ID where the notification was sent
 }
 
 func getLastCycleExactTime() time.Time {

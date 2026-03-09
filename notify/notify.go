@@ -5,6 +5,7 @@ import (
 	"fatbot/db"
 	"fatbot/strava"
 	"fatbot/users"
+	"fatbot/whoop"
 	"fmt"
 	"time"
 
@@ -78,7 +79,14 @@ func NotifyWorkout(bot *tgbotapi.BotAPI, user users.User, workout users.Workout,
 	}
 	msg := tgbotapi.NewMessage(group.ChatID, msgText)
 	msg.ParseMode = "HTML"
-	bot.Send(msg)
+	sentMsg, sendErr := bot.Send(msg)
+	if sendErr == nil && workout.WhoopID != "" {
+		// Store the message ID so we can edit it later if the workout is updated
+		// (e.g., strain adjusted via Strength Trainer in the Whoop app)
+		workout.NotifyMessageID = sentMsg.MessageID
+		workout.NotifyChatID = group.ChatID
+		db.DBCon.Save(&workout)
+	}
 
 	// Detailed Stats & Ranks
 	if err := user.LoadWorkoutsThisCycle(group.ChatID); err != nil {
@@ -292,4 +300,36 @@ func NotifyStravaWorkout(bot *tgbotapi.BotAPI, user users.User, workout users.Wo
 	msg = tgbotapi.NewMessage(group.ChatID, statsMessage)
 	msg.ParseMode = "HTML"
 	bot.Send(msg)
+}
+
+// EditWhoopNotification edits an existing group notification message with updated Whoop workout data.
+// This is called when a workout.updated webhook arrives for a workout that was already reported
+// (e.g., the user adjusted strain via Strength Trainer in the Whoop app).
+func EditWhoopNotification(bot *tgbotapi.BotAPI, user users.User, workout users.Workout, record *whoop.WorkoutData) {
+	if workout.NotifyMessageID == 0 || workout.NotifyChatID == 0 {
+		return
+	}
+
+	duration := record.End.Sub(record.Start)
+
+	// Rebuild the notification text in the same format as NotifyWorkout (Whoop path)
+	msgText := fmt.Sprintf(
+		"🏋️ %s just completed a %s workout!\n\n",
+		user.GetName(),
+		record.SportName,
+	)
+	if record.Score.Strain > 0 {
+		msgText += fmt.Sprintf("Strain: %.1f\n", record.Score.Strain)
+	}
+	msgText += fmt.Sprintf("Calories: %.0f\nAvg HR: %d\nDuration: %.0f min",
+		record.Score.Kilojoule/4.184,
+		record.Score.AverageHeartRate,
+		duration.Minutes(),
+	)
+
+	edit := tgbotapi.NewEditMessageText(workout.NotifyChatID, workout.NotifyMessageID, msgText)
+	edit.ParseMode = "HTML"
+	if _, err := bot.Send(edit); err != nil {
+		log.Errorf("Failed to edit Whoop notification (chat=%d, msg=%d): %s", workout.NotifyChatID, workout.NotifyMessageID, err)
+	}
 }

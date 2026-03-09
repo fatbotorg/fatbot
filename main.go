@@ -128,6 +128,7 @@ func main() {
 
 		go func() {
 			http.HandleFunc("/whoop-callback", updates.HandleWhoopCallback)
+			http.HandleFunc("/whoop-webhook", updates.HandleWhoopWebhook)
 			http.HandleFunc("/garmin-callback", updates.HandleGarminCallback)
 			http.HandleFunc("/garmin-webhook", updates.HandleGarminWebhook)
 			http.HandleFunc("/garmin-deregistration", updates.HandleGarminDeregistration)
