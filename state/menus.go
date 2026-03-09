@@ -89,6 +89,9 @@ type PSAMenu struct {
 type InstagramSpotlightMenu struct {
 	MenuBase
 }
+type CloseGroupMenu struct {
+	MenuBase
+}
 
 type MenuActionDoneError struct{}
 
@@ -118,6 +121,7 @@ var menuMap = map[string]Menu{
 	"disputeworkout":    DisputeWorkoutMenu{},
 	"psa":               PSAMenu{},
 	"instaspotlight":    InstagramSpotlightMenu{},
+	"closegroup":        CloseGroupMenu{},
 }
 
 func (menu ManageAdminsMenu) CreateMenu(userId int64) MenuBase {
@@ -343,6 +347,29 @@ func (menu InstagramSpotlightMenu) CreateMenu(userId int64) MenuBase {
 		Label:          "Instagram Spotlight",
 		Steps:          []Step{chooseMode, chooseGroup, chooseUser},
 		SuperAdminOnly: true,
+	}
+}
+
+func (menu CloseGroupMenu) CreateMenu(userId int64) MenuBase {
+	chooseGroup := groupStepBase
+	chooseGroup.Keyboard = createGroupsKeyboard(userId)
+	confirmStep := Step{
+		Name:     "confirmclose",
+		Kind:     KeyboardStepKind,
+		Message:  "Are you SURE you want to close this group? All members will be removed and the group will be deactivated. This cannot be undone.",
+		Keyboard: createConfirmationKeyboard(),
+		Result:   OptionResult,
+	}
+	confirmDeleteStep := Step{
+		Name:    "typedelete",
+		Kind:    InputStepKind,
+		Message: "Type DELETE to confirm (all caps):",
+		Result:  NewNameStepResult,
+	}
+	return MenuBase{
+		Name:  "closegroup",
+		Label: "Close Group",
+		Steps: []Step{chooseGroup, confirmStep, confirmDeleteStep},
 	}
 }
 

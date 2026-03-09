@@ -21,7 +21,9 @@ func SendMessageToGroupAdmins(bot *tgbotapi.BotAPI, chatId int64, message tgbota
 		return
 	}
 	if len(group.Admins) == 0 {
-		log.Error("no admins for group", "group", group.Title)
+		// Fallback to super admins when no local admins exist
+		log.Warn("no local admins for group, falling back to super admins", "group", group.Title)
+		SendMessageToSuperAdmins(bot, message)
 		return
 	}
 	for _, admin := range group.Admins {

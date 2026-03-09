@@ -72,6 +72,10 @@ func setupBotCommands(bot *tgbotapi.BotAPI) {
 			Description: "Send a message to the support team",
 		},
 		{
+			Command:     "creategroup",
+			Description: "Create your own workout group",
+		},
+		{
 			Command:     "help",
 			Description: "Show help information",
 		},
@@ -149,6 +153,7 @@ func main() {
 
 		u := tgbotapi.NewUpdate(0)
 		u.Timeout = 60
+		u.AllowedUpdates = []string{"message", "callback_query", "poll", "poll_answer", "my_chat_member"}
 		updatesChannel = bot.GetUpdatesChan(u)
 	}
 	fatBotUpdate := updates.FatBotUpdate{Bot: bot}

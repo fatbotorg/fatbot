@@ -12,3 +12,7 @@ users:
     days: 5
 support:
   group_chat_id: -1003810328205
+groups:
+  creation:
+    enabled: true
+    max_per_user: 1

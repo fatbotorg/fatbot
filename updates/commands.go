@@ -50,6 +50,11 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 		if err != nil {
 			return err
 		}
+	case "creategroup":
+		msg, err = handleCreateGroupCommand(fatBotUpdate)
+		if err != nil {
+			return err
+		}
 	case "status":
 		msg = handleStatusCommand(update)
 	case "stats":
@@ -88,7 +93,7 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 		}
 	case "help":
 		msg.ChatID = update.FromChat().ID
-		msg.Text = "Join the group using: /join\nCheck your status using: /status"
+		msg.Text = "Join a group: /join\nCreate your own group: /creategroup\nCheck your status: /status\nView stats: /stats"
 	default:
 		msg.ChatID = update.FromChat().ID
 	}
@@ -99,25 +104,6 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 		return err
 	}
 	return nil
-}
-
-func handleNewGroupCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
-	groupChatId := update.Message.Chat.ID
-	groupChatTitle := update.Message.Chat.Title
-	msg := tgbotapi.NewMessage(groupChatId, "")
-	switch update.FromChat().Type {
-	case "private":
-		return msg
-	case "group":
-		msg.Text = "not a supergroup, try creating an anonymous admin"
-	case "supergroup":
-		if err := users.CreateGroup(groupChatId, groupChatTitle); err != nil {
-			log.Error("could not create group %s, id: %d", groupChatTitle, groupChatId)
-			msg.Text = ""
-		}
-		msg.Text = fmt.Sprintf("group %s ready to start🏋️", groupChatTitle)
-	}
-	return msg
 }
 
 func handleStatsCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
@@ -244,12 +230,69 @@ func createStatusMessage(user users.User, chatId int64, msg tgbotapi.MessageConf
 
 func hasValidGroupCommandArgument(commandArguments string) (bool, users.Group) {
 	joinArguments := strings.Split(commandArguments, " ")
-	groupTitle := joinArguments[0]
-	if group, err := users.GetGroupByTitle(groupTitle); err != nil {
-		return false, users.Group{}
-	} else {
+	slug := joinArguments[0]
+	// Try slug first (new flow), then fall back to title (legacy deep links)
+	if group, err := users.GetGroupBySlug(slug); err == nil {
 		return true, group
 	}
+	if group, err := users.GetGroupByTitle(slug); err == nil {
+		return true, group
+	}
+	return false, users.Group{}
+}
+
+func handleCreateGroupCommand(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageConfig, err error) {
+	msg.ChatID = fatBotUpdate.Update.FromChat().ID
+	userId := fatBotUpdate.Update.SentFrom().ID
+
+	// Feature flag check
+	if !viper.GetBool("groups.creation.enabled") {
+		msg.Text = "Group creation is currently disabled."
+		return msg, nil
+	}
+
+	// Blacklist check
+	if users.BlackListed(userId) {
+		msg.Text = "You are blocked from using this bot."
+		return msg, nil
+	}
+
+	// Check if user already has an autonomous group
+	maxGroups := viper.GetInt64("groups.creation.max_per_user")
+	if maxGroups == 0 {
+		maxGroups = 1
+	}
+	if users.CountAutonomousGroupsByCreator(userId) >= maxGroups {
+		msg.Text = "You already have a group. Each user can create one group."
+		return msg, nil
+	}
+
+	botName := fatBotUpdate.Bot.Self.UserName
+	msg.Text = fmt.Sprintf(`Let's create your group!
+
+Follow these steps:
+
+1. Open Telegram and create a new group
+   Give it a short name (e.g. "Warriors")
+
+2. Add @%s to the group
+
+3. Make @%s an admin:
+   Tap the group name > Edit > Administrators > Add @%s
+
+4. Tap @%s > turn ON "Remain Anonymous" > then turn it back OFF
+
+That's it! I'll set everything up automatically and send you an invite link to share with friends.`, botName, botName, botName, botName)
+
+	// Notify super admins
+	adminMsg := tgbotapi.NewMessage(0, fmt.Sprintf(
+		"User %s (ID: %d) initiated group creation flow",
+		getNameFromUpdate(fatBotUpdate.Update),
+		userId,
+	))
+	users.SendMessageToSuperAdmins(fatBotUpdate.Bot, adminMsg)
+
+	return msg, nil
 }
 
 func getNameFromUpdate(update tgbotapi.Update) string {
@@ -274,10 +317,10 @@ func sendLinkJoinForAdminApproval(fatBotUpdate FatBotUpdate, group users.Group) 
 	)
 	adminMessage.ReplyMarkup = approvalKeyboard
 	users.SendMessageToGroupAdmins(fatBotUpdate.Bot, group.ChatID, adminMessage)
-	text := `Hello and welcome!
-You will soon get a link to join the group 🎉.
-Once you click the link, please send a picture of your workout *in the group chat*
-‼️ NOTE ‼️: if you don't send a picture in the same day you get the link you will be BANNED from the group!`
+	text := `Welcome!
+You'll get a link to join the group soon.
+Once you join, you have 5 days to post your first workout photo in the group chat.
+After that, post at least once every 5 days to stay in!`
 	msg.Text = text
 	return msg, nil
 }
@@ -308,10 +351,10 @@ func handleJoinCommandNewUser(fatBotUpdate FatBotUpdate) (msg tgbotapi.MessageCo
 	)
 	adminMessage.ReplyMarkup = createNewUserGroupsKeyboard(from.ID, from.FirstName, from.UserName)
 	users.SendMessageToSuperAdmins(fatBotUpdate.Bot, adminMessage)
-	text := `Hello and welcome!
-You will soon get a link to join the group 🎉.
-Once you click the link, please send a picture of your workout *in the group chat*
-‼️ NOTE ‼️: if you don't send a picture in the same day you get the link you will be BANNED from the group!`
+	text := `Welcome!
+You'll get a link to join the group soon.
+Once you join, you have 5 days to post your first workout photo in the group chat.
+After that, post at least once every 5 days to stay in!`
 	msg.Text = text
 	return msg, nil
 }

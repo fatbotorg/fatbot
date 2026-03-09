@@ -123,3 +123,7 @@ func (fatBotUpdate FatBotUpdate) isPollUpdate() bool {
 	// log.Debugf("%+v", update.Poll, update.PollAnswer)
 	return update.Poll != nil || update.PollAnswer != nil
 }
+
+func (fatBotUpdate FatBotUpdate) isMyChatMemberUpdate() bool {
+	return fatBotUpdate.Update.MyChatMember != nil
+}
