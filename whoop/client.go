@@ -1,6 +1,9 @@
 package whoop
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,7 +20,8 @@ const (
 	TokenURL   = "https://api.prod.whoop.com/oauth/oauth2/token"
 	WorkoutURL = "https://api.prod.whoop.com/developer/v2/activity/workout"
 	CycleURL   = "https://api.prod.whoop.com/developer/v1/cycle"
-	Scope      = "read:workout read:cycles offline"
+	ProfileURL = "https://api.prod.whoop.com/developer/v2/user/profile/basic"
+	Scope      = "read:workout read:cycles read:profile offline"
 )
 
 type TokenResponse struct {
@@ -59,12 +63,29 @@ type WorkoutScore struct {
 }
 
 type WorkoutData struct {
-	ID        string       `json:"id"`
-	SportID   int          `json:"sport_id"`
-	SportName string       `json:"sport_name"`
-	Score     WorkoutScore `json:"score"`
-	Start     time.Time    `json:"start"`
-	End       time.Time    `json:"end"`
+	ID         string       `json:"id"`
+	SportID    int          `json:"sport_id"`
+	SportName  string       `json:"sport_name"`
+	ScoreState string       `json:"score_state"` // "SCORED", "PENDING_SCORE", "UNSCORABLE"
+	Score      WorkoutScore `json:"score"`
+	Start      time.Time    `json:"start"`
+	End        time.Time    `json:"end"`
+}
+
+// WebhookEvent represents a Whoop webhook payload
+type WebhookEvent struct {
+	UserID  int64  `json:"user_id"`
+	ID      string `json:"id"`
+	Type    string `json:"type"`
+	TraceID string `json:"trace_id"`
+}
+
+// UserProfile represents the Whoop user profile response
+type UserProfile struct {
+	UserID    int64  `json:"user_id"`
+	Email     string `json:"email"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
 }
 
 func GetAuthURL(state string) string {
@@ -234,4 +255,42 @@ func GetWorkoutById(accessToken string, workoutID string) (*WorkoutData, error) 
 		return nil, err
 	}
 	return &workoutData, nil
+}
+
+// GetUserProfile fetches the authenticated user's basic profile (user_id, name, email)
+func GetUserProfile(accessToken string) (*UserProfile, error) {
+	req, err := http.NewRequest("GET", ProfileURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		log.Errorf("Whoop API Error (Profile): %s Body: %s", resp.Status, string(body))
+		return nil, fmt.Errorf("failed to fetch user profile: %s", resp.Status)
+	}
+
+	var profile UserProfile
+	if err := json.NewDecoder(resp.Body).Decode(&profile); err != nil {
+		return nil, err
+	}
+	return &profile, nil
+}
+
+// ValidateWebhookSignature verifies a Whoop webhook signature.
+// The signature is computed as: base64(HMAC-SHA256(timestamp + body, clientSecret))
+func ValidateWebhookSignature(body []byte, timestamp, signature, clientSecret string) bool {
+	mac := hmac.New(sha256.New, []byte(clientSecret))
+	mac.Write([]byte(timestamp))
+	mac.Write(body)
+	expected := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	return hmac.Equal([]byte(expected), []byte(signature))
 }

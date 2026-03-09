@@ -49,9 +49,21 @@ func GetWhoopUsers() []User {
 	return users
 }
 
+func GetUserByWhoopUserID(whoopUserID int64) (User, error) {
+	var user User
+	result := db.DBCon.Where("whoop_user_id = ?", whoopUserID).First(&user)
+	return user, result.Error
+}
+
 func WorkoutExists(whoopID string) bool {
 	db := db.DBCon
 	var workout Workout
 	db.Where("whoop_id = ?", whoopID).Limit(1).Find(&workout)
 	return workout.ID != 0
+}
+
+func GetWorkoutsByWhoopID(whoopID string) ([]Workout, error) {
+	var workouts []Workout
+	result := db.DBCon.Where("whoop_id = ?", whoopID).Find(&workouts)
+	return workouts, result.Error
 }

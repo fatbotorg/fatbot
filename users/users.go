@@ -30,6 +30,7 @@ type User struct {
 	RankUpdatedAt *time.Time
 
 	WhoopID           string
+	WhoopUserID       int64 // Whoop's internal user ID (from profile API), used for webhook lookups
 	WhoopAccessToken  string
 	WhoopRefreshToken string
 	WhoopTokenExpiry  time.Time
