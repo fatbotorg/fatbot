@@ -53,9 +53,14 @@ type PollUpdate struct {
 type SupportGroupReplyUpdate struct {
 	FatBotUpdate
 }
+type MyChatMemberUpdate struct {
+	FatBotUpdate
+}
 
 func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 	switch {
+	case fatBotUpdate.isMyChatMemberUpdate():
+		return MyChatMemberUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isPollUpdate():
 		return PollUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isBlacklistUpdate():
@@ -83,7 +88,15 @@ func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 
 func HandleUpdates(fatBotUpdate FatBotUpdate) error {
 	update := fatBotUpdate.Update
+	// MyChatMember updates have their own From field, not SentFrom
+	if update.MyChatMember != nil {
+		updateType := MyChatMemberUpdate{FatBotUpdate: fatBotUpdate}
+		return updateType.handle()
+	}
 	if update.SentFrom() == nil && update.Poll != nil {
+		return nil
+	}
+	if update.SentFrom() == nil {
 		return nil
 	}
 	if updateType, err := fatBotUpdate.classify(); err != nil {

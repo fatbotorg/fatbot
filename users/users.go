@@ -73,7 +73,16 @@ func ptrTimeNow() *time.Time {
 
 func InitDB() error {
 	db := db.DBCon
-	db.AutoMigrate(&User{}, &Group{}, &Workout{}, &Event{}, &Blacklist{}, &WorkoutDisputePoll{})
+	db.AutoMigrate(&User{}, &Group{}, &Workout{}, &Event{}, &Blacklist{}, &WorkoutDisputePoll{}, &UserGroup{})
+
+	// Backfill slugs for existing groups that don't have one
+	var groups []Group
+	db.Where("slug IS NULL OR slug = ''").Find(&groups)
+	for _, group := range groups {
+		slug := GenerateUniqueSlug(group.Title)
+		db.Model(&group).Update("slug", slug)
+	}
+
 	return nil
 }
 
@@ -199,6 +208,11 @@ func GetUserById(userId int64) (user User, err error) {
 func (user *User) create() error {
 	db := db.DBCon
 	return db.Create(&user).Error
+}
+
+// CreateUser is the public version of create for use outside the package.
+func (user *User) CreateUser() error {
+	return user.create()
 }
 
 func GetUserFromMessage(message *tgbotapi.Message) (User, error) {
@@ -406,7 +420,7 @@ func (user *User) InviteNewUser(bot *tgbotapi.BotAPI, chatId int64) error {
 	if err != nil {
 		return err
 	}
-	msg.Text = "You are invited to join, but PLEASE NOTE: Upload a workout **as soon** as you join or you will be banned!" + link
+	msg.Text = "You're invited to join! You have 5 days to post your first workout photo in the group. After that, post at least once every 5 days to stay in. Here's your link: " + link
 	if _, err := bot.Send(msg); err != nil {
 		return err
 	}
@@ -510,9 +524,21 @@ func (user User) IsNew(chatId int64) (bool, error) {
 			return false, err
 		}
 	}
+	if !noWorkouts {
+		return false, nil
+	}
+
+	// Determine the join date: prefer per-group join date, fall back to user creation date
+	joinDate := user.CreatedAt
+	group, err := GetGroup(chatId)
+	if err == nil {
+		if ugJoinDate, err := GetUserGroupJoinDate(user.ID, group.ID); err == nil && !ugJoinDate.IsZero() {
+			joinDate = ugJoinDate
+		}
+	}
+
 	newUserGraceDays := viper.GetFloat64("users.new.days")
-	return noWorkouts &&
-		time.Now().Sub(user.CreatedAt).Hours() <= 24*newUserGraceDays, nil
+	return time.Now().Sub(joinDate).Hours() <= 24*newUserGraceDays, nil
 }
 
 func (user User) SetImmunity(action bool) {

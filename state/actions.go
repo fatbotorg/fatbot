@@ -89,7 +89,12 @@ func (menu GroupLinkMenu) PerformAction(params ActionData) error {
 	} else {
 		chatId := params.Update.FromChat().ID
 		msg := tgbotapi.NewMessage(chatId, "")
-		msg.Text = fmt.Sprintf("https://t.me/%s?start=%s", params.Bot.Self.UserName, group.Title)
+		// Use slug for deep link (falls back to title if slug is empty for legacy groups)
+		linkParam := group.Slug
+		if linkParam == "" {
+			linkParam = group.Title
+		}
+		msg.Text = fmt.Sprintf("Share this link to invite friends:\nhttps://t.me/%s?start=%s", params.Bot.Self.UserName, linkParam)
 		if _, err := params.Bot.Send(msg); err != nil {
 			return err
 		}
@@ -443,6 +448,71 @@ func (menu PSAMenu) PerformAction(params ActionData) error {
 		params.Bot.Send(msg)
 		return &MenuActionDoneError{}
 	}
+}
+
+func (menu CloseGroupMenu) PerformAction(params ActionData) error {
+	defer DeleteStateEntry(params.State.ChatId)
+	chatId := params.Update.FromChat().ID
+
+	// Check the confirmation option (step 2: yes/no)
+	option, err := params.State.getOption()
+	if err != nil {
+		return err
+	}
+	if option == "no" {
+		msg := tgbotapi.NewMessage(chatId, "Group closure cancelled.")
+		params.Bot.Send(msg)
+		return nil
+	}
+
+	// Check the typed confirmation (step 3: must be "DELETE")
+	typedConfirmation := params.Data
+	if typedConfirmation != "DELETE" {
+		msg := tgbotapi.NewMessage(chatId, "Group closure cancelled. You must type DELETE exactly.")
+		params.Bot.Send(msg)
+		return nil
+	}
+
+	groupChatId, err := params.State.getGroupChatId()
+	if err != nil {
+		return err
+	}
+
+	group := users.GetGroupWithUsers(groupChatId)
+	groupTitle := group.Title
+
+	// Ban all active users from the group
+	for _, user := range group.Users {
+		if user.Active {
+			user.Ban(params.Bot, groupChatId)
+		}
+	}
+
+	// Deactivate users who aren't in any other group
+	users.DeactivateGroupUsers(groupChatId)
+
+	// Mark group as not approved — stops all processing
+	users.UpdateGroupApproved(groupChatId, false)
+
+	// Free the creator's group slot
+	users.ClearGroupCreator(groupChatId)
+
+	// Bot leaves the group
+	leaveConfig := tgbotapi.LeaveChatConfig{ChatID: groupChatId}
+	params.Bot.Request(leaveConfig)
+
+	// Notify super admins
+	adminMsg := tgbotapi.NewMessage(0, fmt.Sprintf(
+		"Group \"%s\" (ID: %d) was closed by admin (ID: %d)",
+		groupTitle, groupChatId, chatId,
+	))
+	users.SendMessageToSuperAdmins(params.Bot, adminMsg)
+
+	// Confirm to the admin
+	msg := tgbotapi.NewMessage(chatId, fmt.Sprintf("Group \"%s\" has been closed. You can create a new group with /creategroup.", groupTitle))
+	params.Bot.Send(msg)
+
+	return nil
 }
 
 func (menu InstagramSpotlightMenu) PerformAction(params ActionData) error {

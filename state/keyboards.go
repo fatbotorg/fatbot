@@ -228,6 +228,7 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 	var disputeWorkout DisputeWorkoutMenu
 	var psa PSAMenu
 	var instagramSpotlight InstagramSpotlightMenu
+	var closeGroup CloseGroupMenu
 	menus := []MenuBase{
 		rename.CreateMenu(0),
 		pushWorkout.CreateMenu(0),
@@ -243,6 +244,7 @@ func CreateAdminKeyboard(superAdmin bool) tgbotapi.InlineKeyboardMarkup {
 		disputeWorkout.CreateMenu(0),
 		psa.CreateMenu(0),
 		instagramSpotlight.CreateMenu(0),
+		closeGroup.CreateMenu(0),
 	}
 
 	row := []tgbotapi.InlineKeyboardButton{}

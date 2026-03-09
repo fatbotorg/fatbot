@@ -29,32 +29,33 @@ func (update UnknownGroupUpdate) handle() error {
 		return nil
 	}
 	chatId := update.Update.FromChat().ID
-	userId := update.Update.SentFrom().ID
 
-	if update.Update.Message != nil &&
-		update.Update.Message.IsCommand() &&
-		update.Update.Message.Command() == "newgroup" {
-
-		cmConfig := tgbotapi.GetChatMemberConfig{
-			ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
-				ChatID: chatId,
-				UserID: userId,
-			},
-		}
-		chatMember, err := bot.GetChatMember(cmConfig)
-		if err != nil {
-			return err
-		}
-
-		if chatMember.IsAdministrator() || chatMember.IsCreator() {
-			msg := handleNewGroupCommand(update.Update)
-			if _, err := bot.Request(msg); err != nil {
-				return err
-			}
-			return nil
-		}
+	if update.Update.Message == nil {
+		return nil
 	}
 
+	// Check if the bot is a member of this group at all.
+	// If so, autonomous setup is in progress — stay silent and let
+	// the MyChatMemberUpdate handler do its job.
+	botMember, err := bot.GetChatMember(tgbotapi.GetChatMemberConfig{
+		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
+			ChatID: chatId,
+			UserID: bot.Self.ID,
+		},
+	})
+	if err == nil && !botMember.HasLeft() && !botMember.WasKicked() {
+		// Bot is in this group but group isn't registered yet.
+		// If bot is admin in a supergroup, auto-register as fallback.
+		if botMember.IsAdministrator() && update.Update.FromChat().Type == "supergroup" {
+			if err := autoRegisterGroup(bot, update.Update); err != nil {
+				log.Error("Failed to auto-register group", "err", err, "chat_id", chatId)
+			}
+		}
+		// Either way, don't spam — setup is in progress.
+		return nil
+	}
+
+	// Bot is NOT in this group — this is a genuinely unknown group.
 	bot.Send(tgbotapi.NewMessage(update.Update.Message.Chat.ID,
 		fmt.Sprintf("Group %s not activated, send this to the admin: `%d`", update.Update.Message.Chat.Title, chatId),
 	))
