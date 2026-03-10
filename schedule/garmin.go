@@ -117,6 +117,7 @@ func ProcessGarminActivity(bot *tgbotapi.BotAPI, user users.User, activity garmi
 
 	// --- MAIN WORKOUT LOGIC ---
 	strain := calculateStrain(activity.AverageHeartRate)
+	var workouts []users.Workout
 	for _, group := range user.Groups {
 		workout := users.Workout{
 			UserID:   user.ID,
@@ -124,7 +125,13 @@ func ProcessGarminActivity(bot *tgbotapi.BotAPI, user users.User, activity garmi
 			GarminID: activity.SummaryID,
 		}
 		db.DBCon.Create(&workout)
+		workouts = append(workouts, workout)
 		notify.NotifyWorkout(bot, user, workout, activity.ActivityName, strain, activity.Calories, activity.AverageHeartRate, duration.Minutes(), activity.DistanceInMeters, activity.DeviceName, activity.ActivityType)
 	}
-	notify.SendWorkoutPM(bot, user, activity.ActivityName)
+
+	// If the user had pre-uploaded a photo, attach it automatically.
+	// Otherwise fall back to the usual reply-with-photo prompt.
+	if !notify.ApplyPendingPhoto(bot, user, workouts) {
+		notify.SendWorkoutPM(bot, user, activity.ActivityName)
+	}
 }

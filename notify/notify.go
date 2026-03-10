@@ -3,6 +3,7 @@ package notify
 import (
 	"fatbot/ai"
 	"fatbot/db"
+	"fatbot/state"
 	"fatbot/strava"
 	"fatbot/users"
 	"fatbot/whoop"
@@ -155,6 +156,44 @@ func NotifyWorkout(bot *tgbotapi.BotAPI, user users.User, workout users.Workout,
 func SendWorkoutPM(bot *tgbotapi.BotAPI, user users.User, sportName string) {
 	pm := tgbotapi.NewMessage(user.TelegramUserID, fmt.Sprintf("Great job on your %s workout!\n\nReply to this message with a photo to send it to all your groups.", sportName))
 	bot.Send(pm)
+}
+
+// ApplyPendingPhoto checks whether the user has a pending pre-workout photo stored in Redis.
+// If found, it attaches the photo to each of the provided workouts, forwards it to the
+// corresponding group chats, and clears the pending photo from Redis.
+// Returns true if a pending photo was found and applied.
+func ApplyPendingPhoto(bot *tgbotapi.BotAPI, user users.User, workouts []users.Workout) bool {
+	fileID, err := state.GetPendingPhoto(user.TelegramUserID)
+	if err != nil {
+		// No pending photo — nothing to do.
+		return false
+	}
+
+	// Attach photo to each workout record
+	for i := range workouts {
+		workouts[i].PhotoFileID = fileID
+		db.DBCon.Save(&workouts[i])
+	}
+
+	// Forward the photo to each group the workout was posted to
+	for _, workout := range workouts {
+		group, err := users.GetGroupByID(workout.GroupID)
+		if err != nil {
+			log.Errorf("ApplyPendingPhoto: failed to get group %d: %s", workout.GroupID, err)
+			continue
+		}
+		photoMsg := tgbotapi.NewPhoto(group.ChatID, tgbotapi.FileID(fileID))
+		if _, err := bot.Send(photoMsg); err != nil {
+			log.Errorf("ApplyPendingPhoto: failed to send photo to group %d: %s", group.ChatID, err)
+		}
+	}
+
+	// Clear the pending photo so it isn't reused
+	if err := state.ClearPendingPhoto(user.TelegramUserID); err != nil {
+		log.Errorf("ApplyPendingPhoto: failed to clear pending photo for user %d: %s", user.TelegramUserID, err)
+	}
+
+	return true
 }
 
 // NotifyStravaWorkout sends a Strava-specific workout notification to the group

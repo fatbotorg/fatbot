@@ -123,6 +123,7 @@ func ProcessStravaActivity(bot *tgbotapi.BotAPI, user users.User, activityID int
 func createStravaWorkout(bot *tgbotapi.BotAPI, user users.User, activity *strava.ActivityData, stravaID string) {
 	duration := time.Duration(activity.MovingTime) * time.Second
 
+	var workouts []users.Workout
 	for _, group := range user.Groups {
 		workout := users.Workout{
 			UserID:   user.ID,
@@ -130,12 +131,16 @@ func createStravaWorkout(bot *tgbotapi.BotAPI, user users.User, activity *strava
 			StravaID: stravaID,
 		}
 		db.DBCon.Create(&workout)
+		workouts = append(workouts, workout)
 
 		notify.NotifyStravaWorkout(bot, user, workout, activity, duration.Minutes())
 	}
 
-	// Send PM to user for photo
-	notify.SendWorkoutPM(bot, user, activity.Name)
+	// If the user had pre-uploaded a photo, attach it automatically.
+	// Otherwise fall back to the usual reply-with-photo prompt.
+	if !notify.ApplyPendingPhoto(bot, user, workouts) {
+		notify.SendWorkoutPM(bot, user, activity.Name)
+	}
 }
 
 // ProcessStravaActivityFromCallback processes a Strava activity after user confirms via callback

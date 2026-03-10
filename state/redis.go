@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/charmbracelet/log"
@@ -106,6 +107,26 @@ func SetNX(key, value string, ttl int) (bool, error) {
 		return false, err
 	}
 	return result == "OK", nil
+}
+
+// SetPendingPhoto stores a Telegram file ID as a pending workout photo for a user.
+// The key is keyed by the user's Telegram ID and expires after 24 hours.
+func SetPendingPhoto(telegramUserID int64, fileID string) error {
+	key := fmt.Sprintf("photo:pending:%d", telegramUserID)
+	return SetWithTTL(key, fileID, 86400) // 24h
+}
+
+// GetPendingPhoto retrieves the pending workout photo file ID for a user.
+// Returns an error (redis.ErrNil) if none exists.
+func GetPendingPhoto(telegramUserID int64) (string, error) {
+	key := fmt.Sprintf("photo:pending:%d", telegramUserID)
+	return get(key)
+}
+
+// ClearPendingPhoto removes the pending workout photo for a user.
+func ClearPendingPhoto(telegramUserID int64) error {
+	key := fmt.Sprintf("photo:pending:%d", telegramUserID)
+	return ClearString(key)
 }
 
 func ClearString(key string) error {
