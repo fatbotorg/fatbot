@@ -127,3 +127,28 @@ func (fatBotUpdate FatBotUpdate) isPollUpdate() bool {
 func (fatBotUpdate FatBotUpdate) isMyChatMemberUpdate() bool {
 	return fatBotUpdate.Update.MyChatMember != nil
 }
+
+// isInstaRequestUpdate detects a user replying to a photo in a group chat
+// with the keyword "insta" (optionally followed by a custom caption).
+// Privacy mode must be disabled for the bot to receive plain-text group messages.
+func (fatBotUpdate FatBotUpdate) isInstaRequestUpdate() bool {
+	update := fatBotUpdate.Update
+	if update.Message == nil {
+		return false
+	}
+	// Must be a group message, not private
+	if update.FromChat().IsPrivate() {
+		return false
+	}
+	// Must be a reply to another message
+	if update.Message.ReplyToMessage == nil {
+		return false
+	}
+	// The replied-to message must contain a photo
+	if len(update.Message.ReplyToMessage.Photo) == 0 {
+		return false
+	}
+	// The reply text must start with "insta" (case-insensitive)
+	text := strings.TrimSpace(strings.ToLower(update.Message.Text))
+	return text == "insta" || strings.HasPrefix(text, "insta ")
+}

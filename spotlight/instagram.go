@@ -13,7 +13,6 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -58,6 +57,14 @@ func DailyInstagramAutomation(bot *tgbotapi.BotAPI) {
 	CreateInstagramStory(bot, randomUser, chatIds[0])
 }
 
+// UserRequestedSpotlight is triggered when a user replies "insta [caption]" to
+// their own workout photo in a group chat. It uses the specific photo from the
+// replied-to message rather than the user's last workout photo.
+func UserRequestedSpotlight(bot *tgbotapi.BotAPI, user users.User, photoFileID string, chatId int64, customCaption string) {
+	log.Infof("User-requested Instagram spotlight: %s (chatId: %d)", user.GetName(), chatId)
+	CreateInstagramStoryFromPhoto(bot, user, photoFileID, chatId, customCaption)
+}
+
 func ManualInstagramSpotlight(bot *tgbotapi.BotAPI, user users.User) {
 	chatIds, err := user.GetChatIds()
 	if err != nil || len(chatIds) == 0 {
@@ -78,6 +85,7 @@ func getPraiseMessage(count int) string {
 	return "PURE ELITE"
 }
 
+// CreateInstagramStory fetches the user's last workout photo and publishes it.
 func CreateInstagramStory(bot *tgbotapi.BotAPI, user users.User, chatId int64) {
 	log.Debug("Starting Instagram story creation", "user", user.GetName(), "chatId", chatId)
 	lastWorkout, err := user.GetLastXWorkout(1, chatId)
@@ -85,15 +93,22 @@ func CreateInstagramStory(bot *tgbotapi.BotAPI, user users.User, chatId int64) {
 		log.Errorf("Error getting last workout for instagram: %s", err)
 		return
 	}
-
 	if lastWorkout.PhotoFileID == "" {
 		log.Warn("User has no photo for their last workout, skipping Instagram story", "user", user.GetName())
 		return
 	}
+	CreateInstagramStoryFromPhoto(bot, user, lastWorkout.PhotoFileID, chatId, "")
+}
+
+// CreateInstagramStoryFromPhoto is the core pipeline: given an explicit photoFileID,
+// it renders branded images and publishes them to Instagram.
+// customCaption is appended to the generated Instagram caption when non-empty.
+func CreateInstagramStoryFromPhoto(bot *tgbotapi.BotAPI, user users.User, photoFileID string, chatId int64, customCaption string) {
+	log.Debug("Starting Instagram story creation", "user", user.GetName(), "chatId", chatId, "fileId", photoFileID)
 
 	// 1. Download image
-	log.Debug("Downloading photo from Telegram", "fileId", lastWorkout.PhotoFileID)
-	fileConfig := tgbotapi.FileConfig{FileID: lastWorkout.PhotoFileID}
+	log.Debug("Downloading photo from Telegram", "fileId", photoFileID)
+	fileConfig := tgbotapi.FileConfig{FileID: photoFileID}
 	tgFile, err := bot.GetFile(fileConfig)
 	if err != nil {
 		log.Errorf("Error getting file from Telegram: %s", err)
@@ -145,13 +160,16 @@ func CreateInstagramStory(bot *tgbotapi.BotAPI, user users.User, chatId int64) {
 	}
 
 	// 4. Upload & Post
-	caption := fmt.Sprintf(`🦾 @%s is %s! 
+	caption := fmt.Sprintf(`🦾 @%s is %s!
 
-They've crushed %d workouts this week. 
+They've crushed %d workouts this week.
 This is what consistency looks like. Keep pushing.
 
 #FatBot #StayHard #NoDaysOff #FitnessMotivation #Unstoppable`,
 		user.InstagramHandle, title, workoutCount)
+	if customCaption != "" {
+		caption = fmt.Sprintf("%s\n\n💬 %s", caption, customCaption)
+	}
 
 	var storyID, postID string
 	var pubErr error
@@ -222,14 +240,129 @@ https://www.instagram.com/fatbot.fit`,
 	os.Remove(postFile)
 }
 
+// fontPaths returns candidate font paths in preference order:
+// bundled Montserrat first, then system fallbacks for Alpine/Debian/macOS.
+func resolveFontPath(variant string) string {
+	// variant: "extrabold", "bold", "medium"
+	bundled := map[string]string{
+		"extrabold": "spotlight/fonts/Montserrat-ExtraBold.ttf",
+		"bold":      "spotlight/fonts/Montserrat-Bold.ttf",
+		"medium":    "spotlight/fonts/Montserrat-Medium.ttf",
+	}
+	systemFallbacks := []string{
+		"/usr/share/fonts/freefont/FreeSansBold.ttf",
+		"/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+		"/usr/share/fonts/ttf-dejavu/DejaVuSans-Bold.ttf",
+		"/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+		"/System/Library/Fonts/Supplemental/DIN Alternate Bold.ttf",
+		"/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+	}
+	if p, ok := bundled[variant]; ok {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	for _, p := range systemFallbacks {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return ""
+}
+
+// drawStrokedText draws white text with a black outline for legibility on any background.
+func drawStrokedText(dc *gg.Context, x, y float64, text string, strokePx int, alpha float64) {
+	// Black outline — draw in a grid around the origin
+	dc.SetRGBA(0, 0, 0, 0.85)
+	s := float64(strokePx)
+	for dx := -s; dx <= s; dx += 2 {
+		for dy := -s; dy <= s; dy += 2 {
+			if dx == 0 && dy == 0 {
+				continue
+			}
+			dc.DrawStringAnchored(text, x+dx, y+dy, 0.5, 0.5)
+		}
+	}
+	// White text on top
+	dc.SetRGBA(1, 1, 1, alpha)
+	dc.DrawStringAnchored(text, x, y, 0.5, 0.5)
+}
+
+// drawBottomGradient draws a smooth gradient from transparent to near-black
+// over the bottom portion of the image.
+func drawBottomGradient(dc *gg.Context, width, height int, startPct float64) {
+	w := float64(width)
+	h := float64(height)
+	startY := h * startPct
+	steps := 300
+	for i := 0; i < steps; i++ {
+		t := float64(i) / float64(steps-1)
+		y := startY + t*(h-startY)
+		// Ease-in curve: slow start, strong finish
+		alpha := t * t * 0.88
+		dc.SetRGBA(0, 0, 0, alpha)
+		dc.DrawRectangle(0, y, w, (h-startY)/float64(steps)+1)
+		dc.Fill()
+	}
+}
+
+// drawTopVignette draws a very subtle top darkening for polish.
+func drawTopVignette(dc *gg.Context, width, height int) {
+	vigH := float64(height) * 0.14
+	for i := 0; i < 60; i++ {
+		t := float64(i) / 60.0
+		y := t * vigH
+		alpha := (1.0 - t) * (1.0 - t) * 0.28
+		dc.SetRGBA(0, 0, 0, alpha)
+		dc.DrawRectangle(0, y, float64(width), vigH/60+1)
+		dc.Fill()
+	}
+}
+
+// drawCornerBrackets draws subtle corner bracket accents.
+func drawCornerBrackets(dc *gg.Context, width, height int) {
+	w := float64(width)
+	h := float64(height)
+	m := 35.0 // margin
+	l := 55.0 // bracket arm length
+	lw := 3.0 // line width
+
+	dc.SetRGBA(1, 1, 1, 0.32)
+	dc.SetLineWidth(lw)
+
+	// Top-left
+	dc.DrawLine(m, m, m+l, m)
+	dc.Stroke()
+	dc.DrawLine(m, m, m, m+l)
+	dc.Stroke()
+	// Top-right
+	dc.DrawLine(w-m, m, w-m-l, m)
+	dc.Stroke()
+	dc.DrawLine(w-m, m, w-m, m+l)
+	dc.Stroke()
+	// Bottom-left
+	dc.DrawLine(m, h-m, m+l, h-m)
+	dc.Stroke()
+	dc.DrawLine(m, h-m, m, h-m-l)
+	dc.Stroke()
+	// Bottom-right
+	dc.DrawLine(w-m, h-m, w-m-l, h-m)
+	dc.Stroke()
+	dc.DrawLine(w-m, h-m, w-m, h-m-l)
+	dc.Stroke()
+}
+
 func renderHighImpactImage(src image.Image, width, height int, name, title string, count int, outFile string) error {
 	log.Debug("Rendering image", "width", width, "height", height, "name", name, "count", count)
 	dc := gg.NewContext(width, height)
+	w := float64(width)
+	h := float64(height)
+	scale := w / 1080.0
 
-	// A. Background (Cover)
+	// ── A. Background: cover-crop with top bias (show faces, not feet) ──
 	srcW, srcH := src.Bounds().Dx(), src.Bounds().Dy()
 	srcRatio := float64(srcW) / float64(srcH)
-	destRatio := float64(width) / float64(height)
+	destRatio := w / h
 
 	var srcRect image.Rectangle
 	if srcRatio > destRatio {
@@ -238,103 +371,93 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 		srcRect = image.Rect(offset, 0, offset+newSrcW, srcH)
 	} else {
 		newSrcH := int(float64(srcW) / destRatio)
-		offset := (srcH - newSrcH) / 2
+		// Bias toward top 20% so faces appear rather than feet
+		offset := int(float64(srcH-newSrcH) * 0.2)
 		srcRect = image.Rect(0, offset, srcW, offset+newSrcH)
 	}
 
 	if rgba, ok := dc.Image().(*image.RGBA); ok {
 		xdraw.CatmullRom.Scale(rgba, rgba.Bounds(), src, srcRect, xdraw.Over, nil)
 	} else {
-		// Fallback if not RGBA
-		log.Debug("Context image is not RGBA, using fallback scaling")
-		scaleW := float64(width) / float64(srcRect.Dx())
-		scaleH := float64(height) / float64(srcRect.Dy())
+		scaleW := w / float64(srcRect.Dx())
+		scaleH := h / float64(srcRect.Dy())
 		dc.Scale(scaleW, scaleH)
 		dc.DrawImage(src, -srcRect.Min.X, -srcRect.Min.Y)
 		dc.Identity()
 	}
 
-	// B. Strong Modern Overlay
-	dc.SetRGBA(0, 0, 0, 0.4)
-	dc.DrawRectangle(0, 0, float64(width), float64(height))
-	dc.Fill()
+	// ── B. Overlays ──
+	drawBottomGradient(dc, width, height, 0.40)
+	drawTopVignette(dc, width, height)
+	drawCornerBrackets(dc, width, height)
 
-	// C. Typography Setup
-	fontPaths := []string{
-		"/usr/share/fonts/freefont/FreeSansBold.ttf",
-		"/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-		"/usr/share/fonts/ttf-dejavu/DejaVuSans-Bold.ttf",
-		"/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
-		"/System/Library/Fonts/Supplemental/DIN Alternate Bold.ttf",
-		"/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+	// ── C. Resolve fonts ──
+	fontEB := resolveFontPath("extrabold")
+	fontMed := resolveFontPath("medium")
+	fontBold := resolveFontPath("bold")
+	if fontEB == "" {
+		fontEB = fontBold
 	}
-	var fontPath string
-	for _, path := range fontPaths {
-		if _, err := os.Stat(path); err == nil {
-			fontPath = path
-			log.Debug("Found font", "path", fontPath)
-			break
+	if fontMed == "" {
+		fontMed = fontBold
+	}
+	if fontEB == "" {
+		log.Warn("No suitable font found for image rendering")
+	}
+
+	cx := w / 2
+
+	// ── D. Motivational title — top, large and bold ──
+	if fontEB != "" {
+		if err := dc.LoadFontFace(fontEB, 90*scale); err != nil {
+			log.Warnf("Failed to load font: %s", err)
 		}
 	}
-	if fontPath == "" {
-		log.Warn("No suitable font found for image rendering - using default")
-	}
+	drawStrokedText(dc, cx, h*0.07, title, 5, 1.0)
 
-	centerX := float64(width) / 2
-	centerY := float64(height) / 2
-
-	// D. BIG TOP TEXT: THE TITLE
-	if fontPath != "" {
-		if err := dc.LoadFontFace(fontPath, 100); err != nil {
-			log.Warnf("Failed to load font %s: %s", fontPath, err)
+	// ── E. Workout count — the hero number ──
+	countY := h * 0.65
+	if fontEB != "" {
+		if err := dc.LoadFontFace(fontEB, 340*scale); err != nil {
+			log.Warnf("Failed to load font: %s", err)
 		}
 	}
-	dc.SetRGB(1, 1, 1)
-	dc.DrawStringAnchored(title, centerX, float64(height)*0.15, 0.5, 0.5)
+	drawStrokedText(dc, cx, countY, fmt.Sprintf("%d", count), 8, 1.0)
 
-	// E. SMALLER CENTER PROGRESS
-	badgeRadius := float64(width) * 0.22
-	dc.DrawCircle(centerX, centerY, badgeRadius)
-	dc.SetRGBA(0.7, 1, 0, 0.8) // Neon Lime Green
-	dc.Fill()
-
-	if fontPath != "" {
-		if err := dc.LoadFontFace(fontPath, 200); err != nil {
-			log.Warnf("Failed to load font %s: %s", fontPath, err)
+	// ── F. "WORKOUTS THIS WEEK" label ──
+	labelY := countY + 145*scale
+	if fontMed != "" {
+		if err := dc.LoadFontFace(fontMed, 52*scale); err != nil {
+			log.Warnf("Failed to load font: %s", err)
 		}
 	}
-	dc.SetRGB(0, 0, 0)
-	dc.DrawStringAnchored(fmt.Sprintf("%d", count), centerX, centerY, 0.5, 0.5)
-	if fontPath != "" {
-		if err := dc.LoadFontFace(fontPath, 28); err != nil {
-			log.Warnf("Failed to load font %s: %s", fontPath, err)
+	drawStrokedText(dc, cx, labelY, "WORKOUTS THIS WEEK", 4, 0.95)
+
+	// ── G. Thin separator line ──
+	lineY := labelY + 55*scale
+	lineHalf := w * 0.15
+	dc.SetRGBA(1, 1, 1, 0.45)
+	dc.SetLineWidth(2)
+	dc.DrawLine(cx-lineHalf, lineY, cx+lineHalf, lineY)
+	dc.Stroke()
+
+	// ── H. Instagram handle ──
+	if fontBold != "" {
+		if err := dc.LoadFontFace(fontBold, 60*scale); err != nil {
+			log.Warnf("Failed to load font: %s", err)
 		}
 	}
-	dc.DrawStringAnchored("WORKOUTS THIS WEEK", centerX, centerY+140, 0.5, 0.5)
+	drawStrokedText(dc, cx, h*0.90, name, 5, 1.0)
 
-	// F. HUGE BOTTOM NAME
-	if fontPath != "" {
-		if err := dc.LoadFontFace(fontPath, 120); err != nil {
-			log.Warnf("Failed to load font %s: %s", fontPath, err)
+	// ── I. Branding ──
+	if fontMed != "" {
+		if err := dc.LoadFontFace(fontMed, 30*scale); err != nil {
+			log.Warnf("Failed to load font: %s", err)
 		}
 	}
-	dc.SetRGBA(1, 1, 1, 1)
-	dc.DrawStringAnchored(strings.ToUpper(name), centerX, float64(height)*0.85, 0.5, 0.5)
+	drawStrokedText(dc, cx, h*0.945, "fatbot.fit", 3, 0.65)
 
-	// G. BOTTOM ACCENT
-	dc.SetRGBA(0.7, 1, 0, 1)
-	dc.DrawRectangle(centerX-300, float64(height)*0.92, 600, 20)
-	dc.Fill()
-
-	// H. BRANDING
-	if fontPath != "" {
-		if err := dc.LoadFontFace(fontPath, 30); err != nil {
-			log.Warnf("Failed to load font %s: %s", fontPath, err)
-		}
-	}
-	dc.SetRGBA(1, 1, 1, 0.5)
-	dc.DrawStringAnchored("www.fatbot.fit", centerX, float64(height)-50, 0.5, 0.5)
-
+	// ── Encode ──
 	var buf bytes.Buffer
 	if err := jpeg.Encode(&buf, dc.Image(), &jpeg.Options{Quality: 95}); err != nil {
 		return err

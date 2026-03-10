@@ -14,4 +14,6 @@ WORKDIR /app
 RUN apk add --no-cache sqlite tzdata ttf-freefont ttf-dejavu
 COPY --from=build /app/fatbot /app/fatbot
 COPY --from=build /app/config.yaml /app/config.yaml
+# Bundle Montserrat fonts for Instagram image rendering
+COPY --from=build /app/spotlight/fonts/ /app/spotlight/fonts/
 ENTRYPOINT ["/app/fatbot"]
