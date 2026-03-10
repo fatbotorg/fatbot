@@ -15,6 +15,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -23,5 +24,13 @@ jobs:
         uses: sst/opencode/github@latest
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           model: opencode/claude-sonnet-4-5
+          prompt: |
+            Review the changes in this pull request thoroughly.
+            After your review, decide whether the PR is ready to merge.
+            If you determine it is ready, run the following shell command to approve it:
+              gh pr review ${{ github.event.issue.number }} --approve --body "<your review summary>"
+            If you find issues that must be fixed first, do NOT approve — instead leave a review comment explaining what needs to change.
+            The GH_TOKEN environment variable is already available for the gh CLI.
