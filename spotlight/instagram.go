@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -138,46 +139,36 @@ func CreateInstagramStoryFromPhoto(bot *tgbotapi.BotAPI, user users.User, photoF
 	title := ai.GetAiMotivationalTitle()
 	log.Debug("Prepared story data", "workoutCount", workoutCount, "title", title)
 
-	// 3. Generate Visuals — render sequentially and explicitly nil the source
-	// image between renders to allow GC to reclaim memory before the next
-	// large canvas allocation.
+	// 3. Generate Visuals
+	// Force a GC cycle before the canvas allocations to reclaim any heap
+	// accumulated by the bot's normal operation.
+	runtime.GC()
+
 	ts := time.Now().Unix()
 	storyFile := fmt.Sprintf("story_%d_%d.jpg", user.TelegramUserID, ts)
 	displayName := user.GetName()
 	if user.InstagramHandle != "" {
 		displayName = "@" + user.InstagramHandle
 	}
+	// Render at half resolution (540x960 / 540x540). Instagram accepts anything
+	// >= 320px; half-res canvases use 75% less RAM and are indistinguishable
+	// on mobile screens.
 	log.Debug("Rendering high impact story image", "outFile", storyFile, "handle", displayName)
-	if err := renderHighImpactImage(srcImg, 1080, 1920, displayName, title, workoutCount, storyFile); err != nil {
+	if err := renderHighImpactImage(srcImg, 540, 960, displayName, title, workoutCount, storyFile); err != nil {
 		log.Errorf("Error rendering story: %s", err)
 		return
 	}
 
-	// Explicitly release the decoded source image before allocating the
-	// next canvas — the story render is done with it.
-	srcImg = nil
-
 	postFile := fmt.Sprintf("post_%d_%d.jpg", user.TelegramUserID, ts)
 	log.Debug("Rendering high impact post image", "outFile", postFile)
-
-	// Re-download for the post render so we don't hold both decoded images
-	// in memory at the same time.
-	resp2, err := http.Get(url)
-	if err != nil {
-		log.Errorf("Error re-downloading image for post: %s", err)
-		return
-	}
-	defer resp2.Body.Close()
-	srcImg2, _, err := image.Decode(resp2.Body)
-	if err != nil {
-		log.Errorf("Error decoding workout image for post: %s", err)
-		return
-	}
-
-	if err := renderHighImpactImage(srcImg2, 1080, 1080, user.GetName(), title, workoutCount, postFile); err != nil {
+	if err := renderHighImpactImage(srcImg, 540, 540, user.GetName(), title, workoutCount, postFile); err != nil {
 		log.Errorf("Error rendering post: %s", err)
 		return
 	}
+
+	// Release the decoded source image now that both renders are done.
+	srcImg = nil
+	runtime.GC()
 
 	// 4. Upload & Post
 	caption := fmt.Sprintf(`🦾 @%s is %s!
@@ -195,42 +186,32 @@ This is what consistency looks like. Keep pushing.
 	var pubErr error
 
 	// Story
-	storyBytes, err := os.ReadFile(storyFile)
-	if err == nil && len(storyBytes) > 0 {
-		log.Debug("Uploading story to S3")
-		if publicStoryURL, err := users.UploadToS3(storyFile, storyBytes); err == nil {
-			log.Infof("Story public URL: %s", publicStoryURL)
-			storyCaption := fmt.Sprintf("@%s", user.InstagramHandle)
-			log.Debug("Publishing story to Instagram")
-			if storyID, pubErr = instagram.PublishStory(publicStoryURL, storyCaption); pubErr != nil {
-				log.Errorf("Failed to publish story for %s: %s", user.GetName(), pubErr)
-			} else {
-				log.Infof("Successfully published story: %s", storyID)
-			}
+	log.Debug("Uploading story to S3")
+	if publicStoryURL, err := users.UploadFileToS3(storyFile); err == nil {
+		log.Infof("Story public URL: %s", publicStoryURL)
+		storyCaption := fmt.Sprintf("@%s", user.InstagramHandle)
+		log.Debug("Publishing story to Instagram")
+		if storyID, pubErr = instagram.PublishStory(publicStoryURL, storyCaption); pubErr != nil {
+			log.Errorf("Failed to publish story for %s: %s", user.GetName(), pubErr)
 		} else {
-			log.Errorf("Failed to upload story to S3: %s", err)
+			log.Infof("Successfully published story: %s", storyID)
 		}
 	} else {
-		log.Errorf("Failed to read story file or file is empty: %s (len: %d)", err, len(storyBytes))
+		log.Errorf("Failed to upload story to S3: %s", err)
 	}
 
 	// Post
-	postBytes, err := os.ReadFile(postFile)
-	if err == nil && len(postBytes) > 0 {
-		log.Debug("Uploading post to S3")
-		if publicPostURL, err := users.UploadToS3(postFile, postBytes); err == nil {
-			log.Infof("Post public URL: %s", publicPostURL)
-			log.Debug("Publishing post to Instagram")
-			if postID, pubErr = instagram.PublishPost(publicPostURL, caption); pubErr != nil {
-				log.Errorf("Failed to publish post for %s: %s", user.GetName(), pubErr)
-			} else {
-				log.Infof("Successfully published post: %s", postID)
-			}
+	log.Debug("Uploading post to S3")
+	if publicPostURL, err := users.UploadFileToS3(postFile); err == nil {
+		log.Infof("Post public URL: %s", publicPostURL)
+		log.Debug("Publishing post to Instagram")
+		if postID, pubErr = instagram.PublishPost(publicPostURL, caption); pubErr != nil {
+			log.Errorf("Failed to publish post for %s: %s", user.GetName(), pubErr)
 		} else {
-			log.Errorf("Failed to upload post to S3: %s", err)
+			log.Infof("Successfully published post: %s", postID)
 		}
 	} else {
-		log.Errorf("Failed to read post file or file is empty: %s (len: %d)", err, len(postBytes))
+		log.Errorf("Failed to upload post to S3: %s", err)
 	}
 
 	// 5. Consolidated Telegram Notification
@@ -397,7 +378,11 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 	}
 
 	if rgba, ok := dc.Image().(*image.RGBA); ok {
-		xdraw.CatmullRom.Scale(rgba, rgba.Bounds(), src, srcRect, xdraw.Over, nil)
+		// NearestNeighbor allocates no intermediate buffer (unlike CatmullRom
+		// which needs a full-width * src-height pass buffer). The source is
+		// already small (Telegram caps downloads at ~1280px) so quality is
+		// indistinguishable at 540px output.
+		xdraw.NearestNeighbor.Scale(rgba, rgba.Bounds(), src, srcRect, xdraw.Over, nil)
 	} else {
 		scaleW := w / float64(srcRect.Dx())
 		scaleH := h / float64(srcRect.Dy())
