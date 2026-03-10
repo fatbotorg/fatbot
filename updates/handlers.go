@@ -2,9 +2,12 @@ package updates
 
 import (
 	"fatbot/db"
+	"fatbot/spotlight"
+	"fatbot/state"
 	"fatbot/users"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/getsentry/sentry-go"
@@ -335,6 +338,131 @@ func (update FatBotUpdate) handle() error {
 		log.Debug("GOT poll event : %s", update.Update.Poll)
 		return handlePollUpdate(update.Update, update.Bot)
 	}
+	return nil
+}
+
+const (
+	instaRateLimitTTL  = 2 * 24 * 60 * 60 // 2 days in seconds
+	instaProcessingTTL = 120              // 2 minutes concurrency lock
+)
+
+func instaRateLimitKey(telegramUserID int64) string {
+	return fmt.Sprintf("insta:user_request:%d", telegramUserID)
+}
+
+func instaProcessingKey(telegramUserID int64) string {
+	return fmt.Sprintf("insta:processing:%d", telegramUserID)
+}
+
+// instaRemainingCooldown returns a human-readable string of how long until
+// the user's rate limit expires, e.g. "1 day, 14 hours".
+func instaRemainingCooldown(telegramUserID int64) string {
+	key := instaRateLimitKey(telegramUserID)
+	val, err := state.Get(key)
+	if err != nil || val == "" {
+		return ""
+	}
+	// val is the unix timestamp when the limit was set
+	var setAt int64
+	if _, err := fmt.Sscanf(val, "%d", &setAt); err != nil {
+		return ""
+	}
+	expiresAt := time.Unix(setAt, 0).Add(time.Duration(instaRateLimitTTL) * time.Second)
+	remaining := time.Until(expiresAt)
+	if remaining <= 0 {
+		return ""
+	}
+	days := int(remaining.Hours()) / 24
+	hours := int(remaining.Hours()) % 24
+	if days > 0 {
+		return fmt.Sprintf("%d day(s), %d hour(s)", days, hours)
+	}
+	return fmt.Sprintf("%d hour(s)", hours)
+}
+
+func (update InstaRequestUpdate) handle() error {
+	bot := update.Bot
+	msg := update.Update.Message
+	chatId := msg.Chat.ID
+	senderID := msg.From.ID
+
+	reply := func(text string) {
+		r := tgbotapi.NewMessage(chatId, text)
+		r.ReplyToMessageID = msg.MessageID
+		bot.Send(r)
+	}
+
+	// 1. Look up the sender as a registered FatBot user
+	user, err := users.GetUserById(senderID)
+	if err != nil || !user.Active {
+		log.Debugf("InstaRequest from unknown/inactive user %d", senderID)
+		return nil // silently ignore
+	}
+
+	// 2. Must have an Instagram handle registered
+	if user.InstagramHandle == "" {
+		reply("Set your Instagram handle first with /instagram your_handle 📸")
+		return nil
+	}
+
+	// 3. The replied-to message must be from the same user (own photo only)
+	if msg.ReplyToMessage.From == nil || msg.ReplyToMessage.From.ID != senderID {
+		reply("You can only request a spotlight for your own photos 🙅")
+		return nil
+	}
+
+	// 4. Extract the FileID from the replied-to photo (largest size)
+	replyPhotos := msg.ReplyToMessage.Photo
+	if len(replyPhotos) == 0 {
+		return nil // classifier already guards this, but be safe
+	}
+	photoFileID := replyPhotos[len(replyPhotos)-1].FileID
+
+	// 5. Check 2-day rate limit
+	if val, err := state.Get(instaRateLimitKey(senderID)); err == nil && val != "" {
+		remaining := instaRemainingCooldown(senderID)
+		if remaining != "" {
+			reply(fmt.Sprintf("You've already been featured recently! You can request again in %s ⏳", remaining))
+		} else {
+			reply("You've already been featured recently! Try again in a bit ⏳")
+		}
+		return nil
+	}
+
+	// 6. Concurrency lock — prevent double-trigger during async processing
+	if val, err := state.Get(instaProcessingKey(senderID)); err == nil && val != "" {
+		reply("Your spotlight is already being processed, hang tight! ⚙️")
+		return nil
+	}
+	if err := state.SetWithTTL(instaProcessingKey(senderID), "1", instaProcessingTTL); err != nil {
+		log.Errorf("Failed to set insta processing lock: %s", err)
+	}
+
+	// 7. Parse optional custom caption (everything after "insta ")
+	customCaption := ""
+	text := strings.TrimSpace(msg.Text)
+	if len(text) > 5 {
+		customCaption = strings.TrimSpace(text[5:]) // strip "insta"
+	}
+
+	// 8. Acknowledge in the group
+	reply("📸 Got it! Generating your Instagram spotlight... this may take a minute.")
+
+	// 9. Set rate limit key BEFORE async work (timestamp value for TTL display)
+	if err := state.SetWithTTL(
+		instaRateLimitKey(senderID),
+		fmt.Sprintf("%d", time.Now().Unix()),
+		instaRateLimitTTL,
+	); err != nil {
+		log.Errorf("Failed to set insta rate limit key: %s", err)
+	}
+
+	// 10. Run the spotlight pipeline asynchronously
+	go func() {
+		defer state.ClearString(instaProcessingKey(senderID))
+		spotlight.UserRequestedSpotlight(bot, user, photoFileID, chatId, customCaption)
+	}()
+
 	return nil
 }
 

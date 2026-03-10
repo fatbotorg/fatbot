@@ -56,6 +56,9 @@ type SupportGroupReplyUpdate struct {
 type MyChatMemberUpdate struct {
 	FatBotUpdate
 }
+type InstaRequestUpdate struct {
+	FatBotUpdate
+}
 
 func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 	switch {
@@ -71,6 +74,8 @@ func (fatBotUpdate FatBotUpdate) classify() (UpdateType, error) {
 		return CallbackUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isCommandUpdate():
 		return CommandUpdate{FatBotUpdate: fatBotUpdate}, nil
+	case fatBotUpdate.isInstaRequestUpdate():
+		return InstaRequestUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isMediaUpdate():
 		return MediaUpdate{FatBotUpdate: fatBotUpdate}, nil
 	case fatBotUpdate.isVideoNoteUpdate():

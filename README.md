@@ -89,3 +89,24 @@ Notifications for approval are sent to local group admins. If no local admins ex
 * `/join` - welcomes new users and asks the admin(s) to approve and pick their group. Existing users who were banned will require approval from the admin upon which they'll be sent a link to join. After rejoining the bot expects two reports immediately or the user is banned again
 * `/status` - tells the user how much time they have left till the end of the 5 days period
 * `/stats` - tells the user how many workouts each member of their group has
+
+#### Instagram Spotlight
+
+Users can get featured on the FatBot Instagram account directly from the group chat.
+
+**Setup (one-time):**
+* Send `/instagram your_handle` as a DM to the bot to register your Instagram handle
+* Send `/instagram_off` to unregister
+
+**Requesting a spotlight:**
+* Upload a workout photo to the group as usual
+* Reply to your own photo with the word `insta`
+* The bot will render a branded post and story image and publish them to the FatBot Instagram account
+* You'll receive a DM with a preview of the published image
+
+**Rules:**
+* You must have registered your Instagram handle first (`/instagram your_handle`)
+* You can only spotlight your own photos (not someone else's)
+* Limited to once every 2 days to avoid spam
+* The bot will tell you exactly how long to wait if you try again too soon
+* You can add a custom caption: reply with `insta Leg day was brutal 🔥` and the text gets included in the Instagram post
