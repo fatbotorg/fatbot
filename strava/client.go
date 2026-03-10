@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/spf13/viper"
@@ -18,6 +19,16 @@ const (
 	// Scopes needed: activity:read_all for private activities and privacy webhooks
 	Scope = "activity:read_all,read"
 )
+
+// httpClient is shared across all Strava API calls to avoid leaking idle
+// TCP connections that result from creating &http.Client{} per request.
+var httpClient = &http.Client{
+	Timeout: 30 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:    5,
+		IdleConnTimeout: 60 * time.Second,
+	},
+}
 
 // TokenResponse represents the OAuth token response from Strava
 type TokenResponse struct {
@@ -172,8 +183,7 @@ func GetActivity(accessToken string, activityID int64) (*ActivityData, error) {
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -202,8 +212,7 @@ func GetAthlete(accessToken string) (*AthleteData, error) {
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

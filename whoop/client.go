@@ -24,6 +24,17 @@ const (
 	Scope      = "read:workout read:cycles read:profile offline"
 )
 
+// httpClient is a shared client reused across all Whoop API calls.
+// A single client with a bounded transport is far cheaper than creating
+// a new &http.Client{} per call, which leaks idle TCP connections.
+var httpClient = &http.Client{
+	Timeout: 30 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:    5,
+		IdleConnTimeout: 60 * time.Second,
+	},
+}
+
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -176,8 +187,7 @@ func GetWorkouts(accessToken string, start time.Time, nextToken string) (*Workou
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -208,8 +218,7 @@ func GetCycleCollection(accessToken string, start time.Time) (*CycleResponse, er
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -237,8 +246,7 @@ func GetWorkoutById(accessToken string, workoutID string) (*WorkoutData, error) 
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -265,8 +273,7 @@ func GetUserProfile(accessToken string) (*UserProfile, error) {
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
