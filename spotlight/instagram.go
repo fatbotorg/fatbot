@@ -1,7 +1,6 @@
 package spotlight
 
 import (
-	"bytes"
 	"fatbot/ai"
 	"fatbot/db"
 	"fatbot/instagram"
@@ -139,7 +138,9 @@ func CreateInstagramStoryFromPhoto(bot *tgbotapi.BotAPI, user users.User, photoF
 	title := ai.GetAiMotivationalTitle()
 	log.Debug("Prepared story data", "workoutCount", workoutCount, "title", title)
 
-	// 3. Generate Visuals
+	// 3. Generate Visuals — render sequentially and explicitly nil the source
+	// image between renders to allow GC to reclaim memory before the next
+	// large canvas allocation.
 	ts := time.Now().Unix()
 	storyFile := fmt.Sprintf("story_%d_%d.jpg", user.TelegramUserID, ts)
 	displayName := user.GetName()
@@ -152,9 +153,28 @@ func CreateInstagramStoryFromPhoto(bot *tgbotapi.BotAPI, user users.User, photoF
 		return
 	}
 
+	// Explicitly release the decoded source image before allocating the
+	// next canvas — the story render is done with it.
+	srcImg = nil
+
 	postFile := fmt.Sprintf("post_%d_%d.jpg", user.TelegramUserID, ts)
 	log.Debug("Rendering high impact post image", "outFile", postFile)
-	if err := renderHighImpactImage(srcImg, 1080, 1080, user.GetName(), title, workoutCount, postFile); err != nil {
+
+	// Re-download for the post render so we don't hold both decoded images
+	// in memory at the same time.
+	resp2, err := http.Get(url)
+	if err != nil {
+		log.Errorf("Error re-downloading image for post: %s", err)
+		return
+	}
+	defer resp2.Body.Close()
+	srcImg2, _, err := image.Decode(resp2.Body)
+	if err != nil {
+		log.Errorf("Error decoding workout image for post: %s", err)
+		return
+	}
+
+	if err := renderHighImpactImage(srcImg2, 1080, 1080, user.GetName(), title, workoutCount, postFile); err != nil {
 		log.Errorf("Error rendering post: %s", err)
 		return
 	}
@@ -457,11 +477,15 @@ func renderHighImpactImage(src image.Image, width, height int, name, title strin
 	}
 	drawStrokedText(dc, cx, h*0.945, "fatbot.fit", 3, 0.65)
 
-	// ── Encode ──
-	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, dc.Image(), &jpeg.Options{Quality: 95}); err != nil {
+	// Write directly to disk rather than buffering the full JPEG in RAM.
+	f, err := os.Create(outFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if err := jpeg.Encode(f, dc.Image(), &jpeg.Options{Quality: 85}); err != nil {
 		return err
 	}
 	log.Debug("Successfully encoded image to JPEG", "outFile", outFile)
-	return os.WriteFile(outFile, buf.Bytes(), 0644)
+	return nil
 }
