@@ -15,6 +15,16 @@ import (
 	"github.com/spf13/viper"
 )
 
+// httpClient is shared across all Garmin API calls to avoid leaking idle
+// TCP connections that result from creating &http.Client{} per request.
+var httpClient = &http.Client{
+	Timeout: 30 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:    5,
+		IdleConnTimeout: 60 * time.Second,
+	},
+}
+
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -163,8 +173,7 @@ func FetchActivityByPullURI(pullURI, accessToken string) ([]ActivityData, error)
 	}
 	req.Header.Add("Authorization", "Bearer "+accessToken)
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -191,8 +200,7 @@ func GetUserID(accessToken string) (string, error) {
 	}
 	req.Header.Add("Authorization", "Bearer "+accessToken)
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}
