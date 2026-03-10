@@ -279,6 +279,10 @@ func handleCallbacks(fatBotUpdate FatBotUpdate) error {
 		if err := handleStravaBonusCallback(fatBotUpdate); err != nil {
 			return err
 		}
+	} else if strings.HasPrefix(fatBotUpdate.Update.CallbackData(), "photo:") {
+		if err := handlePendingPhotoCallback(fatBotUpdate); err != nil {
+			return err
+		}
 	} else {
 		err := handleStatefulCallback(fatBotUpdate)
 		if err != nil {
@@ -398,6 +402,7 @@ func handleWhoopBonusCallback(fatBotUpdate FatBotUpdate) error {
 			return err
 		}
 
+		var workouts []users.Workout
 		for _, group := range user.Groups {
 			workout := users.Workout{
 				UserID:  user.ID,
@@ -405,7 +410,12 @@ func handleWhoopBonusCallback(fatBotUpdate FatBotUpdate) error {
 				WhoopID: record.ID,
 			}
 			db.DBCon.Create(&workout)
+			workouts = append(workouts, workout)
 			notify.NotifyWorkout(bot, user, workout, record.SportName, record.Score.Strain, record.Score.Kilojoule/4.184, record.Score.AverageHeartRate, duration.Minutes(), 0, "", "")
+		}
+
+		if !notify.ApplyPendingPhoto(bot, user, workouts) {
+			notify.SendWorkoutPM(bot, user, record.SportName)
 		}
 	}
 	return nil
@@ -462,6 +472,7 @@ func handleGarminBonusCallback(fatBotUpdate FatBotUpdate) error {
 			return err
 		}
 
+		var workouts []users.Workout
 		for _, group := range user.Groups {
 			workout := users.Workout{
 				UserID:   user.ID,
@@ -469,7 +480,12 @@ func handleGarminBonusCallback(fatBotUpdate FatBotUpdate) error {
 				GarminID: record.SummaryID,
 			}
 			db.DBCon.Create(&workout)
+			workouts = append(workouts, workout)
 			notify.NotifyWorkout(bot, user, workout, record.ActivityName, 0, record.Calories, record.AverageHeartRate, duration.Minutes(), record.DistanceInMeters, record.DeviceName, record.ActivityType)
+		}
+
+		if !notify.ApplyPendingPhoto(bot, user, workouts) {
+			notify.SendWorkoutPM(bot, user, record.ActivityName)
 		}
 	}
 	return nil
@@ -560,6 +576,40 @@ func handleStravaBonusCallback(fatBotUpdate FatBotUpdate) error {
 			bot.Send(tgbotapi.NewMessage(user.TelegramUserID, "Sorry, there was an error processing your workout. Please try again."))
 			return err
 		}
+	}
+	return nil
+}
+
+func handlePendingPhotoCallback(fatBotUpdate FatBotUpdate) error {
+	data := fatBotUpdate.Update.CallbackData()
+	// data is either "photo:yes:<fileID>" or "photo:no"
+	parts := strings.SplitN(data, ":", 3)
+	action := parts[1]
+	bot := fatBotUpdate.Bot
+	userID := fatBotUpdate.Update.CallbackQuery.From.ID
+
+	// Remove the inline keyboard from the prompt message
+	edit := tgbotapi.NewEditMessageReplyMarkup(
+		fatBotUpdate.Update.CallbackQuery.Message.Chat.ID,
+		fatBotUpdate.Update.CallbackQuery.Message.MessageID,
+		tgbotapi.InlineKeyboardMarkup{InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{}},
+	)
+	bot.Request(edit)
+
+	if action == "no" {
+		bot.Send(tgbotapi.NewMessage(userID, "No problem! The photo won't be saved."))
+		return nil
+	}
+
+	if action == "yes" && len(parts) == 3 {
+		fileID := parts[2]
+		if err := state.SetPendingPhoto(userID, fileID); err != nil {
+			log.Errorf("Failed to store pending photo for user %d: %s", userID, err)
+			bot.Send(tgbotapi.NewMessage(userID, "Sorry, I couldn't save the photo. Please try again."))
+			return err
+		}
+		bot.Send(tgbotapi.NewMessage(userID,
+			"Got it! I'll attach this photo to your next workout upload automatically."))
 	}
 	return nil
 }

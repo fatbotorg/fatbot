@@ -82,8 +82,9 @@ func (update CallbackUpdate) handle() error {
 func (update MediaUpdate) handle() error {
 	if update.Update.FromChat().IsPrivate() {
 		msg := update.Update.Message
+		chatId := update.Update.FromChat().ID
+
 		if msg.ReplyToMessage != nil && strings.Contains(msg.ReplyToMessage.Text, "Reply to this message with a photo") {
-			chatId := update.Update.FromChat().ID
 			user, err := users.GetUserById(chatId)
 			if err != nil {
 				return err
@@ -112,6 +113,24 @@ func (update MediaUpdate) handle() error {
 			update.Bot.Send(reply)
 			return nil
 		}
+
+		// Photo sent in private chat without a reply-to-prompt —
+		// ask the user if they want to use it for their next workout upload.
+		if len(msg.Photo) > 0 {
+			fileId := msg.Photo[len(msg.Photo)-1].FileID
+			promptMsg := tgbotapi.NewMessage(chatId,
+				"Nice photo! Should I use this for your next workout when it gets uploaded through one of your integrations?")
+			yesBtn := tgbotapi.NewInlineKeyboardButtonData("Yes, save it", fmt.Sprintf("photo:yes:%s", fileId))
+			noBtn := tgbotapi.NewInlineKeyboardButtonData("No thanks", "photo:no")
+			promptMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(yesBtn, noBtn),
+			)
+			// Pin the photo as a reply so context is clear
+			promptMsg.ReplyToMessageID = msg.MessageID
+			update.Bot.Send(promptMsg)
+			return nil
+		}
+
 		return nil
 	}
 	caption := update.Update.Message.Caption
