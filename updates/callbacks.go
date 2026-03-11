@@ -582,7 +582,7 @@ func handleStravaBonusCallback(fatBotUpdate FatBotUpdate) error {
 
 func handlePendingPhotoCallback(fatBotUpdate FatBotUpdate) error {
 	data := fatBotUpdate.Update.CallbackData()
-	// data is either "photo:yes" or "photo:no"
+	// data is one of: "photo:now", "photo:yes", "photo:no"
 	parts := strings.SplitN(data, ":", 2)
 	action := parts[1]
 	bot := fatBotUpdate.Bot
@@ -602,15 +602,46 @@ func handlePendingPhotoCallback(fatBotUpdate FatBotUpdate) error {
 		return nil
 	}
 
-	if action == "yes" {
-		// Retrieve the file ID stored in Redis when the photo was received.
-		fileID, err := state.GetPendingPhotoConfirm(userID)
+	// Retrieve the file ID stored in Redis when the photo arrived (shared by both yes and now).
+	fileID, err := state.GetPendingPhotoConfirm(userID)
+	if err != nil {
+		log.Errorf("Failed to retrieve pending photo confirm for user %d: %s", userID, err)
+		bot.Send(tgbotapi.NewMessage(userID, "Sorry, the photo timed out. Please send it again."))
+		return err
+	}
+	state.ClearPendingPhotoConfirm(userID)
+
+	if action == "now" {
+		// Send the photo to all groups immediately and attach it to the latest workout in each.
+		user, err := users.GetUserById(userID)
 		if err != nil {
-			log.Errorf("Failed to retrieve pending photo confirm for user %d: %s", userID, err)
-			bot.Send(tgbotapi.NewMessage(userID, "Sorry, the photo timed out. Please send it again."))
+			log.Errorf("handlePendingPhotoCallback(now): failed to get user %d: %s", userID, err)
+			bot.Send(tgbotapi.NewMessage(userID, "Sorry, I couldn't find your account. Please try again."))
 			return err
 		}
-		state.ClearPendingPhotoConfirm(userID)
+		if err := user.LoadGroups(); err != nil {
+			log.Errorf("handlePendingPhotoCallback(now): failed to load groups for user %d: %s", userID, err)
+			return err
+		}
+		count := 0
+		for _, group := range user.Groups {
+			// Attach the photo to the most recent workout record in this group
+			if lastWorkout, err := user.GetLastXWorkout(1, group.ChatID); err == nil {
+				lastWorkout.PhotoFileID = fileID
+				db.DBCon.Save(&lastWorkout)
+			}
+			photoMsg := tgbotapi.NewPhoto(group.ChatID, tgbotapi.FileID(fileID))
+			if _, err := bot.Send(photoMsg); err != nil {
+				log.Errorf("handlePendingPhotoCallback(now): failed to send photo to group %d: %s", group.ChatID, err)
+			} else {
+				count++
+			}
+		}
+		bot.Send(tgbotapi.NewMessage(userID, fmt.Sprintf("Sent to %d group(s)!", count)))
+		return nil
+	}
+
+	if action == "yes" {
 		if err := state.SetPendingPhoto(userID, fileID); err != nil {
 			log.Errorf("Failed to store pending photo for user %d: %s", userID, err)
 			bot.Send(tgbotapi.NewMessage(userID, "Sorry, I couldn't save the photo. Please try again."))
