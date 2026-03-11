@@ -118,9 +118,16 @@ func (update MediaUpdate) handle() error {
 		// ask the user if they want to use it for their next workout upload.
 		if len(msg.Photo) > 0 {
 			fileId := msg.Photo[len(msg.Photo)-1].FileID
+			// Store the file ID temporarily so the callback handler can retrieve it.
+			// Telegram callback data has a 64-byte hard limit — we cannot embed the
+			// file ID directly in the button payload.
+			if err := state.SetPendingPhotoConfirm(chatId, fileId); err != nil {
+				log.Errorf("Failed to store pending photo confirm for user %d: %s", chatId, err)
+				return err
+			}
 			promptMsg := tgbotapi.NewMessage(chatId,
 				"Nice photo! Should I use this for your next workout when it gets uploaded through one of your integrations?")
-			yesBtn := tgbotapi.NewInlineKeyboardButtonData("Yes, save it", fmt.Sprintf("photo:yes:%s", fileId))
+			yesBtn := tgbotapi.NewInlineKeyboardButtonData("Yes, save it", "photo:yes")
 			noBtn := tgbotapi.NewInlineKeyboardButtonData("No thanks", "photo:no")
 			promptMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 				tgbotapi.NewInlineKeyboardRow(yesBtn, noBtn),

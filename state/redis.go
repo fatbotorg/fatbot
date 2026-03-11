@@ -109,6 +109,25 @@ func SetNX(key, value string, ttl int) (bool, error) {
 	return result == "OK", nil
 }
 
+// SetPendingPhotoConfirm temporarily stores a Telegram file ID while the user
+// decides whether to save it (yes/no prompt). Expires after 5 minutes.
+func SetPendingPhotoConfirm(telegramUserID int64, fileID string) error {
+	key := fmt.Sprintf("photo:confirm:%d", telegramUserID)
+	return SetWithTTL(key, fileID, 300) // 5 min
+}
+
+// GetPendingPhotoConfirm retrieves the file ID stored during the yes/no prompt.
+func GetPendingPhotoConfirm(telegramUserID int64) (string, error) {
+	key := fmt.Sprintf("photo:confirm:%d", telegramUserID)
+	return get(key)
+}
+
+// ClearPendingPhotoConfirm removes the temporary confirm key.
+func ClearPendingPhotoConfirm(telegramUserID int64) error {
+	key := fmt.Sprintf("photo:confirm:%d", telegramUserID)
+	return ClearString(key)
+}
+
 // SetPendingPhoto stores a Telegram file ID as a pending workout photo for a user.
 // The key is keyed by the user's Telegram ID and expires after 24 hours.
 func SetPendingPhoto(telegramUserID int64, fileID string) error {
