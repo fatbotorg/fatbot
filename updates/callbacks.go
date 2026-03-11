@@ -582,8 +582,8 @@ func handleStravaBonusCallback(fatBotUpdate FatBotUpdate) error {
 
 func handlePendingPhotoCallback(fatBotUpdate FatBotUpdate) error {
 	data := fatBotUpdate.Update.CallbackData()
-	// data is either "photo:yes:<fileID>" or "photo:no"
-	parts := strings.SplitN(data, ":", 3)
+	// data is either "photo:yes" or "photo:no"
+	parts := strings.SplitN(data, ":", 2)
 	action := parts[1]
 	bot := fatBotUpdate.Bot
 	userID := fatBotUpdate.Update.CallbackQuery.From.ID
@@ -597,12 +597,20 @@ func handlePendingPhotoCallback(fatBotUpdate FatBotUpdate) error {
 	bot.Request(edit)
 
 	if action == "no" {
+		state.ClearPendingPhotoConfirm(userID)
 		bot.Send(tgbotapi.NewMessage(userID, "No problem! The photo won't be saved."))
 		return nil
 	}
 
-	if action == "yes" && len(parts) == 3 {
-		fileID := parts[2]
+	if action == "yes" {
+		// Retrieve the file ID stored in Redis when the photo was received.
+		fileID, err := state.GetPendingPhotoConfirm(userID)
+		if err != nil {
+			log.Errorf("Failed to retrieve pending photo confirm for user %d: %s", userID, err)
+			bot.Send(tgbotapi.NewMessage(userID, "Sorry, the photo timed out. Please send it again."))
+			return err
+		}
+		state.ClearPendingPhotoConfirm(userID)
 		if err := state.SetPendingPhoto(userID, fileID); err != nil {
 			log.Errorf("Failed to store pending photo for user %d: %s", userID, err)
 			bot.Send(tgbotapi.NewMessage(userID, "Sorry, I couldn't save the photo. Please try again."))
