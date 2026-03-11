@@ -125,9 +125,10 @@ func (update MediaUpdate) handle() error {
 			promptMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 				tgbotapi.NewInlineKeyboardRow(yesBtn, noBtn),
 			)
-			// Pin the photo as a reply so context is clear
-			promptMsg.ReplyToMessageID = msg.MessageID
-			update.Bot.Send(promptMsg)
+			if _, err := update.Bot.Send(promptMsg); err != nil {
+				log.Errorf("Failed to send pending photo prompt to user %d: %s", chatId, err)
+				return err
+			}
 			return nil
 		}
 
