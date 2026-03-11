@@ -154,6 +154,11 @@ func NotifyWorkout(bot *tgbotapi.BotAPI, user users.User, workout users.Workout,
 }
 
 func SendWorkoutPM(bot *tgbotapi.BotAPI, user users.User, sportName string) {
+	// Skip the "reply with a photo" prompt if the user already has a photo
+	// pre-saved for this workout — it was already applied by ApplyPendingPhoto.
+	if _, err := state.GetPendingPhoto(user.TelegramUserID); err == nil {
+		return
+	}
 	pm := tgbotapi.NewMessage(user.TelegramUserID, fmt.Sprintf("Great job on your %s workout!\n\nReply to this message with a photo to send it to all your groups.", sportName))
 	bot.Send(pm)
 }

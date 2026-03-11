@@ -126,10 +126,12 @@ func (update MediaUpdate) handle() error {
 				return err
 			}
 			promptMsg := tgbotapi.NewMessage(chatId,
-				"Nice photo! Should I use this for your next workout when it gets uploaded through one of your integrations?")
-			yesBtn := tgbotapi.NewInlineKeyboardButtonData("Yes, save it", "photo:yes")
-			noBtn := tgbotapi.NewInlineKeyboardButtonData("No thanks", "photo:no")
+				"Nice photo! What would you like to do with it?")
+			nowBtn := tgbotapi.NewInlineKeyboardButtonData("Send to groups now", "photo:now")
+			yesBtn := tgbotapi.NewInlineKeyboardButtonData("Save for next workout", "photo:yes")
+			noBtn := tgbotapi.NewInlineKeyboardButtonData("Nothing", "photo:no")
 			promptMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(nowBtn),
 				tgbotapi.NewInlineKeyboardRow(yesBtn, noBtn),
 			)
 			if _, err := update.Bot.Send(promptMsg); err != nil {
