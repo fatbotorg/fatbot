@@ -42,7 +42,8 @@ func UploadFileToS3(filePath string) (string, error) {
 	if region == "" {
 		region = os.Getenv("AWS_REGION")
 	}
-	if region == "" {
+	regionExplicit := region != ""
+	if !regionExplicit {
 		region = "us-east-1"
 	}
 
@@ -76,7 +77,7 @@ func UploadFileToS3(filePath string) (string, error) {
 		}
 	}
 
-	if region == "" {
+	if !regionExplicit {
 		return fmt.Sprintf("https://s3.amazonaws.com/%s/%s", bucket, key), nil
 	}
 	return fmt.Sprintf("https://s3.%s.amazonaws.com/%s/%s", region, bucket, key), nil
