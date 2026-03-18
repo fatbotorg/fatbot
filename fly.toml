@@ -10,6 +10,9 @@ primary_region = "lhr"
 DBPATH = "/data/fat.db"
 ENVIRONMENT = "production"
 WHOOP_REDIRECT_URI = "https://fatbot.fly.dev/whoop-callback"
+# Go memory settings for Instagram image processing
+GOMEMLIMIT = "450MiB"
+GOGC = "50"
 
 [mounts]
 source="fat_data"
@@ -22,3 +25,7 @@ destination="/data"
   auto_start_machines = true
   min_machines_running = 1
   processes = ["app"]
+
+[vm]
+  size = "shared-cpu-1x"
+  memory = "512mb"

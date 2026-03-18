@@ -15,6 +15,10 @@ services:
       - DBPATH=/app/fat.db
       - REDIS_ADDR=redis://redis:6379
       - PORT=8080
+      # Go memory limit (soft limit for GC, 450MB)
+      - GOMEMLIMIT=450MiB
+      # Reduce GC target percentage to be more aggressive (default is 100)
+      - GOGC=50
 
       # Core Service Tokens
       - TELEGRAM_APITOKEN=${TELEGRAM_APITOKEN}
@@ -35,6 +39,12 @@ services:
       - ./config.yaml:/app/config.yaml
       - ./fat.db:/app/fat.db
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
   redis:
     image: redis:alpine
