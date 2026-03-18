@@ -159,6 +159,9 @@ func CreateInstagramStoryFromPhoto(bot *tgbotapi.BotAPI, user users.User, photoF
 		return
 	}
 
+	// Force GC between renders to free memory from story canvas
+	runtime.GC()
+
 	postFile := fmt.Sprintf("post_%d_%d.jpg", user.TelegramUserID, ts)
 	log.Debug("Rendering high impact post image", "outFile", postFile)
 	if err := renderHighImpactImage(srcImg, 540, 540, user.GetName(), title, workoutCount, postFile); err != nil {
