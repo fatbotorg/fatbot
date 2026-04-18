@@ -8,7 +8,6 @@ import (
 	"fatbot/state"
 	"fatbot/users"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -35,11 +34,8 @@ func calculateStrain(avgHR int) float64 {
 }
 
 func ProcessGarminActivity(bot *tgbotapi.BotAPI, user users.User, activity garmin.ActivityData) {
-	// Normalize ID
-	baseID := activity.SummaryID
-	if idx := strings.Index(baseID, "-"); idx != -1 {
-		baseID = baseID[:idx]
-	}
+	baseID := garmin.NormalizeSummaryID(activity.SummaryID)
+	activity.SummaryID = baseID
 
 	// 1. Check if already in DB
 	if users.GarminWorkoutExists(baseID) {
@@ -82,9 +78,8 @@ func ProcessGarminActivity(bot *tgbotapi.BotAPI, user users.User, activity garmi
 		return
 	}
 
-	// Filter: For TESTING, we allow > 30s. In production, this should be 25m.
-	if duration < 30*time.Second {
-		log.Debugf("Skipping Garmin activity %s: duration too short (%.1f seconds)", activity.ActivityName, duration.Seconds())
+	if duration < 25*time.Minute {
+		log.Debugf("Skipping Garmin activity %s: duration too short (%.1f min)", activity.ActivityName, duration.Minutes())
 		return
 	}
 
