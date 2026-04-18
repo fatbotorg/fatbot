@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -161,6 +162,87 @@ func (e GarminEntry) GetCalories() float64 {
 	return 0
 }
 
+const maxGarminActivitiesPerWebhookUser = 5
+
+func findGarminWebhookUser(entry GarminEntry) (users.User, error) {
+	var user users.User
+	db.DBCon.Where("garmin_user_id = ?", entry.UserId).First(&user)
+	if user.ID == 0 && entry.UserAccessToken != "" {
+		db.DBCon.Where("garmin_access_token = ?", entry.UserAccessToken).First(&user)
+		if user.ID != 0 && entry.UserId != "" {
+			user.GarminUserID = entry.UserId
+			db.DBCon.Save(&user)
+		}
+	}
+	if user.ID == 0 {
+		return user, fmt.Errorf("could not find Garmin user for userId=%s", entry.UserId)
+	}
+	return user, nil
+}
+
+func activitiesFromGarminEntry(entry GarminEntry, accessToken string) ([]garmin.ActivityData, error) {
+	baseID := garmin.NormalizeSummaryID(entry.SummaryId)
+
+	if entry.ActivityName != "" {
+		if baseID == "" {
+			return nil, fmt.Errorf("activity payload missing summaryId")
+		}
+		return []garmin.ActivityData{{
+			SummaryID:          baseID,
+			ActivityName:       entry.ActivityName,
+			ActivityType:       entry.ActivityType,
+			DeviceName:         entry.DeviceName,
+			DurationInSeconds:  entry.DurationInSeconds,
+			StartTimeInSeconds: entry.StartTimeInSeconds,
+			Calories:           entry.GetCalories(),
+			AverageHeartRate:   entry.AverageHeartRate,
+			DistanceInMeters:   entry.DistanceInMeters,
+		}}, nil
+	}
+
+	if entry.Summary != nil {
+		baseID = garmin.NormalizeSummaryID(entry.Summary.SummaryId)
+		if baseID == "" {
+			return nil, fmt.Errorf("activity summary payload missing summaryId")
+		}
+		return []garmin.ActivityData{{
+			SummaryID:          baseID,
+			ActivityName:       entry.Summary.ActivityName,
+			ActivityType:       entry.Summary.ActivityType,
+			DeviceName:         entry.Summary.DeviceName,
+			DurationInSeconds:  entry.Summary.DurationInSeconds,
+			StartTimeInSeconds: entry.Summary.StartTimeInSeconds,
+			Calories:           entry.GetCalories(),
+			AverageHeartRate:   entry.Summary.AverageHeartRate,
+			DistanceInMeters:   entry.Summary.DistanceInMeters,
+		}}, nil
+	}
+
+	if entry.CallbackURL == "" || strings.Contains(entry.CallbackURL, "activityFile") {
+		return nil, nil
+	}
+
+	fetched, err := garmin.FetchActivityByPullURI(entry.CallbackURL, accessToken)
+	if err != nil {
+		return nil, err
+	}
+	for i := range fetched {
+		fetched[i].SummaryID = garmin.NormalizeSummaryID(fetched[i].SummaryID)
+	}
+	return fetched, nil
+}
+
+func limitGarminActivities(activities []garmin.ActivityData, max int) []garmin.ActivityData {
+	if len(activities) <= max {
+		return activities
+	}
+	limited := append([]garmin.ActivityData(nil), activities...)
+	sort.Slice(limited, func(i, j int) bool {
+		return limited[i].StartTimeInSeconds > limited[j].StartTimeInSeconds
+	})
+	return limited[:max]
+}
+
 func HandleGarminWebhook(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -180,93 +262,83 @@ func HandleGarminWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allEntries := append(notification.Activities, notification.Dailies...)
-	allEntries = append(allEntries, notification.Epochs...)
-	allEntries = append(allEntries, notification.Sleeps...)
-	allEntries = append(allEntries, notification.BodyComps...)
-	allEntries = append(allEntries, notification.Stress...)
-	allEntries = append(allEntries, notification.UserMetrics...)
-	allEntries = append(allEntries, notification.MoveIQ...)
-	allEntries = append(allEntries, notification.PulseOx...)
-	allEntries = append(allEntries, notification.Respiration...)
-	allEntries = append(allEntries, notification.ActivityDetails...)
+	log.Infof(
+		"Received Garmin Webhook: activities=%d activityDetails=%d ignored_non_activity=%d",
+		len(notification.Activities),
+		len(notification.ActivityDetails),
+		len(notification.Dailies)+len(notification.Epochs)+len(notification.Sleeps)+len(notification.BodyComps)+len(notification.Stress)+len(notification.UserMetrics)+len(notification.MoveIQ)+len(notification.PulseOx)+len(notification.Respiration)+len(notification.ActivityFiles),
+	)
 
-	log.Infof("Received Garmin Webhook: %d total entries", len(allEntries))
+	type webhookUserBatch struct {
+		user       users.User
+		activities []garmin.ActivityData
+		seen       map[string]bool
+	}
 
-	processedIDs := make(map[string]bool)
-	for _, entry := range allEntries {
-		// Normalize ID: strip suffixes like -detail, -file, etc.
-		baseID := entry.SummaryId
-		if idx := strings.Index(baseID, "-"); idx != -1 {
-			baseID = baseID[:idx]
-		}
-
-		if processedIDs[baseID] {
-			continue
-		}
-		processedIDs[baseID] = true
-
-		// Find user
-		var user users.User
-		db.DBCon.Where("garmin_user_id = ?", entry.UserId).First(&user)
-		if user.ID == 0 && entry.UserAccessToken != "" {
-			db.DBCon.Where("garmin_access_token = ?", entry.UserAccessToken).First(&user)
-			if user.ID != 0 {
-				user.GarminUserID = entry.UserId
-				db.DBCon.Save(&user)
-			}
-		}
-
-		if user.ID == 0 {
+	batches := make(map[uint]*webhookUserBatch)
+	for _, entry := range notification.Activities {
+		user, err := findGarminWebhookUser(entry)
+		if err != nil {
+			log.Warnf("Skipping Garmin activity entry: %s", err)
 			continue
 		}
 
 		accessToken, err := user.GetValidGarminAccessToken()
 		if err != nil {
+			log.Warnf("Skipping Garmin activity entry for user %s: %s", user.GetName(), err)
 			continue
 		}
 
-		var activities []garmin.ActivityData
+		activities, err := activitiesFromGarminEntry(entry, accessToken)
+		if err != nil {
+			log.Warnf("Skipping Garmin activity payload for user %s: %s", user.GetName(), err)
+			continue
+		}
 
-		if entry.ActivityName != "" {
-			activities = []garmin.ActivityData{{
-				SummaryID:          baseID,
-				ActivityName:       entry.ActivityName,
-				ActivityType:       entry.ActivityType,
-				DeviceName:         entry.DeviceName,
-				DurationInSeconds:  entry.DurationInSeconds,
-				StartTimeInSeconds: entry.StartTimeInSeconds,
-				Calories:           entry.GetCalories(),
-				AverageHeartRate:   entry.AverageHeartRate,
-				DistanceInMeters:   entry.DistanceInMeters,
-			}}
-		} else if entry.Summary != nil {
-			activities = []garmin.ActivityData{{
-				SummaryID:          baseID,
-				ActivityName:       entry.Summary.ActivityName,
-				ActivityType:       entry.Summary.ActivityType,
-				DeviceName:         entry.Summary.DeviceName,
-				DurationInSeconds:  entry.Summary.DurationInSeconds,
-				StartTimeInSeconds: entry.Summary.StartTimeInSeconds,
-				Calories:           entry.GetCalories(),
-				AverageHeartRate:   entry.Summary.AverageHeartRate,
-				DistanceInMeters:   entry.Summary.DistanceInMeters,
-			}}
-		} else if entry.CallbackURL != "" && !strings.Contains(entry.CallbackURL, "activityFile") {
-			fetched, err := garmin.FetchActivityByPullURI(entry.CallbackURL, accessToken)
-			if err == nil {
-				for i := range fetched {
-					if idx := strings.Index(fetched[i].SummaryID, "-"); idx != -1 {
-						fetched[i].SummaryID = fetched[i].SummaryID[:idx]
-					}
-				}
-				activities = fetched
-			}
+		batch := batches[user.ID]
+		if batch == nil {
+			batch = &webhookUserBatch{user: user, seen: make(map[string]bool)}
+			batches[user.ID] = batch
 		}
 
 		for _, activity := range activities {
+			activity.SummaryID = garmin.NormalizeSummaryID(activity.SummaryID)
+			if activity.SummaryID == "" {
+				log.Warnf("Skipping Garmin activity with empty summaryId for user %s", user.GetName())
+				continue
+			}
+			if batch.seen[activity.SummaryID] {
+				continue
+			}
+			batch.seen[activity.SummaryID] = true
+			batch.activities = append(batch.activities, activity)
+		}
+	}
+
+	for _, batch := range batches {
+		if len(batch.activities) == 0 {
+			continue
+		}
+
+		if len(batch.activities) > maxGarminActivitiesPerWebhookUser {
+			log.Warnf(
+				"Suspicious Garmin batch for user %s: %d activities in a single webhook, limiting to the most recent 1",
+				batch.user.GetName(),
+				len(batch.activities),
+			)
+			batch.activities = limitGarminActivities(batch.activities, 1)
 			if GlobalBot != nil {
-				schedule.ProcessGarminActivity(GlobalBot, user, activity)
+				msg := tgbotapi.NewMessage(
+					batch.user.TelegramUserID,
+					"I detected an unusually large Garmin sync and only kept the newest activity to prevent accidental bulk workout uploads.",
+				)
+				GlobalBot.Send(msg)
+			}
+		}
+
+		for _, activity := range batch.activities {
+			if GlobalBot != nil {
+				schedule.ProcessGarminActivity(GlobalBot, batch.user, activity)
 			}
 		}
 	}

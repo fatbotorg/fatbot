@@ -3,7 +3,6 @@ package users
 import (
 	"fatbot/db"
 	"fatbot/garmin"
-	"strings"
 	"time"
 )
 
@@ -42,11 +41,7 @@ func GetGarminUsers() []User {
 }
 
 func GarminWorkoutExists(garminID string) bool {
-	// Normalize ID: strip suffixes like -detail, -file, etc.
-	baseID := garminID
-	if idx := strings.Index(baseID, "-"); idx != -1 {
-		baseID = baseID[:idx]
-	}
+	baseID := garmin.NormalizeSummaryID(garminID)
 
 	db := db.DBCon
 	var workout Workout

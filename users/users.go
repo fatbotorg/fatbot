@@ -3,6 +3,7 @@ package users
 import (
 	"encoding/json"
 	"fatbot/db"
+	"fatbot/migrations"
 	"fmt"
 	"time"
 
@@ -83,6 +84,8 @@ func InitDB() error {
 		slug := GenerateUniqueSlug(group.Title)
 		db.Model(&group).Update("slug", slug)
 	}
+
+	migrations.AddProviderWorkoutUniqueIndexes()
 
 	return nil
 }

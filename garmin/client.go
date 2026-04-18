@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -43,6 +44,13 @@ type ActivityData struct {
 	Calories           float64 `json:"calories"`
 	DistanceInMeters   float64 `json:"distanceInMeters"`
 	AverageHeartRate   int     `json:"averageHeartRateInBeatsPerMinute"`
+}
+
+func NormalizeSummaryID(summaryID string) string {
+	if idx := strings.Index(summaryID, "-"); idx != -1 {
+		return summaryID[:idx]
+	}
+	return summaryID
 }
 
 func getBaseAuthURL() string {
