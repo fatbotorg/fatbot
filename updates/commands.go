@@ -91,9 +91,14 @@ func handleCommandUpdate(fatBotUpdate FatBotUpdate) error {
 		if err != nil {
 			return err
 		}
+	case "cancel":
+		msg, err = handleCancelCommand(fatBotUpdate)
+		if err != nil {
+			return err
+		}
 	case "help":
 		msg.ChatID = update.FromChat().ID
-		msg.Text = "Join a group: /join\nCreate your own group: /creategroup\nCheck your status: /status\nView stats: /stats"
+		msg.Text = "Join a group: /join\nCreate your own group: /creategroup\nCheck your status: /status\nView stats: /stats\nCancel your last workout (within a few minutes): /cancel"
 	default:
 		msg.ChatID = update.FromChat().ID
 	}
@@ -420,6 +425,119 @@ func handleInstagramOffCommand(fatBotUpdate FatBotUpdate) error {
 	msg := tgbotapi.NewMessage(update.FromChat().ID, "Daily automated Instagram stories disabled. 🫡")
 	_, err = bot.Send(msg)
 	return err
+}
+
+func handleCancelCommand(fatBotUpdate FatBotUpdate) (tgbotapi.MessageConfig, error) {
+	update := fatBotUpdate.Update
+	bot := fatBotUpdate.Bot
+	msg := tgbotapi.NewMessage(update.FromChat().ID, "")
+
+	user, err := users.GetUserFromMessage(update.Message)
+	if err != nil {
+		if _, ok := err.(*users.NoSuchUserError); ok {
+			msg.Text = "You are not registered."
+			return msg, nil
+		}
+		return msg, err
+	}
+	if user.ID == 0 {
+		msg.Text = "You are not registered."
+		return msg, nil
+	}
+
+	chatIds, err := user.GetChatIds()
+	if err != nil {
+		msg.Text = "You are not in any group."
+		return msg, nil
+	}
+
+	var (
+		lastWorkout  users.Workout
+		selectedChat int64
+	)
+	for _, chatId := range chatIds {
+		workout, err := user.GetLastXWorkout(1, chatId)
+		if err != nil {
+			if _, ok := err.(*users.NoWorkoutsError); ok {
+				continue
+			}
+			log.Errorf("cancel: failed to fetch last workout for chat %d: %s", chatId, err)
+			continue
+		}
+		if workout.CreatedAt.IsZero() {
+			continue
+		}
+		if workout.CreatedAt.After(lastWorkout.CreatedAt) {
+			lastWorkout = workout
+			selectedChat = chatId
+		}
+	}
+
+	if lastWorkout.ID == 0 || lastWorkout.CreatedAt.IsZero() {
+		msg.Text = "You don't have any workouts to cancel."
+		return msg, nil
+	}
+
+	windowMinutes := viper.GetInt("workout.cancel.window_minutes")
+	if windowMinutes <= 0 {
+		windowMinutes = 5
+	}
+	elapsed := time.Since(lastWorkout.CreatedAt)
+	if elapsed > time.Duration(windowMinutes)*time.Minute {
+		msg.Text = fmt.Sprintf(
+			"Your last workout was %d minutes ago — you can only cancel within %d minutes.",
+			int(elapsed.Minutes()),
+			windowMinutes,
+		)
+		return msg, nil
+	}
+
+	deletedWorkout, _, err := user.RollbackLastWorkout(selectedChat)
+	if err != nil {
+		if _, ok := err.(*users.NoWorkoutsError); !ok {
+			return msg, err
+		}
+	}
+
+	if deletedWorkout.WhoopID != "" {
+		if err := state.SetWithTTL("whoop:ignored:"+deletedWorkout.WhoopID, "1", 604800); err != nil {
+			log.Errorf("cancel: failed to set whoop ignored: %s", err)
+			sentry.CaptureException(err)
+		}
+	}
+	if deletedWorkout.GarminID != "" {
+		if err := state.SetWithTTL("garmin:ignored:"+deletedWorkout.GarminID, "1", 604800); err != nil {
+			log.Errorf("cancel: failed to set garmin ignored: %s", err)
+			sentry.CaptureException(err)
+		}
+	}
+	if deletedWorkout.StravaID != "" {
+		if err := state.SetWithTTL("strava:ignored:"+deletedWorkout.StravaID, "1", 604800); err != nil {
+			log.Errorf("cancel: failed to set strava ignored: %s", err)
+			sentry.CaptureException(err)
+		}
+	}
+
+	if deletedWorkout.NotifyMessageID != 0 && deletedWorkout.NotifyChatID != 0 {
+		delMsg := tgbotapi.NewDeleteMessage(deletedWorkout.NotifyChatID, deletedWorkout.NotifyMessageID)
+		if _, err := bot.Request(delMsg); err != nil {
+			log.Warnf("cancel: failed to delete bot notification message: %s", err)
+		}
+	}
+
+	createdAtStr := deletedWorkout.CreatedAt.Format("2006-01-02 15:04:05")
+	groupMsg := tgbotapi.NewMessage(selectedChat, fmt.Sprintf(
+		"%s cancelled their last workout from %s.",
+		user.GetName(),
+		createdAtStr,
+	))
+	if _, err := bot.Send(groupMsg); err != nil {
+		log.Errorf("cancel: failed to send group confirmation: %s", err)
+		sentry.CaptureException(err)
+	}
+
+	msg.Text = fmt.Sprintf("Cancelled your workout from %s.", createdAtStr)
+	return msg, nil
 }
 
 func handleAdminCommandUpdate(fatBotUpdate FatBotUpdate) error {
