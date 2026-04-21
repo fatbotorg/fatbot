@@ -7,6 +7,8 @@ ban:
     hours: 24
 workout:
   period: 60
+  cancel:
+    window_minutes: 15
 users:
   new:
     days: 5
