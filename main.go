@@ -48,6 +48,10 @@ func setupBotCommands(bot *tgbotapi.BotAPI) {
 			Description: "View workout statistics",
 		},
 		{
+			Command:     "cancel",
+			Description: "Cancel your last workout (within a few minutes)",
+		},
+		{
 			Command:     "whoop",
 			Description: "Connect Whoop Account",
 		},
