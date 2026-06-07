@@ -46,13 +46,13 @@ func getFile(update MediaUpdate) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func handleWorkoutUpload(update MediaUpdate, labels []string, imageBytes []byte) (tgbotapi.MessageConfig, error) {
+func handleWorkoutUpload(update MediaUpdate, labels []string, imageBytes []byte) (tgbotapi.MessageConfig, users.Workout, error) {
 	var message string
 	botUpdate := update.Update
 	msg := tgbotapi.NewMessage(botUpdate.Message.Chat.ID, "")
 	user, err := users.GetUserById(botUpdate.SentFrom().ID)
 	if err != nil {
-		return msg, err
+		return msg, users.Workout{}, err
 	}
 
 	chatId := botUpdate.FromChat().ID
@@ -68,24 +68,25 @@ func handleWorkoutUpload(update MediaUpdate, labels []string, imageBytes []byte)
 	}
 	workOutOnceIn := viper.GetInt("workout.period")
 	if !lastWorkout.IsOlderThan(workOutOnceIn) && !user.OnProbation {
-		return msg, nil
+		return msg, users.Workout{}, nil
 	} else if user.OnProbation {
 		if _, err := user.UpdateWorkout(botUpdate, lastWorkout); err != nil {
-			return msg, err
+			return msg, users.Workout{}, err
 		}
 		if err := user.UpdateOnProbation(false); err != nil {
-			return msg, fmt.Errorf("Issue updating probation %s: %s", user.GetName(), err)
+			return msg, users.Workout{}, fmt.Errorf("Issue updating probation %s: %s", user.GetName(), err)
 		}
 		chatId := update.Update.FromChat().ID
 		if err := user.FlagLastWorkout(chatId); err != nil {
-			return msg, err
+			return msg, users.Workout{}, err
 		}
-		return handleProbationUploadMessage(botUpdate, user)
+		probationMsg, err := handleProbationUploadMessage(botUpdate, user)
+		return probationMsg, users.Workout{}, err
 	}
 
 	var currentWorkout users.Workout
 	if currentWorkout, err = user.UpdateWorkout(botUpdate, lastWorkout); err != nil {
-		return msg, err
+		return msg, users.Workout{}, err
 	}
 
 	if lastWorkout.CreatedAt.IsZero() {
@@ -102,7 +103,7 @@ func handleWorkoutUpload(update MediaUpdate, labels []string, imageBytes []byte)
 			timeAgo = fmt.Sprintf("%d days and %d hours ago", days, int(hours)-days*24)
 		}
 		if err := user.LoadWorkoutsThisCycle(chatId); err != nil {
-			return msg, err
+			return msg, users.Workout{}, err
 		}
 		var streakMessage string
 		if currentWorkout.Streak > 0 {
@@ -142,5 +143,5 @@ func handleWorkoutUpload(update MediaUpdate, labels []string, imageBytes []byte)
 
 	msg.Text = message
 	msg.ReplyToMessageID = botUpdate.Message.MessageID
-	return msg, nil
+	return msg, currentWorkout, nil
 }
