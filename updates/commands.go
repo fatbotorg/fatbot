@@ -525,6 +525,13 @@ func handleCancelCommand(fatBotUpdate FatBotUpdate) (tgbotapi.MessageConfig, err
 		}
 	}
 
+	if deletedWorkout.PhotoMessageID != 0 {
+		delPhoto := tgbotapi.NewDeleteMessage(selectedChat, deletedWorkout.PhotoMessageID)
+		if _, err := bot.Request(delPhoto); err != nil {
+			log.Warnf("cancel: failed to delete user workout photo: %s", err)
+		}
+	}
+
 	createdAtStr := deletedWorkout.CreatedAt.Format("2006-01-02 15:04:05")
 	groupMsg := tgbotapi.NewMessage(selectedChat, fmt.Sprintf(
 		"%s cancelled their last workout from %s.",
