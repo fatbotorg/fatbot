@@ -154,15 +154,25 @@ func (update MediaUpdate) handle() error {
 		return err
 	}
 	labels := detectImageLabels(imageBytes)
-	msg, err := handleWorkoutUpload(update, labels, imageBytes)
+	msg, workout, err := handleWorkoutUpload(update, labels, imageBytes)
 	if err != nil {
 		return fmt.Errorf("Error handling last workout: %s", err)
 	}
 	if msg.Text == "" {
 		return nil
 	}
-	if _, err := update.Bot.Send(msg); err != nil {
+	sentMsg, err := update.Bot.Send(msg)
+	if err != nil {
 		return err
+	}
+	// Track the bot's reply so /cancel can remove it along with the workout photo.
+	if workout.ID != 0 {
+		workout.NotifyMessageID = sentMsg.MessageID
+		workout.NotifyChatID = update.Update.FromChat().ID
+		if err := db.DBCon.Save(&workout).Error; err != nil {
+			log.Errorf("Failed to store notify message ID for workout %d: %s", workout.ID, err)
+			sentry.CaptureException(err)
+		}
 	}
 
 	config := tgbotapi.SetMessageReactionConfig{
